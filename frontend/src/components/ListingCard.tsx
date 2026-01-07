@@ -259,8 +259,8 @@ const ListingCard = ({
         <div className="absolute bottom-4 left-4 flex gap-2">
           {managedByEx ? (
             <Link to="/managed-by-ex">
-              <Badge variant="accent" className="font-semibold border-0 shadow-lg px-4 py-2 text-sm cursor-pointer hover:opacity-90 transition-opacity">
-                <div className="w-4 h-4 border-2 border-accent-foreground rounded-full mr-2 flex items-center justify-center text-[9px] font-bold">
+              <Badge variant="accent" className="font-semibold border-0 shadow-lg px-3 py-1.5 text-xs cursor-pointer hover:opacity-90 transition-opacity">
+                <div className="w-3.5 h-3.5 border-2 border-accent-foreground rounded-full mr-1.5 flex items-center justify-center text-[8px] font-bold">
                   EX
                 </div>
                 Managed by EX
@@ -268,7 +268,7 @@ const ListingCard = ({
             </Link>
           ) : (
             <Link to={`/category/${category.toLowerCase().replace(/\s+/g, '-')}`}>
-              <Badge variant="dark" className="border-0 shadow-lg px-4 py-2 text-sm cursor-pointer hover:opacity-90 transition-opacity">
+              <Badge variant="dark" className="border-0 shadow-lg px-3 py-1.5 text-xs cursor-pointer hover:opacity-90 transition-opacity">
                 {category}
               </Badge>
             </Link>
@@ -284,7 +284,7 @@ const ListingCard = ({
               fontFamily: 'Lufga',
               fontWeight: 600,
               fontStyle: 'normal',
-              fontSize: '18px',
+              fontSize: '16px',
               lineHeight: '140%',
               letterSpacing: '0%',
               color: 'rgba(0, 0, 0, 1)'
@@ -298,7 +298,7 @@ const ListingCard = ({
               fontFamily: 'Lufga',
               fontWeight: 400,
               fontStyle: 'normal',
-              fontSize: '14px',
+              fontSize: '13px',
               lineHeight: '150%',
               letterSpacing: '0%',
               color: 'rgba(0, 0, 0, 0.5)',
@@ -314,32 +314,32 @@ const ListingCard = ({
         </div>
         
         <div className="flex items-center justify-between">
-          <span className="font-lufga font-semibold" style={{ fontSize: '28px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{price}</span>
-          <div className="flex items-center bg-white border rounded-full overflow-hidden" style={{ borderWidth: '1px', height: '25px' }}>
+          <span className="font-lufga font-semibold" style={{ fontSize: '24px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{price}</span>
+          <div className="flex items-center bg-white border rounded-full overflow-hidden" style={{ borderWidth: '1px', height: '22px' }}>
             <div 
               className="flex items-center justify-center"
               style={{
-                paddingTop: '5px',
-                paddingRight: '12px',
-                paddingBottom: '5px',
-                paddingLeft: '12px',
+                paddingTop: '4px',
+                paddingRight: '10px',
+                paddingBottom: '4px',
+                paddingLeft: '10px',
                 borderRight: '1px solid #e5e7eb'
               }}
             >
-              <span className="font-lufga font-medium" style={{ fontSize: '10px', lineHeight: '150%' }}>
+              <span className="font-lufga font-medium" style={{ fontSize: '9px', lineHeight: '150%' }}>
               {profitMultiple}
               </span>
             </div>
             <div 
               className="flex items-center justify-center"
               style={{
-                paddingTop: '5px',
-                paddingRight: '12px',
-                paddingBottom: '5px',
-                paddingLeft: '12px'
+                paddingTop: '4px',
+                paddingRight: '10px',
+                paddingBottom: '4px',
+                paddingLeft: '10px'
               }}
             >
-              <span className="font-lufga font-medium" style={{ fontSize: '10px', lineHeight: '150%' }}>
+              <span className="font-lufga font-medium" style={{ fontSize: '9px', lineHeight: '150%' }}>
               {revenueMultiple}
               </span>
             </div>
@@ -348,19 +348,19 @@ const ListingCard = ({
 
         <div className="grid grid-cols-2 gap-4">
           <div className="flex items-center gap-2">
-            <FlagIcon country={location} className="w-5 h-4" />
-            <span className="font-lufga font-medium" style={{ fontSize: '16px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
+            <FlagIcon country={location} className="w-4 h-3" />
+            <span className="font-lufga font-medium" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
               Location:
             </span>
-            <span className="font-lufga font-medium" style={{ fontSize: '16px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
+            <span className="font-lufga font-medium" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
               {location}
             </span>
           </div>
           <div className="text-right">
-            <span className="font-lufga font-medium" style={{ fontSize: '16px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
+            <span className="font-lufga font-medium" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
               Business Age:
             </span>
-            <span className="font-lufga font-medium ml-1" style={{ fontSize: '16px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
+            <span className="font-lufga font-medium ml-1" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
               {businessAge || 'N/A'}
             </span>
           </div>
@@ -368,18 +368,18 @@ const ListingCard = ({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <span className="font-lufga font-medium" style={{ fontSize: '16px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
+            <span className="font-lufga font-medium" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
               Net Profit:
             </span>
-            <span className="font-lufga font-medium ml-1" style={{ fontSize: '16px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
+            <span className="font-lufga font-medium ml-1" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
               {netProfit || "N/A"}
             </span>
           </div>
           <div className="text-right">
-            <span className="font-lufga font-medium" style={{ fontSize: '16px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
+            <span className="font-lufga font-medium" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
               Revenue:
             </span>
-            <span className="font-lufga font-medium ml-1" style={{ fontSize: '16px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
+            <span className="font-lufga font-medium ml-1" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
               {revenue || "N/A"}
             </span>
           </div>
@@ -392,13 +392,16 @@ const ListingCard = ({
             disabled={isStartingChat || !sellerId}
             style={{
               width: '226.5px',
-              height: '48px',
+              height: '44px',
               gap: '10px',
               borderRadius: '60px',
-              paddingTop: '13px',
+              paddingTop: '12px',
               paddingRight: '10px',
-              paddingBottom: '13px',
-              paddingLeft: '10px'
+              paddingBottom: '12px',
+              paddingLeft: '10px',
+              fontSize: '14px',
+              lineHeight: '140%',
+              letterSpacing: '0%'
             }}
           >
             {isStartingChat ? (
@@ -415,15 +418,15 @@ const ListingCard = ({
             onClick={() => listingId && navigate(`/listing/${listingId}`)}
             style={{
               width: '226.5px',
-              height: '48px',
+              height: '44px',
               gap: '10px',
               borderRadius: '60px',
-              paddingTop: '13px',
+              paddingTop: '12px',
               paddingRight: '10px',
-              paddingBottom: '13px',
+              paddingBottom: '12px',
               paddingLeft: '10px',
               backgroundColor: '#AEF31F',
-              fontSize: '16px',
+              fontSize: '14px',
               lineHeight: '140%',
               letterSpacing: '0%'
             }}

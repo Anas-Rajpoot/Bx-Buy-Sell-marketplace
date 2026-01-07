@@ -803,12 +803,12 @@ const AllListings = () => {
     <div className="min-h-screen bg-background">
       {/* Main Container with Black Background */}
       <div className="bg-black pb-20">
-        <div className="flex gap-[58px] max-w-[1920px] mx-auto relative">
+        <div className="flex gap-4 lg:gap-8 xl:gap-[58px] max-w-[1920px] mx-auto relative px-2 lg:px-4">
           {/* Left Sidebar - Filters - Fixed on screen */}
           <aside 
             className="flex-shrink-0 hidden lg:block"
             style={{
-              width: "389px",
+              width: "280px",
             }}
           >
             <FilterSidebar
@@ -826,31 +826,30 @@ const AllListings = () => {
               className="bg-black"
               style={{
                 width: "100%",
-                maxWidth: "1332px",
                 height: "100px",
                 display: "flex",
                 alignItems: "center",
-                paddingLeft: "24px",
-                paddingRight: "24px",
+                paddingLeft: "16px",
+                paddingRight: "16px",
               }}
             >
               <div className="flex items-center justify-between w-full">
                 {/* Navigation Menu */}
-                <nav className="flex items-center gap-2">
+                <nav className="flex items-center gap-1 lg:gap-2 flex-wrap">
                   <Link
                     to="/"
                     className="font-lufga"
                     style={{
                       height: "48px",
                       paddingTop: "12px",
-                      paddingRight: "30px",
+                      paddingRight: "20px",
                       paddingBottom: "12px",
-                      paddingLeft: "30px",
+                      paddingLeft: "20px",
                       gap: "10px",
                       borderRadius: "30px",
                       backgroundColor: "rgba(255, 255, 255, 0.05)",
                       fontWeight: 400,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       textTransform: "capitalize",
@@ -871,14 +870,14 @@ const AllListings = () => {
                     style={{
                       height: "48px",
                       paddingTop: "12px",
-                      paddingRight: "30px",
+                      paddingRight: "20px",
                       paddingBottom: "12px",
-                      paddingLeft: "30px",
+                      paddingLeft: "20px",
                       gap: "10px",
                       borderRadius: "30px",
                       backgroundColor: "rgba(196, 252, 30, 1)",
                       fontWeight: 600,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       textTransform: "capitalize",
@@ -899,14 +898,14 @@ const AllListings = () => {
                     style={{
                       height: "48px",
                       paddingTop: "12px",
-                      paddingRight: "30px",
+                      paddingRight: "20px",
                       paddingBottom: "12px",
-                      paddingLeft: "30px",
+                      paddingLeft: "20px",
                       gap: "10px",
                       borderRadius: "30px",
                       backgroundColor: "rgba(255, 255, 255, 0.05)",
                       fontWeight: 400,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       textTransform: "capitalize",
@@ -927,14 +926,14 @@ const AllListings = () => {
                     style={{
                       height: "48px",
                       paddingTop: "12px",
-                      paddingRight: "30px",
+                      paddingRight: "20px",
                       paddingBottom: "12px",
-                      paddingLeft: "30px",
+                      paddingLeft: "20px",
                       gap: "10px",
                       borderRadius: "30px",
                       backgroundColor: "rgba(255, 255, 255, 0.05)",
                       fontWeight: 400,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       textTransform: "capitalize",
@@ -1114,18 +1113,20 @@ const AllListings = () => {
             </header>
             
             {/* Main Content Area - White Background */}
-            <div className="flex-1 bg-white min-w-0 px-4 py-8">
+            <div className="flex-1 bg-white min-w-0 px-2 lg:px-4 py-4 lg:py-8">
               {/* Banner Section */}
               <div
                 style={{
                   position: "relative",
-                  width: "1199px",
-                  height: "260px",
+                  width: "100%",
+                  maxWidth: "1199px",
+                  height: "auto",
+                  minHeight: "260px",
                   display: "flex",
                   flexDirection: "row",
                   alignItems: "center",
-                  padding: "32px",
-                  gap: "32px",
+                  padding: "24px",
+                  gap: "24px",
                   isolation: "isolate",
                   background: "linear-gradient(90deg, #C4FC1E 0%, #D2FF4D 100%)",
                   borderRadius: "20px",
@@ -1166,8 +1167,9 @@ const AllListings = () => {
                   {/* Heading and Description Container */}
                   <div
                     style={{
-                      width: "588px",
-                      height: "112px",
+                      width: "100%",
+                      maxWidth: "588px",
+                      minHeight: "112px",
                       gap: "16px",
                       display: "flex",
                       flexDirection: "column",
@@ -1178,7 +1180,7 @@ const AllListings = () => {
                       className="font-lufga"
                       style={{
                         fontWeight: 700,
-                        fontSize: "28px",
+                        fontSize: "24px",
                         lineHeight: "150%",
                         letterSpacing: "0%",
                         color: "rgba(0, 0, 0, 1)",
@@ -1193,7 +1195,7 @@ const AllListings = () => {
                       className="font-lufga"
                       style={{
                         fontWeight: 400,
-                        fontSize: "18px",
+                        fontSize: "16px",
                         lineHeight: "150%",
                         letterSpacing: "0%",
                         color: "rgba(0, 0, 0, 0.5)",
@@ -1209,17 +1211,18 @@ const AllListings = () => {
                     type="button"
                     className="font-lufga"
                     style={{
-                      width: "259px",
-                      height: "52px",
-                      paddingTop: "13px",
+                      width: "auto",
+                      maxWidth: "259px",
+                      height: "48px",
+                      paddingTop: "12px",
                       paddingRight: "20px",
-                      paddingBottom: "13px",
+                      paddingBottom: "12px",
                       paddingLeft: "20px",
                       gap: "10px",
                       borderRadius: "60px",
                       background: "rgba(0, 0, 0, 1)",
                       fontWeight: 600,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       textTransform: "capitalize",
@@ -1252,11 +1255,12 @@ const AllListings = () => {
               {/* Premium Section */}
               <div
                 style={{
-                  width: "1199px",
-                  height: "819px",
+                  width: "100%",
+                  maxWidth: "1199px",
+                  minHeight: "819px",
                   gap: "16px",
                   borderRadius: "20px",
-                  padding: "32px",
+                  padding: "24px",
                   background: "rgba(0, 0, 0, 0.04)",
                   marginTop: "32px",
                   display: "flex",
@@ -1266,11 +1270,14 @@ const AllListings = () => {
                 {/* Heading Section */}
                 <div
                   style={{
-                    width: "912px",
-                    height: "80px",
+                    width: "100%",
+                    maxWidth: "912px",
+                    minHeight: "80px",
                     display: "flex",
                     flexDirection: "row",
                     alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: "12px",
                   }}
                 >
                   {/* Icon and Heading */}
@@ -1289,7 +1296,7 @@ const AllListings = () => {
                       style={{
                         fontFamily: "Lufga, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
                         fontWeight: 700,
-                        fontSize: "28px",
+                        fontSize: "24px",
                         lineHeight: "150%",
                         letterSpacing: "0%",
                         color: "rgba(0, 0, 0, 1)",
@@ -1309,7 +1316,8 @@ const AllListings = () => {
                     className="font-lufga"
                     style={{
                       fontFamily: "Lufga, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
-                      width: "148px",
+                      width: "auto",
+                      minWidth: "148px",
                       height: "32px",
                       paddingTop: "4px",
                       paddingRight: "9px",
@@ -1319,7 +1327,7 @@ const AllListings = () => {
                       borderRadius: "60px",
                       background: "rgba(203, 254, 54, 1)",
                       fontWeight: 600,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       textTransform: "capitalize",
@@ -1348,8 +1356,9 @@ const AllListings = () => {
                 {/* Description Section */}
                 <div
                   style={{
-                    width: "912px",
-                    height: "54px",
+                    width: "100%",
+                    maxWidth: "912px",
+                    minHeight: "54px",
                     marginTop: "8px",
                   }}
                 >
@@ -1358,7 +1367,7 @@ const AllListings = () => {
                     style={{
                       fontFamily: "Lufga, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
                       fontWeight: 400,
-                      fontSize: "18px",
+                      fontSize: "16px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       color: "rgba(0, 0, 0, 0.5)",
@@ -1371,7 +1380,7 @@ const AllListings = () => {
                       style={{
                         fontFamily: "Lufga, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
                         fontWeight: 600,
-                        fontSize: "18px",
+                        fontSize: "16px",
                         lineHeight: "150%",
                         letterSpacing: "0%",
                         color: "#0067ff",
@@ -1465,7 +1474,8 @@ const AllListings = () => {
               {/* All Listings Cards Container */}
               <div
                 style={{
-                  width: "1199px",
+                  width: "100%",
+                  maxWidth: "1199px",
                   height: "auto",
                   minHeight: "400px",
                   background: "rgba(255, 255, 255, 1)",
@@ -1473,7 +1483,7 @@ const AllListings = () => {
                   borderStyle: "solid",
                   borderColor: "rgba(225, 225, 225, 1)",
                   borderRadius: "20px",
-                  padding: "32px",
+                  padding: "24px",
                   marginTop: "32px",
                   overflow: "visible",
                   boxSizing: "border-box",
@@ -1486,7 +1496,7 @@ const AllListings = () => {
                     style={{
                       fontFamily: "Lufga, sans-serif",
                       fontWeight: 700,
-                      fontSize: "32px",
+                      fontSize: "28px",
                       lineHeight: "140%",
                       letterSpacing: "0%",
                       color: "rgba(0, 0, 0, 1)",

@@ -136,12 +136,14 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
         height: '100vh',
         paddingTop: '20px',
         paddingBottom: '20px',
+        paddingLeft: '5px',
+        paddingRight: '5px',
         gap: 0,
         overflow: 'hidden',
       }}
     >
       {/* Logo at the top - fixed */}
-      <div className="flex-shrink-0 mb-4 px-4">
+      <div className="flex-shrink-0 mb-4" style={{ paddingLeft: '12px', paddingRight: '12px' }}>
         <Link to="/" className="flex items-center">
           <img 
             src={logo} 
@@ -153,22 +155,25 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
 
       {/* Scrollable content area - between logo and buttons */}
       <div 
-        className="flex-1 overflow-y-auto overflow-x-hidden w-full px-4 filter-sidebar-scroll"
+        className="flex-1 overflow-y-auto overflow-x-hidden w-full px-0 filter-sidebar-scroll"
         style={{
           minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'flex-start',
+          width: '100%',
+          maxWidth: '100%',
         }}
       >
         {/* Inner container with filters - horizontally centered */}
         <div
           className="flex flex-col"
           style={{
-            width: "341px",
+            width: "100%",
+            maxWidth: "341px",
             borderRadius: "16px",
-            padding: "24px",
-            gap: "32px",
+            padding: "16px",
+            gap: "20px",
             backgroundColor: "rgba(24, 24, 26, 1)",
           }}
         >
@@ -177,7 +182,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
           className="font-lufga text-white"
           style={{
             fontWeight: 600,
-            fontSize: "20px",
+            fontSize: "18px",
             lineHeight: "140%",
             letterSpacing: "0%",
             color: "rgba(255, 255, 255, 1)",
@@ -190,18 +195,18 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
         <div 
           className="relative flex items-center"
           style={{
-            width: "293px",
-            height: "56px",
-            borderRadius: "16px",
-            gap: "10px",
-            paddingTop: "16px",
-            paddingRight: "16px",
-            paddingBottom: "16px",
-            paddingLeft: "20px",
+            width: "100%",
+            height: "48px",
+            borderRadius: "12px",
+            gap: "8px",
+            paddingTop: "12px",
+            paddingRight: "12px",
+            paddingBottom: "12px",
+            paddingLeft: "16px",
             backgroundColor: "rgba(255, 255, 255, 0.05)",
           }}
         >
-          <Search className="w-5 h-5 text-white flex-shrink-0" />
+          <Search className="w-4 h-4 text-white flex-shrink-0" />
           <input
             type="text"
             placeholder="Search"
@@ -210,7 +215,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
             className="flex-1 bg-transparent border-0 outline-0 font-lufga text-white placeholder:text-white"
             style={{
               fontWeight: 500,
-              fontSize: "16px",
+              fontSize: "14px",
               lineHeight: "150%",
               letterSpacing: "0%",
               color: "rgba(255, 255, 255, 1)",
@@ -224,7 +229,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
             className="font-lufga text-white"
             style={{
               fontWeight: 500,
-              fontSize: "16px",
+              fontSize: "14px",
               lineHeight: "150%",
               letterSpacing: "0%",
               color: "rgba(255, 255, 255, 1)",
@@ -239,15 +244,16 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
             <SelectTrigger 
               className="text-white border-0 focus:ring-0 focus:ring-offset-0"
               style={{
-                width: "293px",
-                height: "56px",
-                borderRadius: "16px",
+                width: "100%",
+                height: "48px",
+                borderRadius: "12px",
                 justifyContent: "space-between",
-                paddingTop: "16px",
-                paddingRight: "16px",
-                paddingBottom: "16px",
-                paddingLeft: "20px",
+                paddingTop: "12px",
+                paddingRight: "12px",
+                paddingBottom: "12px",
+                paddingLeft: "16px",
                 backgroundColor: "rgba(255, 255, 255, 0.05)",
+                fontSize: "14px",
               }}
             >
               <SelectValue placeholder="Select niche" />
@@ -271,7 +277,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
             className="font-lufga text-white"
             style={{
               fontWeight: 500,
-              fontSize: "16px",
+              fontSize: "14px",
               lineHeight: "150%",
               letterSpacing: "0%",
               color: "rgba(255, 255, 255, 1)",
@@ -290,11 +296,12 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                   : "text-white hover:opacity-80"
               }`}
               style={{
-                width: "141.5px",
-                height: "56px",
-                borderRadius: "16px",
-                padding: "16px",
-                gap: "10px",
+                flex: 1,
+                height: "48px",
+                borderRadius: "12px",
+                padding: "12px",
+                gap: "8px",
+                fontSize: "14px",
                 backgroundColor: filters.revenueGenerating === "yes" 
                   ? "#D3FC50" 
                   : "rgba(255, 255, 255, 0.05)",
@@ -312,11 +319,12 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                   : "text-white hover:opacity-80"
               }`}
               style={{
-                width: "141.5px",
-                height: "56px",
-                borderRadius: "16px",
-                padding: "16px",
-                gap: "10px",
+                flex: 1,
+                height: "48px",
+                borderRadius: "12px",
+                padding: "12px",
+                gap: "8px",
+                fontSize: "14px",
                 backgroundColor: filters.revenueGenerating === "no" 
                   ? "#D3FC50" 
                   : "rgba(255, 255, 255, 0.05)",
@@ -332,11 +340,11 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
           <div 
             className="flex flex-col relative"
             style={{
-              width: "293px",
-              height: "147px",
-              borderRadius: "16px",
-              padding: "12px",
-              gap: "16px",
+              width: "100%",
+              height: "130px",
+              borderRadius: "12px",
+              padding: "10px",
+              gap: "12px",
               backgroundColor: "rgba(36, 36, 37, 1)",
             }}
           >
@@ -345,7 +353,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
               className="font-lufga text-white"
               style={{
                 fontWeight: 500,
-                fontSize: "16px",
+                fontSize: "14px",
                 lineHeight: "150%",
                 letterSpacing: "0%",
                 color: "rgba(255, 255, 255, 1)",
@@ -360,7 +368,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                 className="font-lufga text-white"
                 style={{
                   fontWeight: 500,
-                  fontSize: "14px",
+                  fontSize: "12px",
                   lineHeight: "150%",
                   letterSpacing: "0%",
                   color: "rgba(255, 255, 255, 1)",
@@ -372,7 +380,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                 className="font-lufga text-white"
                 style={{
                   fontWeight: 500,
-                  fontSize: "14px",
+                  fontSize: "12px",
                   lineHeight: "150%",
                   letterSpacing: "0%",
                   textAlign: "right",
@@ -465,7 +473,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
             className="font-lufga text-white"
             style={{
               fontWeight: 500,
-              fontSize: "16px",
+              fontSize: "14px",
               lineHeight: "150%",
               letterSpacing: "0%",
               color: "rgba(255, 255, 255, 1)",
@@ -480,15 +488,16 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
             <SelectTrigger 
               className="text-white border-0 focus:ring-0 focus:ring-offset-0"
               style={{
-                width: "293px",
-                height: "56px",
-                borderRadius: "16px",
+                width: "100%",
+                height: "48px",
+                borderRadius: "12px",
                 justifyContent: "space-between",
-                paddingTop: "16px",
-                paddingRight: "16px",
-                paddingBottom: "16px",
-                paddingLeft: "20px",
+                paddingTop: "12px",
+                paddingRight: "12px",
+                paddingBottom: "12px",
+                paddingLeft: "16px",
                 backgroundColor: "rgba(255, 255, 255, 0.05)",
+                fontSize: "14px",
               }}
             >
               <SelectValue placeholder="Select location">
@@ -528,7 +537,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
               className="font-lufga text-white"
               style={{
                 fontWeight: 500,
-                fontSize: "16px",
+                fontSize: "14px",
                 lineHeight: "150%",
                 letterSpacing: "0%",
                 color: "rgba(255, 255, 255, 1)",
@@ -552,7 +561,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                     className="font-lufga text-white"
                     style={{
                       fontWeight: 500,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       color: "rgba(255, 255, 255, 1)",
@@ -564,7 +573,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                     className="font-lufga"
                     style={{
                       fontWeight: 500,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       textAlign: "right",
@@ -621,7 +630,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                     className="font-lufga text-white"
                     style={{
                       fontWeight: 500,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       color: "rgba(255, 255, 255, 1)",
@@ -633,7 +642,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                     className="font-lufga"
                     style={{
                       fontWeight: 500,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       textAlign: "right",
@@ -662,7 +671,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                       className="font-lufga text-white"
                       style={{
                         fontWeight: 500,
-                        fontSize: "16px",
+                        fontSize: "14px",
                         lineHeight: "150%",
                         letterSpacing: "0%",
                         color: "rgba(255, 255, 255, 1)",
@@ -675,7 +684,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                     className="font-lufga"
                     style={{
                       fontWeight: 500,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       textAlign: "right",
@@ -704,7 +713,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                       className="font-lufga text-white"
                       style={{
                         fontWeight: 500,
-                        fontSize: "16px",
+                        fontSize: "14px",
                         lineHeight: "150%",
                         letterSpacing: "0%",
                         color: "rgba(255, 255, 255, 1)",
@@ -717,7 +726,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                     className="font-lufga"
                     style={{
                       fontWeight: 500,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       textAlign: "right",
@@ -746,7 +755,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                       className="font-lufga text-white"
                       style={{
                         fontWeight: 500,
-                        fontSize: "16px",
+                        fontSize: "14px",
                         lineHeight: "150%",
                         letterSpacing: "0%",
                         color: "rgba(255, 255, 255, 1)",
@@ -759,7 +768,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                     className="font-lufga"
                     style={{
                       fontWeight: 500,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       textAlign: "right",
@@ -788,7 +797,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                       className="font-lufga text-white"
                       style={{
                         fontWeight: 500,
-                        fontSize: "16px",
+                        fontSize: "14px",
                         lineHeight: "150%",
                         letterSpacing: "0%",
                         color: "rgba(255, 255, 255, 1)",
@@ -801,7 +810,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                     className="font-lufga"
                     style={{
                       fontWeight: 500,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       textAlign: "right",
@@ -830,7 +839,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                       className="font-lufga text-white"
                       style={{
                         fontWeight: 500,
-                        fontSize: "16px",
+                        fontSize: "14px",
                         lineHeight: "150%",
                         letterSpacing: "0%",
                         color: "rgba(255, 255, 255, 1)",
@@ -843,7 +852,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
                     className="font-lufga"
                     style={{
                       fontWeight: 500,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       lineHeight: "150%",
                       letterSpacing: "0%",
                       textAlign: "right",
@@ -866,6 +875,26 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
           )}
         </div>
 
+        {/* Premium Upgrade Banner */}
+        <div 
+          className="bg-[#D3FC50] rounded-2xl p-4 text-black flex flex-col items-center mt-4"
+          style={{ width: "100%", boxSizing: 'border-box', maxWidth: "100%" }}
+        >
+          <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center mb-3">
+            <Rocket className="w-6 h-6 text-[#D3FC50]" />
+          </div>
+          <h3 className="text-sm font-bold text-center mb-3" style={{ fontSize: "14px" }}>
+            Upgrade Your Account To Premium
+          </h3>
+          <Button
+            className="w-full bg-black text-[#D3FC50] hover:bg-black/90 rounded-full font-semibold"
+            style={{ fontSize: "14px", height: "40px" }}
+            size="lg"
+          >
+            Let's Go →
+          </Button>
+        </div>
+
         {/* Action Buttons */}
         <div className="flex gap-3 pt-4">
           <Button
@@ -874,17 +903,17 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
             onClick={onClearFilters}
             className="font-lufga"
             style={{
-              width: "142.5px",
-              height: "52px",
-              paddingTop: "13px",
-              paddingRight: "20px",
-              paddingBottom: "13px",
-              paddingLeft: "20px",
-              gap: "10px",
+              flex: 1,
+              height: "48px",
+              paddingTop: "12px",
+              paddingRight: "16px",
+              paddingBottom: "12px",
+              paddingLeft: "16px",
+              gap: "8px",
               borderRadius: "60px",
               backgroundColor: "rgba(255, 255, 255, 0.1)",
               fontWeight: 600,
-              fontSize: "16px",
+              fontSize: "14px",
               lineHeight: "150%",
               letterSpacing: "0%",
               textTransform: "capitalize",
@@ -898,17 +927,17 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
             onClick={onFind}
             className="font-lufga"
             style={{
-              width: "142.5px",
-              height: "52px",
-              paddingTop: "13px",
-              paddingRight: "20px",
-              paddingBottom: "13px",
-              paddingLeft: "20px",
-              gap: "10px",
+              flex: 1,
+              height: "48px",
+              paddingTop: "12px",
+              paddingRight: "16px",
+              paddingBottom: "12px",
+              paddingLeft: "16px",
+              gap: "8px",
               borderRadius: "60px",
               backgroundColor: "rgba(196, 252, 30, 1)",
               fontWeight: 600,
-              fontSize: "16px",
+              fontSize: "14px",
               lineHeight: "150%",
               letterSpacing: "0%",
               textTransform: "capitalize",
@@ -918,32 +947,13 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
             Find
           </Button>
         </div>
-      </div>
-
-        {/* Premium Upgrade Banner */}
-        <div 
-          className="bg-[#D3FC50] rounded-2xl p-6 text-black flex flex-col items-center mt-4"
-          style={{ width: "341px", alignSelf: 'flex-start' }}
-        >
-          <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center mb-4">
-            <Rocket className="w-8 h-8 text-[#D3FC50]" />
-          </div>
-          <h3 className="text-lg font-bold text-center mb-4">
-            Upgrade Your Account To Premium
-          </h3>
-          <Button
-            className="w-full bg-black text-[#D3FC50] hover:bg-black/90 rounded-full font-semibold"
-            size="lg"
-          >
-            Let's Go →
-          </Button>
         </div>
       </div>
 
       {/* Settings & Log Out - fixed at bottom */}
       <div 
-        className="flex-shrink-0 flex flex-col gap-2 px-4 pt-4"
-        style={{ width: '100%' }}
+        className="flex-shrink-0 flex flex-col gap-2 pt-4"
+        style={{ width: '100%', paddingLeft: '12px', paddingRight: '12px' }}
       >
         <button
           onClick={() => navigate("/settings")}
@@ -951,12 +961,12 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
           style={{
             fontFamily: 'Lufga',
             fontWeight: 500,
-            fontSize: '16px',
+            fontSize: '14px',
             lineHeight: '150%',
             letterSpacing: '0%',
           }}
         >
-          <Settings className="w-5 h-5" />
+          <Settings className="w-4 h-4" />
           <span>Settings</span>
         </button>
         <button
@@ -965,12 +975,12 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
           style={{
             fontFamily: 'Lufga',
             fontWeight: 500,
-            fontSize: '16px',
+            fontSize: '14px',
             lineHeight: '150%',
             letterSpacing: '0%',
           }}
         >
-          <LogOut className="w-5 h-5" />
+          <LogOut className="w-4 h-4" />
           <span>Log Out</span>
         </button>
       </div>
