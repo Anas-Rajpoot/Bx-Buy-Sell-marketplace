@@ -1,0 +1,596 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminHeader } from "@/components/admin/AdminHeader";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Search, Plus, MoreVertical, Eye, Edit, MessageSquare, RefreshCw, Trash2, Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
+import { EditMemberDialog } from "@/components/admin/EditMemberDialog";
+import { useTeamMembers, TeamMember } from "@/hooks/useTeamMembers";
+import { useUpdateAvailability } from "@/hooks/useUpdateAvailability";
+import { toast } from "sonner";
+import { apiClient } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
+
+export default function AdminTeamMembers() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const { data: members, isLoading, error, refetch } = useTeamMembers();
+  const updateAvailability = useUpdateAvailability();
+
+  if (error) {
+    console.error("Team members error:", error);
+    // Don't show toast on every render, only show it once
+  }
+
+  const filteredMembers = members?.filter((member) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      member.full_name?.toLowerCase().includes(query) ||
+      member.email.toLowerCase().includes(query)
+    );
+  }) || [];
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "available":
+        return "bg-green-500/20 text-green-500 border-green-500/30";
+      case "busy":
+        return "bg-yellow-500/20 text-yellow-500 border-yellow-500/30";
+      case "offline":
+        return "bg-red-500/20 text-red-500 border-red-500/30";
+      default:
+        return "bg-muted text-muted-foreground";
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "available":
+        return "Available";
+      case "busy":
+        return "Busy";
+      case "offline":
+        return "Offline";
+      default:
+        return "Unknown";
+    }
+  };
+
+  const handleAvailabilityChange = (userId: string, newStatus: string) => {
+    updateAvailability.mutate({ userId, status: newStatus });
+  };
+
+  const handleDelete = async (member: TeamMember) => {
+    if (!confirm(`Are you sure you want to delete team member "${member.full_name || member.email}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      console.log(`Deleting team member ${member.id}:`, member.full_name || member.email);
+      const response = await apiClient.deleteUser(member.id);
+      
+      console.log('Delete user response:', response);
+      
+      if (!response.success) {
+        // Check for specific error message indicating foreign key constraint violation
+        if (response.error?.includes('violate the required relation') || response.error?.includes('foreign key constraint')) {
+          toast.error(
+            `Cannot delete team member "${member.full_name || member.email}" because they have associated data (chats, listings, etc.). Please block the user instead or contact the backend team to implement cascading deletes.`,
+            { duration: 10000 }
+          );
+        } else {
+          throw new Error(response.error || "Failed to delete team member");
+        }
+        return;
+      }
+
+      toast.success(`✓ Team member "${member.full_name || member.email}" has been deleted successfully`);
+      queryClient.invalidateQueries({ queryKey: ["team-members"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete team member", { duration: 6000 });
+      console.error("Error deleting team member:", error);
+    }
+  };
+
+  const handleEdit = (member: TeamMember) => {
+    setSelectedMember(member);
+    setIsEditDialogOpen(true);
+  };
+
+  return (
+    <div className="flex min-h-screen w-full bg-background">
+      <AdminSidebar />
+      
+      <main className="flex-1 w-full min-w-0 overflow-x-hidden">
+        <AdminHeader title="Team Member Overview" />
+
+        <div className="p-4 sm:p-6 lg:p-8">
+
+          {/* Search and Add Member Section */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 mb-6">
+            <div className="relative flex-1 sm:flex-initial" style={{ maxWidth: '326px', height: '44px' }}>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, phone, username or email ..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-full font-merriweather-sans"
+                style={{
+                  borderRadius: '18px',
+                  background: '#F8FAFC',
+                  border: 'none',
+                  fontSize: '12px',
+                  lineHeight: '100%',
+                  letterSpacing: '0%',
+                  color: '#000000',
+                }}
+              />
+            </div>
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)}
+              className="font-lufga font-medium"
+              style={{
+                width: '183px',
+                height: '54px',
+                paddingTop: '16px',
+                paddingRight: '26px',
+                paddingBottom: '16px',
+                paddingLeft: '26px',
+                gap: '10px',
+                borderRadius: '60px',
+                background: '#C6FE1F',
+                color: '#000000',
+                fontSize: '16px',
+                lineHeight: '140%',
+                letterSpacing: '0%',
+                border: 'none',
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              Add Member
+            </Button>
+          </div>
+
+          {/* Divider Line */}
+          <div className="border-t border-border mb-6" />
+
+          <div className="mb-4 sm:mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 hidden">
+            <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-green-500" />
+                <div>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Available</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">
+                    {members?.filter(m => m.availability_status === 'available').length || 0}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-yellow-500" />
+                <div>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Busy</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">
+                    {members?.filter(m => m.availability_status === 'busy').length || 0}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-red-500" />
+                <div>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Offline</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">
+                    {members?.filter(m => m.availability_status === 'offline').length || 0}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+          {/* Profile Table Container */}
+          <div 
+            className="rounded-lg border border-border bg-card overflow-hidden w-full"
+            style={{
+              minHeight: '720px',
+              gap: '40px',
+            }}
+          >
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                <p className="text-sm text-muted-foreground">Loading team members...</p>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <p className="text-destructive font-medium">Failed to load team members</p>
+                <p className="text-sm text-muted-foreground">{error instanceof Error ? error.message : 'Unknown error'}</p>
+                <Button 
+                  onClick={() => refetch()} 
+                  variant="outline"
+                  className="mt-2"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry
+                </Button>
+              </div>
+            ) : filteredMembers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <p className="text-muted-foreground">
+                  {searchQuery ? "No team members match your search" : "No team members found"}
+                </p>
+                {searchQuery && (
+                  <Button 
+                    onClick={() => setSearchQuery("")} 
+                    variant="outline"
+                    size="sm"
+                  >
+                    Clear search
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead 
+                          className="font-outfit whitespace-nowrap"
+                          style={{
+                            fontWeight: 400,
+                            fontSize: '12px',
+                            lineHeight: '100%',
+                            letterSpacing: '0%',
+                            fontVariant: 'small-caps',
+                            color: '#6C6C6C',
+                          }}
+                        >
+                          S No.
+                        </TableHead>
+                        <TableHead 
+                          className="font-outfit whitespace-nowrap"
+                          style={{
+                            fontWeight: 400,
+                            fontSize: '12px',
+                            lineHeight: '100%',
+                            letterSpacing: '0%',
+                            fontVariant: 'small-caps',
+                            color: '#6C6C6C',
+                          }}
+                        >
+                          Username
+                        </TableHead>
+                        <TableHead 
+                          className="font-outfit whitespace-nowrap"
+                          style={{
+                            fontWeight: 400,
+                            fontSize: '12px',
+                            lineHeight: '100%',
+                            letterSpacing: '0%',
+                            fontVariant: 'small-caps',
+                            color: '#6C6C6C',
+                          }}
+                        >
+                          Email
+                        </TableHead>
+                        <TableHead 
+                          className="font-outfit whitespace-nowrap"
+                          style={{
+                            fontWeight: 400,
+                            fontSize: '12px',
+                            lineHeight: '100%',
+                            letterSpacing: '0%',
+                            fontVariant: 'small-caps',
+                            color: '#6C6C6C',
+                          }}
+                        >
+                          Role
+                        </TableHead>
+                        <TableHead 
+                          className="font-outfit whitespace-nowrap"
+                          style={{
+                            fontWeight: 400,
+                            fontSize: '12px',
+                            lineHeight: '100%',
+                            letterSpacing: '0%',
+                            fontVariant: 'small-caps',
+                            color: '#6C6C6C',
+                          }}
+                        >
+                          Last Offline
+                        </TableHead>
+                        <TableHead 
+                          className="font-outfit whitespace-nowrap"
+                          style={{
+                            fontWeight: 400,
+                            fontSize: '12px',
+                            lineHeight: '100%',
+                            letterSpacing: '0%',
+                            fontVariant: 'small-caps',
+                            color: '#6C6C6C',
+                          }}
+                        >
+                          Status
+                        </TableHead>
+                        <TableHead 
+                          className="font-outfit whitespace-nowrap"
+                          style={{
+                            fontWeight: 400,
+                            fontSize: '12px',
+                            lineHeight: '100%',
+                            letterSpacing: '0%',
+                            fontVariant: 'small-caps',
+                            color: '#6C6C6C',
+                          }}
+                        >
+                          Action
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                      <TableBody>
+                    {filteredMembers.map((member, index) => {
+                      // Determine status button styling
+                      const getStatusStyle = (status: string) => {
+                        if (status === 'available' || status === 'online') {
+                          return {
+                            background: '#15CA3214',
+                            border: '1px solid #15CA32',
+                            color: '#15CA32',
+                            text: 'Online',
+                          };
+                        } else if (status === 'offline') {
+                          return {
+                            background: '#E5C74D14',
+                            border: '1px solid #E5C74D',
+                            color: '#E5C74D',
+                            text: 'Offline',
+                          };
+                        } else {
+                          return {
+                            background: '#FF1F1F14',
+                            border: '1px solid #FF0004',
+                            color: '#F31F23',
+                            text: 'Block',
+                          };
+                        }
+                      };
+
+                      const statusStyle = getStatusStyle(member.availability_status || 'offline');
+                      const lastOfflineDate = member.last_offline || member.created_at || new Date().toISOString();
+
+                      return (
+                      <TableRow 
+                        key={member.id}
+                        className="border-border hover:bg-muted/5"
+                      >
+                        <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap">{index + 1}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
+                              <AvatarImage src={member.avatar_url || undefined} />
+                              <AvatarFallback className="text-xs">
+                                {member.full_name?.split(" ").map(n => n[0]).join("") || "U"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span 
+                              className="font-outfit"
+                              style={{
+                                fontWeight: 400,
+                                fontSize: '14px',
+                                lineHeight: '100%',
+                                letterSpacing: '0%',
+                                color: '#000000',
+                              }}
+                            >
+                              {member.full_name || "Unknown"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell 
+                          className="whitespace-nowrap"
+                          style={{
+                            fontFamily: 'Outfit',
+                            fontWeight: 400,
+                            fontSize: '14px',
+                            lineHeight: '100%',
+                            letterSpacing: '0%',
+                            color: '#000000',
+                          }}
+                        >
+                          {member.email}
+                        </TableCell>
+                        <TableCell 
+                          className="capitalize whitespace-nowrap"
+                          style={{
+                            fontFamily: 'Outfit',
+                            fontWeight: 400,
+                            fontSize: '14px',
+                            lineHeight: '100%',
+                            letterSpacing: '0%',
+                            color: '#000000',
+                          }}
+                        >
+                          {member.role}
+                        </TableCell>
+                        <TableCell 
+                          className="whitespace-nowrap"
+                          style={{
+                            fontFamily: 'Lufga',
+                            fontWeight: 500,
+                            fontSize: '14px',
+                            lineHeight: '150%',
+                            letterSpacing: '0%',
+                            color: '#000000',
+                          }}
+                        >
+                          {new Date(lastOfflineDate).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div
+                            className="inline-flex items-center justify-center font-outfit font-bold"
+                            style={{
+                              width: '70px',
+                              height: '32px',
+                              paddingTop: '9.5px',
+                              paddingRight: '20px',
+                              paddingBottom: '9.5px',
+                              paddingLeft: '20px',
+                              gap: '10px',
+                              borderRadius: '80px',
+                              borderWidth: '1px',
+                              background: statusStyle.background,
+                              border: statusStyle.border,
+                              color: statusStyle.color,
+                              fontSize: '10px',
+                              lineHeight: '100%',
+                              letterSpacing: '0%',
+                            }}
+                          >
+                            {statusStyle.text}
+                          </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
+                                <MoreVertical className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent 
+                              align="end"
+                              className="w-36 sm:w-40 bg-accent border-accent text-xs sm:text-sm"
+                            >
+                              <DropdownMenuItem 
+                                onClick={() => navigate(`/admin/team/${member.id}`)}
+                                className="cursor-pointer"
+                              >
+                                <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                                View
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleEdit(member)}
+                                className="cursor-pointer"
+                              >
+                                <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="cursor-pointer">
+                                <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                                Chat
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  queryClient.invalidateQueries({ queryKey: ["team-members"] });
+                                  toast.success("Team members refreshed");
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                                Refresh
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDelete(member)}
+                                className="cursor-pointer text-destructive"
+                              >
+                                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                      );
+                    })}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-border">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Showing {filteredMembers.length} of {members?.length || 0}
+                  </p>
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" disabled>
+                      <span className="text-xs sm:text-sm">←</span>
+                    </Button>
+                    <Button 
+                      size="icon"
+                      className={`h-8 w-8 sm:h-10 sm:w-10 text-xs sm:text-sm ${currentPage === 1 ? "bg-accent text-accent-foreground" : ""}`}
+                      onClick={() => setCurrentPage(1)}
+                    >
+                      1
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="h-8 w-8 sm:h-10 sm:w-10 text-xs sm:text-sm"
+                      onClick={() => setCurrentPage(2)}
+                    >
+                      2
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="h-8 w-8 sm:h-10 sm:w-10 text-xs sm:text-sm"
+                      onClick={() => setCurrentPage(3)}
+                    >
+                      3
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
+                      <span className="text-xs sm:text-sm">→</span>
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </main>
+
+      <AddMemberDialog 
+        open={isAddDialogOpen} 
+        onOpenChange={setIsAddDialogOpen}
+      />
+      <EditMemberDialog 
+        open={isEditDialogOpen} 
+        onOpenChange={setIsEditDialogOpen}
+        member={selectedMember}
+      />
+    </div>
+  );
+}
