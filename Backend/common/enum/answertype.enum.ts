@@ -1,0 +1,1 @@
+export const answerType = ['TEXT', 'NUMBER', 'BOOLEAN', 'SELECT', 'DATE']
