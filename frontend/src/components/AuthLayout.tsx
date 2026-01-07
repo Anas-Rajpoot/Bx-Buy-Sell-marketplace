@@ -2,11 +2,13 @@ import { ReactNode, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import authBackground from "@/assets/auth-background.png";
+import logo from "@/assets/_App Icon 1 (2).png";
 
 interface AuthLayoutProps {
   children: ReactNode;
   currentStep?: number;
   totalSteps?: number;
+  variant?: "admin" | "user";
 }
 
 const testimonials = [
@@ -27,15 +29,17 @@ const testimonials = [
   },
 ];
 
-export const AuthLayout = ({ children, currentStep = 1, totalSteps = 4 }: AuthLayoutProps) => {
+export const AuthLayout = ({ children, currentStep = 1, totalSteps = 4, variant = "user" }: AuthLayoutProps) => {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveTestimonial((prev) => (prev + 1) % testimonials.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
+    if (variant === "user") {
+      const timer = setInterval(() => {
+        setActiveTestimonial((prev) => (prev + 1) % testimonials.length);
+      }, 5000);
+      return () => clearInterval(timer);
+    }
+  }, [variant]);
 
   const nextTestimonial = () => {
     setActiveTestimonial((prev) => (prev + 1) % testimonials.length);
@@ -45,14 +49,97 @@ export const AuthLayout = ({ children, currentStep = 1, totalSteps = 4 }: AuthLa
     setActiveTestimonial((prev) => (prev - 1 + testimonials.length) % testimonials.length);
   };
 
+  // Admin Layout: Static image on left, login form on right
+  if (variant === "admin") {
+    return (
+      <div className="min-h-screen flex flex-col lg:flex-row bg-[#19181F]">
+        {/* Left Panel - Background Image (50% width) */}
+        <div 
+          className="hidden lg:flex w-1/2 relative overflow-hidden"
+          style={{
+            minHeight: '100vh',
+          }}
+        >
+          {/* Background Image */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '-7px',
+              left: '0px',
+              width: '100%',
+              height: 'calc(100% + 14px)',
+              borderTopLeftRadius: '70px',
+              borderBottomLeftRadius: '70px',
+              transform: 'rotate(180deg)',
+              opacity: 1,
+              overflow: 'hidden',
+            }}
+          >
+            <img
+              src="https://res.cloudinary.com/dtfwkgpcc/image/upload/v1767775635/8bfafd13cb6e8075ef2f3316b0dcea740276cc5f_1_1_1_1_1_1_cgpzyx.webp"
+              alt="Background"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                transform: 'rotate(180deg)',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Right Panel - Login Form (50% width) */}
+        <div 
+          className="flex-1 lg:w-1/2 flex flex-col p-8 lg:p-16 bg-white"
+          style={{
+            minHeight: '100vh',
+          }}
+        >
+          <Link to="/" className="mb-8">
+            <img 
+              src={logo} 
+              alt="EX Logo" 
+              className="h-16 w-16 object-contain"
+            />
+          </Link>
+
+          <div className="flex-1 flex items-center justify-center">
+            <div className="w-full max-w-[528px]">
+              {children}
+            </div>
+          </div>
+
+          {/* Progress Dots */}
+          {totalSteps > 1 && (
+            <div className="flex gap-2 justify-center mt-8">
+              {Array.from({ length: totalSteps }).map((_, idx) => (
+                <div
+                  key={idx}
+                  className={`h-2 rounded-full transition-all ${
+                    idx + 1 === currentStep
+                      ? "w-12 bg-primary"
+                      : "w-2 bg-border"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // User Layout: Login form on left, carousel on right
   return (
     <div className="min-h-screen flex">
       {/* Left Panel - Form */}
       <div className="flex-1 flex flex-col p-8 lg:p-16 bg-background">
         <Link to="/" className="mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center shadow-[0_10px_25px_rgba(215,255,52,0.45)]">
-            <span className="text-xl font-extrabold text-accent-foreground">EX</span>
-          </div>
+          <img 
+            src={logo} 
+            alt="EX Logo" 
+            className="h-16 w-16 object-contain"
+          />
         </Link>
 
         <div className="flex-1 flex items-center justify-center">

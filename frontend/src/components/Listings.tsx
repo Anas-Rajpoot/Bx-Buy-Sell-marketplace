@@ -123,22 +123,43 @@ const Listings = ({ searchQuery }: ListingsProps) => {
             Find your perfect match and grow today!
           </p>
           
-          <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6 sm:mb-8 px-4">
-            {categories.map((category, catIndex) => {
-              return (
-                <button
-                  key={`category-${catIndex}-${category}`}
-                  onClick={() => setActiveCategory(category)}
-                  className={`px-4 py-2 sm:px-6 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all ${
-                    activeCategory === category
-                      ? "bg-accent text-accent-foreground shadow-lg"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  }`}
-                >
-                  {category}
-                </button>
-              );
-            })}
+          {/* Category Slider - Mobile: horizontal scroll, Desktop: flex-wrap */}
+          <div 
+            className="mb-6 sm:mb-8 px-4 overflow-x-auto overflow-y-hidden"
+            style={{
+              scrollbarWidth: 'none', /* Firefox */
+              msOverflowStyle: 'none', /* IE and Edge */
+              WebkitOverflowScrolling: 'touch', /* iOS smooth scrolling */
+            }}
+          >
+            <style>{`
+              .category-scroll::-webkit-scrollbar {
+                display: none; /* Chrome, Safari, Opera */
+              }
+            `}</style>
+            <div 
+              className="flex flex-nowrap sm:flex-wrap justify-start sm:justify-center gap-2 sm:gap-3 category-scroll"
+              style={{
+                width: 'max-content',
+                minWidth: '100%',
+              }}
+            >
+              {categories.map((category, catIndex) => {
+                return (
+                  <button
+                    key={`category-${catIndex}-${category}`}
+                    onClick={() => setActiveCategory(category)}
+                    className={`flex-shrink-0 px-4 py-2 sm:px-6 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+                      activeCategory === category
+                        ? "bg-accent text-accent-foreground shadow-lg"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
+                  >
+                    {category}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

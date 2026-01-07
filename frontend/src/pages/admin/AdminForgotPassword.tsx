@@ -38,7 +38,7 @@ export default function AdminForgotPassword() {
   };
 
   return (
-    <AuthLayout>
+    <AuthLayout variant="admin">
       <div className="w-full max-w-md mx-auto space-y-8">
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">Admin Area</p>

@@ -279,7 +279,7 @@ const ListingCard = ({
       <div className="flex flex-col w-full" style={{ marginTop: '20px', paddingLeft: '12px', paddingRight: '12px', gap: '16px', paddingBottom: '20px' }}>
         <div className="flex flex-col" style={{ gap: '6px' }}>
           <h3 
-            className="font-lufga"
+            className="font-lufga text-sm md:text-base"
             style={{ 
               fontFamily: 'Lufga',
               fontWeight: 600,
@@ -293,7 +293,7 @@ const ListingCard = ({
             {name}
           </h3>
           <p 
-            className="font-lufga line-clamp-2"
+            className="font-lufga line-clamp-2 text-xs md:text-sm"
             style={{
               fontFamily: 'Lufga',
               fontWeight: 400,
@@ -314,7 +314,7 @@ const ListingCard = ({
         </div>
         
         <div className="flex items-center justify-between">
-          <span className="font-lufga font-semibold" style={{ fontSize: '24px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{price}</span>
+          <span className="font-lufga font-semibold text-lg md:text-2xl" style={{ fontSize: '24px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{price}</span>
           <div className="flex items-center bg-white border rounded-full overflow-hidden" style={{ borderWidth: '1px', height: '22px' }}>
             <div 
               className="flex items-center justify-center"
@@ -326,7 +326,7 @@ const ListingCard = ({
                 borderRight: '1px solid #e5e7eb'
               }}
             >
-              <span className="font-lufga font-medium" style={{ fontSize: '9px', lineHeight: '150%' }}>
+              <span className="font-lufga font-medium text-[8px] md:text-[9px]" style={{ fontSize: '9px', lineHeight: '150%' }}>
               {profitMultiple}
               </span>
             </div>
@@ -339,7 +339,7 @@ const ListingCard = ({
                 paddingLeft: '10px'
               }}
             >
-              <span className="font-lufga font-medium" style={{ fontSize: '9px', lineHeight: '150%' }}>
+              <span className="font-lufga font-medium text-[8px] md:text-[9px]" style={{ fontSize: '9px', lineHeight: '150%' }}>
               {revenueMultiple}
               </span>
             </div>
@@ -349,18 +349,18 @@ const ListingCard = ({
         <div className="grid grid-cols-2 gap-4">
           <div className="flex items-center gap-2">
             <FlagIcon country={location} className="w-4 h-3" />
-            <span className="font-lufga font-medium" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
+            <span className="font-lufga font-medium text-xs md:text-sm" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
               Location:
             </span>
-            <span className="font-lufga font-medium" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
+            <span className="font-lufga font-medium text-xs md:text-sm" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
               {location}
             </span>
           </div>
           <div className="text-right">
-            <span className="font-lufga font-medium" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
+            <span className="font-lufga font-medium text-xs md:text-sm" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
               Business Age:
             </span>
-            <span className="font-lufga font-medium ml-1" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
+            <span className="font-lufga font-medium ml-1 text-xs md:text-sm" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
               {businessAge || 'N/A'}
             </span>
           </div>
@@ -368,18 +368,18 @@ const ListingCard = ({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <span className="font-lufga font-medium" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
+            <span className="font-lufga font-medium text-xs md:text-sm" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
               Net Profit:
             </span>
-            <span className="font-lufga font-medium ml-1" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
+            <span className="font-lufga font-medium ml-1 text-xs md:text-sm" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
               {netProfit || "N/A"}
             </span>
           </div>
           <div className="text-right">
-            <span className="font-lufga font-medium" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
+            <span className="font-lufga font-medium text-xs md:text-sm" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
               Revenue:
             </span>
-            <span className="font-lufga font-medium ml-1" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
+            <span className="font-lufga font-medium ml-1 text-xs md:text-sm" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
               {revenue || "N/A"}
             </span>
           </div>
@@ -387,7 +387,7 @@ const ListingCard = ({
 
         <div className="flex gap-3">
           <Button 
-            className="bg-black text-white rounded-full font-semibold hover:bg-black"
+            className="bg-black text-white rounded-full font-semibold hover:bg-black text-xs md:text-sm"
             onClick={handleContactSeller}
             disabled={isStartingChat || !sellerId}
             style={{
@@ -414,7 +414,7 @@ const ListingCard = ({
             )}
           </Button>
           <Button 
-            className="font-lufga font-medium rounded-full text-black"
+            className="font-lufga font-medium rounded-full text-black text-xs md:text-sm"
             onClick={() => listingId && navigate(`/listing/${listingId}`)}
             style={{
               width: '226.5px',

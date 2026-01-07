@@ -16,7 +16,7 @@ import star2 from "@/assets/Star 2.png";
 import crownIcon from "@/assets/fi_126073.svg";
 import premiumStarIcon from "@/assets/fi_5076417.svg";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Menu, X, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
 import { useNavigate } from "react-router-dom";
@@ -26,6 +26,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 
 // Custom Notification Button Component with real data
@@ -190,6 +191,7 @@ const NotificationButtonWithCount = ({ userId }: { userId: string }) => {
 };
 
 const AllListings = () => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [listings, setListings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -801,9 +803,42 @@ const AllListings = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Main Container with Black Background */}
-      <div className="bg-black pb-20">
-        <div className="flex gap-4 lg:gap-8 xl:gap-[58px] max-w-[1920px] mx-auto relative px-2 lg:px-4">
+      {/* Main Container - White on mobile, Black on desktop */}
+      <div className="bg-white md:bg-black pb-20">
+        {/* Mobile Menu Overlay */}
+        {isMobileMenuOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+        
+        {/* Mobile Sidebar */}
+        <aside 
+          className={`fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-black z-50 transform transition-transform duration-300 ease-in-out lg:hidden ${
+            isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <div className="relative h-full">
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="absolute top-4 right-4 z-10 p-2 text-white hover:bg-white/10 rounded-full"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <FilterSidebar
+              filters={filters}
+              onFiltersChange={setFilters}
+              onClearFilters={handleClearFilters}
+              onFind={() => {
+                handleFind();
+                setIsMobileMenuOpen(false);
+              }}
+            />
+          </div>
+        </aside>
+
+        <div className="flex gap-4 lg:gap-8 xl:gap-[58px] max-w-[1920px] mx-auto relative px-0 md:px-2 lg:px-4 w-full">
           {/* Left Sidebar - Filters - Fixed on screen */}
           <aside 
             className="flex-shrink-0 hidden lg:block"
@@ -823,7 +858,7 @@ const AllListings = () => {
           <div className="flex-1 min-w-0 flex flex-col">
             {/* Custom Header for All Listings Page - only covers content area */}
             <header 
-              className="bg-black"
+              className="bg-white md:bg-black w-full"
               style={{
                 width: "100%",
                 height: "100px",
@@ -834,11 +869,196 @@ const AllListings = () => {
               }}
             >
               <div className="flex items-center justify-between w-full">
-                {/* Navigation Menu */}
-                <nav className="flex items-center gap-1 lg:gap-2 flex-wrap">
+                {/* Mobile Header Layout */}
+                <div className="flex items-center gap-3 md:hidden w-full">
+                  {/* Hamburger Menu Button */}
+                  <button 
+                    className="text-black"
+                    onClick={() => setIsMobileMenuOpen(true)}
+                  >
+                    <Menu className="w-6 h-6" />
+                  </button>
+                  
+                  {/* Logo - Original Image */}
+                  <Link to="/" className="flex items-center">
+                    <img 
+                      src={logo} 
+                      alt="EX Logo" 
+                      className="h-10 w-10 object-contain"
+                    />
+                  </Link>
+                  
+                  {/* Spacer to push right items */}
+                  <div className="flex-1"></div>
+                  
+                  {/* Search Icon */}
+                  <button
+                    type="button"
+                    className="text-black"
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Search className="w-5 h-5" />
+                  </button>
+                  
+                  {/* Notification Icon */}
+                  {isAuthenticated && user ? (
+                    <div className="[&_button]:bg-black/5 [&_img]:invert">
+                      <NotificationButtonWithCount userId={user.id} />
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="relative"
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        padding: "8px",
+                        borderRadius: "20px",
+                        background: "rgba(0, 0, 0, 0.05)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <img 
+                        src={notificationIcon} 
+                        alt="Notifications" 
+                        className="w-5 h-5"
+                        style={{ filter: "invert(1)" }}
+                      />
+                    </button>
+                  )}
+                  
+                  {/* User Profile */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="relative"
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          padding: "0",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src="" alt="Manuel" />
+                          <AvatarFallback 
+                            className="bg-blue-200 text-blue-800 text-sm font-semibold"
+                            style={{
+                              backgroundColor: "rgba(147, 197, 253, 0.3)",
+                              color: "rgba(30, 64, 175, 1)",
+                            }}
+                          >
+                            M
+                          </AvatarFallback>
+                        </Avatar>
+                        {/* Profile Badge */}
+                        <span
+                          style={{
+                            position: "absolute",
+                            top: "-2px",
+                            right: "-2px",
+                            width: "18px",
+                            height: "18px",
+                            borderRadius: "50%",
+                            backgroundColor: "#EF4444",
+                            color: "white",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            lineHeight: "1",
+                            border: "2px solid black",
+                          }}
+                        >
+                          3
+                        </span>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-black border-gray-700 text-white w-56">
+                      {/* Mobile-only: Notification and Favorite items */}
+                      <div className="md:hidden">
+                        {/* Notification Item */}
+                        <DropdownMenuItem 
+                          className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-800 focus:bg-gray-800"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            // On mobile, clicking notification will be handled by the NotificationDropdown component
+                            // For now, just close the user menu
+                          }}
+                        >
+                          <div className="relative">
+                            <img 
+                              src={notificationIcon} 
+                              alt="Notifications" 
+                              className="w-5 h-5"
+                            />
+                            {/* Note: Badge count would need to be fetched separately for mobile menu */}
+                          </div>
+                          <span className="font-lufga text-sm">Notifications</span>
+                        </DropdownMenuItem>
+                        
+                        {/* Favorite Item */}
+                        <DropdownMenuItem 
+                          className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-800 focus:bg-gray-800"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleFavoritesClick();
+                          }}
+                        >
+                          <div className="relative">
+                            <img 
+                              src={heartIcon} 
+                              alt="Favorites" 
+                              className="w-5 h-5"
+                            />
+                            {isAuthenticated && user && favoritesCount > 0 && (
+                              <span
+                                className="absolute -top-1 -right-1 w-4 h-4 text-[10px] font-semibold rounded-full bg-white text-black flex items-center justify-center"
+                              >
+                                {favoritesCount > 9 ? "9+" : favoritesCount}
+                              </span>
+                            )}
+                          </div>
+                          <span className="font-lufga text-sm">Favorites</span>
+                        </DropdownMenuItem>
+                        
+                        <div className="border-t border-gray-700 my-1"></div>
+                      </div>
+                      
+                      {/* User menu items */}
+                      <DropdownMenuItem className="px-4 py-3 hover:bg-gray-800 focus:bg-gray-800">
+                        <span className="font-lufga text-sm">Profile</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="px-4 py-3 hover:bg-gray-800 focus:bg-gray-800">
+                        <span className="font-lufga text-sm">Settings</span>
+                      </DropdownMenuItem>
+                      <div className="border-t border-gray-700 my-1"></div>
+                      <DropdownMenuItem className="px-4 py-3 hover:bg-gray-800 focus:bg-gray-800">
+                        <span className="font-lufga text-sm">Logout</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                
+                {/* Desktop Header Layout */}
+                <div className="hidden md:flex items-center justify-between w-full">
+                  {/* Navigation Menu - Desktop */}
+                  <nav className="flex items-center gap-1 lg:gap-2 flex-wrap">
                   <Link
                     to="/"
-                    className="font-lufga"
+                    className="font-lufga text-xs md:text-sm"
                     style={{
                       height: "48px",
                       paddingTop: "12px",
@@ -866,7 +1086,7 @@ const AllListings = () => {
                   
                   <Link
                     to="/all-listings"
-                    className="font-lufga"
+                    className="font-lufga text-xs md:text-sm"
                     style={{
                       height: "48px",
                       paddingTop: "12px",
@@ -894,7 +1114,7 @@ const AllListings = () => {
                   
                   <Link
                     to="/how-to-buy"
-                    className="font-lufga"
+                    className="font-lufga text-xs md:text-sm"
                     style={{
                       height: "48px",
                       paddingTop: "12px",
@@ -922,7 +1142,7 @@ const AllListings = () => {
                   
                   <Link
                     to="/how-to-sell"
-                    className="font-lufga"
+                    className="font-lufga text-xs md:text-sm"
                     style={{
                       height: "48px",
                       paddingTop: "12px",
@@ -949,19 +1169,53 @@ const AllListings = () => {
                   </Link>
                 </nav>
 
-                {/* Right Side Icons */}
-                <div className="flex items-center gap-3">
-                  {/* Notification Icon with Badge - Custom implementation */}
-                  {isAuthenticated && user ? (
-                    <NotificationButtonWithCount userId={user.id} />
-                  ) : (
+                  {/* Right Side Icons - Desktop */}
+                  <div className="flex items-center gap-3">
+                    {/* Notification Icon with Badge */}
+                    {isAuthenticated && user ? (
+                      <NotificationButtonWithCount userId={user.id} />
+                    ) : (
+                      <button
+                        type="button"
+                        className="relative"
+                        style={{
+                          width: "44px",
+                          height: "44px",
+                          padding: "10px",
+                          gap: "10px",
+                          borderRadius: "28px",
+                          background: "rgba(255, 255, 255, 0.1)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          border: "none",
+                          cursor: "pointer",
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        <img 
+                          src={notificationIcon} 
+                          alt="Notifications" 
+                          style={{
+                            width: "24px",
+                            height: "24px",
+                            opacity: 1,
+                            display: "block",
+                            flexShrink: 0,
+                          }}
+                        />
+                      </button>
+                    )}
+
+                    {/* Heart/Favorite Icon with Badge */}
                     <button
                       type="button"
+                      onClick={handleFavoritesClick}
                       className="relative"
                       style={{
-                        width: "44px",
-                        height: "44px",
-                        padding: "10px",
+                        width: "52px",
+                        height: "52px",
+                        padding: "14px",
                         gap: "10px",
                         borderRadius: "28px",
                         background: "rgba(255, 255, 255, 0.1)",
@@ -974,8 +1228,8 @@ const AllListings = () => {
                       }}
                     >
                       <img 
-                        src={notificationIcon} 
-                        alt="Notifications" 
+                        src={heartIcon} 
+                        alt="Favorites" 
                         style={{
                           width: "24px",
                           height: "24px",
@@ -984,166 +1238,151 @@ const AllListings = () => {
                           flexShrink: 0,
                         }}
                       />
-                    </button>
-                  )}
-
-                  {/* Heart/Favorite Icon with Badge */}
-                  <button
-                    type="button"
-                    onClick={handleFavoritesClick}
-                    className="relative"
-                    style={{
-                      width: "52px",
-                      height: "52px",
-                      padding: "14px",
-                      gap: "10px",
-                      borderRadius: "28px",
-                      background: "rgba(255, 255, 255, 0.1)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      border: "none",
-                      cursor: "pointer",
-                      boxSizing: "border-box",
-                    }}
-                  >
-                    <img 
-                      src={heartIcon} 
-                      alt="Favorites" 
-                      style={{
-                        width: "24px",
-                        height: "24px",
-                        opacity: 1,
-                        display: "block",
-                        flexShrink: 0,
-                      }}
-                    />
-                    {/* Heart Badge - Only show if count > 0 */}
-                    {isAuthenticated && user && favoritesCount > 0 && (
-                      <span
-                        style={{
-                          position: "absolute",
-                          top: "6px",
-                          right: "6px",
-                          width: "18px",
-                          height: "18px",
-                          borderRadius: "50%",
-                          backgroundColor: "white",
-                          color: "black",
-                          fontSize: "11px",
-                          fontWeight: 600,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          lineHeight: "1",
-                        }}
-                      >
-                        {favoritesCount > 9 ? "9+" : favoritesCount}
-                      </span>
-                    )}
-                  </button>
-
-                  {/* User Profile Section */}
-                <button
-                    type="button"
-                    className="flex items-center gap-2 cursor-pointer"
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      padding: "4px",
-                    }}
-                  >
-                    <div className="relative">
-                      <Avatar className="w-10 h-10">
-                        <AvatarImage src="" alt="Manuel" />
-                        <AvatarFallback 
-                          className="bg-blue-200 text-blue-800 text-sm font-semibold"
+                      {/* Heart Badge - Only show if count > 0 */}
+                      {isAuthenticated && user && favoritesCount > 0 && (
+                        <span
                           style={{
-                            backgroundColor: "rgba(147, 197, 253, 0.3)",
-                            color: "rgba(30, 64, 175, 1)",
+                            position: "absolute",
+                            top: "6px",
+                            right: "6px",
+                            width: "18px",
+                            height: "18px",
+                            borderRadius: "50%",
+                            backgroundColor: "white",
+                            color: "black",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            lineHeight: "1",
                           }}
                         >
-                          M
-                        </AvatarFallback>
-                      </Avatar>
-                      {/* Profile Badge */}
-                      <span
-                        style={{
-                          position: "absolute",
-                          top: "-2px",
-                          right: "-2px",
-                          width: "18px",
-                          height: "18px",
-                          borderRadius: "50%",
-                          backgroundColor: "#EF4444",
-                          color: "white",
-                          fontSize: "11px",
-                          fontWeight: 600,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          lineHeight: "1",
-                          border: "2px solid black",
-                        }}
-                      >
-                        3
-                      </span>
-                    </div>
-                    <span
-                      className="font-lufga"
-                      style={{
-                        color: "rgba(255, 255, 255, 1)",
-                        fontSize: "16px",
-                        fontWeight: 500,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Manuel
-                    </span>
-                    <ChevronDown 
-                      className="text-white" 
-                      size={16}
-                      style={{
-                        color: "rgba(255, 255, 255, 1)",
-                      }}
-                    />
-                </button>
+                          {favoritesCount > 9 ? "9+" : favoritesCount}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* User Profile Section with Dropdown */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex items-center gap-2 cursor-pointer"
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            padding: "4px",
+                          }}
+                        >
+                          <div className="relative">
+                            <Avatar className="w-10 h-10">
+                              <AvatarImage src="" alt="Manuel" />
+                              <AvatarFallback 
+                                className="bg-blue-200 text-blue-800 text-sm font-semibold"
+                                style={{
+                                  backgroundColor: "rgba(147, 197, 253, 0.3)",
+                                  color: "rgba(30, 64, 175, 1)",
+                                }}
+                              >
+                                M
+                              </AvatarFallback>
+                            </Avatar>
+                            {/* Profile Badge */}
+                            <span
+                              style={{
+                                position: "absolute",
+                                top: "-2px",
+                                right: "-2px",
+                                width: "18px",
+                                height: "18px",
+                                borderRadius: "50%",
+                                backgroundColor: "#EF4444",
+                                color: "white",
+                                fontSize: "11px",
+                                fontWeight: 600,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                lineHeight: "1",
+                                border: "2px solid black",
+                              }}
+                            >
+                              3
+                            </span>
+                          </div>
+                          <span
+                            className="font-lufga text-sm md:text-base"
+                            style={{
+                              color: "rgba(255, 255, 255, 1)",
+                              fontSize: "16px",
+                              fontWeight: 500,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            Manuel
+                          </span>
+                          <ChevronDown 
+                            className="text-white" 
+                            size={16}
+                            style={{
+                              color: "rgba(255, 255, 255, 1)",
+                            }}
+                          />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-black border-gray-700 text-white w-56">
+                        {/* User menu items */}
+                        <DropdownMenuItem className="px-4 py-3 hover:bg-gray-800 focus:bg-gray-800">
+                          <span className="font-lufga text-sm">Profile</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="px-4 py-3 hover:bg-gray-800 focus:bg-gray-800">
+                          <span className="font-lufga text-sm">Settings</span>
+                        </DropdownMenuItem>
+                        <div className="border-t border-gray-700 my-1"></div>
+                        <DropdownMenuItem className="px-4 py-3 hover:bg-gray-800 focus:bg-gray-800">
+                          <span className="font-lufga text-sm">Logout</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
           </div>
             </header>
             
             {/* Main Content Area - White Background */}
-            <div className="flex-1 bg-white min-w-0 px-2 lg:px-4 py-4 lg:py-8">
+            <div className="flex-1 bg-white min-w-0 p-5 md:px-2 lg:px-4 md:py-4 lg:py-8 w-full">
               {/* Banner Section */}
               <div
+                className="md:rounded-2xl"
                 style={{
                   position: "relative",
                   width: "100%",
-                  maxWidth: "1199px",
+                  maxWidth: "100%",
                   height: "auto",
-                  minHeight: "260px",
+                  minHeight: "180px",
                   display: "flex",
                   flexDirection: "row",
                   alignItems: "center",
-                  padding: "24px",
-                  gap: "24px",
+                  padding: "16px",
+                  gap: "16px",
                   isolation: "isolate",
                   background: "linear-gradient(90deg, #C4FC1E 0%, #D2FF4D 100%)",
-                  borderRadius: "20px",
-                  marginBottom: "32px",
+                  borderRadius: "12px",
+                  marginBottom: "20px",
                   overflow: "hidden",
                 }}
               >
-                {/* Star decorative elements */}
+                {/* Star decorative elements - smaller */}
                 <img
                   src={star4}
                   alt="Star"
                   style={{
                     position: "absolute",
-                    width: "89px",
-                    height: "89px",
-                    top: "20px",
-                    right: "100px",
+                    width: "60px",
+                    height: "60px",
+                    top: "10px",
+                    right: "80px",
                     opacity: 1,
                     zIndex: 0,
                   }}
@@ -1153,77 +1392,65 @@ const AllListings = () => {
                   alt="Star"
                   style={{
                     position: "absolute",
-                    width: "89px",
-                    height: "89px",
-                    bottom: "20px",
-                    right: "50px",
+                    width: "60px",
+                    height: "60px",
+                    bottom: "10px",
+                    right: "40px",
                     opacity: 1,
                     zIndex: 0,
                   }}
                 />
                 
                 {/* Content on Left */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "16px", zIndex: 1, flex: 1 }}>
-                  {/* Heading and Description Container */}
-                  <div
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", zIndex: 1, flex: 1 }}>
+                  {/* Heading */}
+                  <h2
+                    className="font-lufga text-base md:text-xl"
                     style={{
-                      width: "100%",
-                      maxWidth: "588px",
-                      minHeight: "112px",
-                      gap: "16px",
-                      display: "flex",
-                      flexDirection: "column",
+                      fontWeight: 700,
+                      fontSize: "20px",
+                      lineHeight: "140%",
+                      letterSpacing: "0%",
+                      color: "rgba(0, 0, 0, 1)",
+                      margin: 0,
                     }}
                   >
-                    {/* Heading */}
-                    <h2
-                      className="font-lufga"
-                      style={{
-                        fontWeight: 700,
-                        fontSize: "24px",
-                        lineHeight: "150%",
-                        letterSpacing: "0%",
-                        color: "rgba(0, 0, 0, 1)",
-                        margin: 0,
-                      }}
-                    >
-                      Looking to Sell Your Shopify Store?
-                    </h2>
+                    Looking to Sell Your Shopify Store?
+                  </h2>
 
-                    {/* Body Text */}
-                    <p
-                      className="font-lufga"
-                      style={{
-                        fontWeight: 400,
-                        fontSize: "16px",
-                        lineHeight: "150%",
-                        letterSpacing: "0%",
-                        color: "rgba(0, 0, 0, 0.5)",
-                        margin: 0,
-                      }}
-                    >
-                      Get the best deal with serious buyers ready to invest! Join a marketplace where top-rated businesses meet qualified investors.
-            </p>
-          </div>
+                  {/* Body Text */}
+                  <p
+                    className="font-lufga text-xs md:text-sm"
+                    style={{
+                      fontWeight: 400,
+                      fontSize: "14px",
+                      lineHeight: "140%",
+                      letterSpacing: "0%",
+                      color: "rgba(0, 0, 0, 0.5)",
+                      margin: 0,
+                    }}
+                  >
+                    Get the best deal with serious buyers ready to invest! Join a marketplace where top-rated businesses meet qualified investors.
+                  </p>
 
                   {/* Button */}
                   <button
                     type="button"
-                    className="font-lufga"
+                    className="font-lufga text-xs"
                     style={{
                       width: "auto",
-                      maxWidth: "259px",
-                      height: "48px",
-                      paddingTop: "12px",
-                      paddingRight: "20px",
-                      paddingBottom: "12px",
-                      paddingLeft: "20px",
-                      gap: "10px",
+                      maxWidth: "220px",
+                      height: "40px",
+                      paddingTop: "10px",
+                      paddingRight: "16px",
+                      paddingBottom: "10px",
+                      paddingLeft: "16px",
+                      gap: "8px",
                       borderRadius: "60px",
                       background: "rgba(0, 0, 0, 1)",
                       fontWeight: 600,
-                      fontSize: "14px",
-                      lineHeight: "150%",
+                      fontSize: "12px",
+                      lineHeight: "140%",
                       letterSpacing: "0%",
                       textTransform: "capitalize",
                       color: "rgba(255, 255, 255, 1)",
@@ -1232,11 +1459,12 @@ const AllListings = () => {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
+                      marginTop: "4px",
                     }}
                   >
                     List Your Business Now!
                   </button>
-            </div>
+                </div>
 
                 {/* Gift Box Icon on Right */}
                 <div style={{ flexShrink: 0, zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1244,25 +1472,27 @@ const AllListings = () => {
                     src={giftBoxIcon} 
                     alt="Gift Box" 
                     style={{
-                      width: "auto",
+                      width: "120px",
                       height: "auto",
-                      display: "block",
+                      maxHeight: "140px",
                     }}
-                          />
-                        </div>
-                  </div>
+                  />
+                </div>
+              </div>
 
               {/* Premium Section */}
               <div
+                className="md:rounded-2xl"
                 style={{
                   width: "100%",
-                  maxWidth: "1199px",
-                  minHeight: "819px",
-                  gap: "16px",
-                  borderRadius: "20px",
-                  padding: "24px",
+                  maxWidth: "100%",
+                  minHeight: "auto",
+                  gap: "12px",
+                  borderRadius: "12px",
+                  padding: "16px",
                   background: "rgba(0, 0, 0, 0.04)",
-                  marginTop: "32px",
+                  marginTop: "0px",
+                  marginBottom: "20px",
                   display: "flex",
                   flexDirection: "column",
                 }}
@@ -1271,33 +1501,33 @@ const AllListings = () => {
                 <div
                   style={{
                     width: "100%",
-                    maxWidth: "912px",
-                    minHeight: "80px",
+                    maxWidth: "100%",
+                    minHeight: "auto",
                     display: "flex",
                     flexDirection: "row",
                     alignItems: "center",
                     flexWrap: "wrap",
-                    gap: "12px",
+                    gap: "10px",
                   }}
                 >
                   {/* Icon and Heading */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <img 
                       src={crownIcon} 
                       alt="Crown" 
                       style={{
-                        width: "44px",
-                        height: "44px",
+                        width: "32px",
+                        height: "32px",
                         display: "block",
                       }}
                     />
                     <h2
-                      className="font-lufga"
+                      className="font-lufga text-sm md:text-xl"
                       style={{
                         fontFamily: "Lufga, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
                         fontWeight: 700,
-                        fontSize: "24px",
-                        lineHeight: "150%",
+                        fontSize: "18px",
+                        lineHeight: "140%",
                         letterSpacing: "0%",
                         color: "rgba(0, 0, 0, 1)",
                         margin: 0,
@@ -1307,28 +1537,25 @@ const AllListings = () => {
                     </h2>
                   </div>
 
-                  {/* 10px gap */}
-                  <div style={{ width: "10px" }} />
-
                   {/* Join Premium Button */}
                   <button
                     type="button"
-                    className="font-lufga"
+                    className="font-lufga text-xs"
                     style={{
                       fontFamily: "Lufga, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
                       width: "auto",
-                      minWidth: "148px",
-                      height: "32px",
+                      minWidth: "120px",
+                      height: "28px",
                       paddingTop: "4px",
-                      paddingRight: "9px",
+                      paddingRight: "8px",
                       paddingBottom: "4px",
-                      paddingLeft: "9px",
-                      gap: "7px",
+                      paddingLeft: "8px",
+                      gap: "6px",
                       borderRadius: "60px",
                       background: "rgba(203, 254, 54, 1)",
                       fontWeight: 600,
-                      fontSize: "14px",
-                      lineHeight: "150%",
+                      fontSize: "12px",
+                      lineHeight: "140%",
                       letterSpacing: "0%",
                       textTransform: "capitalize",
                       color: "rgba(0, 0, 0, 1)",
@@ -1344,8 +1571,8 @@ const AllListings = () => {
                       src={premiumStarIcon} 
                       alt="Star" 
                       style={{
-                        width: "20px",
-                        height: "20px",
+                        width: "14px",
+                        height: "14px",
                         display: "block",
                       }}
                     />
@@ -1357,18 +1584,18 @@ const AllListings = () => {
                 <div
                   style={{
                     width: "100%",
-                    maxWidth: "912px",
-                    minHeight: "54px",
+                    maxWidth: "100%",
+                    minHeight: "auto",
                     marginTop: "8px",
                   }}
                 >
                   <p
-                    className="font-lufga"
+                    className="font-lufga text-xs md:text-sm"
                     style={{
                       fontFamily: "Lufga, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
                       fontWeight: 400,
-                      fontSize: "16px",
-                      lineHeight: "150%",
+                      fontSize: "13px",
+                      lineHeight: "140%",
                       letterSpacing: "0%",
                       color: "rgba(0, 0, 0, 0.5)",
                       margin: 0,
@@ -1376,12 +1603,12 @@ const AllListings = () => {
                   >
                     JOIN Premium now! Gain early access to All Listings 21 days before they become public. Don't wait—Stay ahead of your competitiors.{" "}
                     <span
-                      className="font-lufga"
+                      className="font-lufga text-xs md:text-sm"
                       style={{
                         fontFamily: "Lufga, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
                         fontWeight: 600,
-                        fontSize: "16px",
-                        lineHeight: "150%",
+                        fontSize: "13px",
+                        lineHeight: "140%",
                         letterSpacing: "0%",
                         color: "#0067ff",
                         cursor: "pointer",
@@ -1397,28 +1624,31 @@ const AllListings = () => {
                   style={{
                     display: "flex",
                     flexDirection: "row",
-                    gap: "16px",
+                    gap: "12px",
                     alignItems: "center",
+                    flexWrap: "wrap",
+                    marginTop: "12px",
                   }}
                 >
                   {/* Join Premium Button */}
                   <button
                     type="button"
-                    className="font-lufga"
+                    className="font-lufga text-xs"
                     style={{
                       fontFamily: "Lufga, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
-                      width: "172px",
-                      height: "52px",
-                      paddingTop: "13px",
-                      paddingRight: "20px",
-                      paddingBottom: "13px",
-                      paddingLeft: "20px",
-                      gap: "10px",
+                      width: "auto",
+                      minWidth: "140px",
+                      height: "40px",
+                      paddingTop: "10px",
+                      paddingRight: "16px",
+                      paddingBottom: "10px",
+                      paddingLeft: "16px",
+                      gap: "8px",
                       borderRadius: "60px",
                       background: "rgba(203, 254, 54, 1)",
                       fontWeight: 600,
-                      fontSize: "16px",
-                      lineHeight: "150%",
+                      fontSize: "12px",
+                      lineHeight: "140%",
                       letterSpacing: "0%",
                       textTransform: "capitalize",
                       color: "rgba(0, 0, 0, 1)",
@@ -1436,24 +1666,25 @@ const AllListings = () => {
                   {/* Discover Off-Market Listings Button */}
                   <button
                     type="button"
-                    className="font-lufga"
+                    className="font-lufga text-xs"
                     style={{
                       fontFamily: "Lufga, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
-                      width: "325px",
-                      height: "52px",
-                      paddingTop: "13px",
-                      paddingRight: "20px",
-                      paddingBottom: "13px",
-                      paddingLeft: "20px",
-                      gap: "10px",
+                      width: "auto",
+                      minWidth: "200px",
+                      height: "40px",
+                      paddingTop: "10px",
+                      paddingRight: "16px",
+                      paddingBottom: "10px",
+                      paddingLeft: "16px",
+                      gap: "8px",
                       borderRadius: "60px",
                       borderWidth: "1px",
                       borderStyle: "solid",
                       borderColor: "rgba(0, 0, 0, 0.1)",
                       background: "rgba(0, 0, 0, 0.1)",
                       fontWeight: 600,
-                      fontSize: "16px",
-                      lineHeight: "150%",
+                      fontSize: "12px",
+                      lineHeight: "140%",
                       letterSpacing: "0%",
                       textTransform: "capitalize",
                       color: "rgba(0, 0, 0, 1)",
@@ -1473,18 +1704,19 @@ const AllListings = () => {
 
               {/* All Listings Cards Container */}
               <div
+                className="md:rounded-2xl"
                 style={{
                   width: "100%",
-                  maxWidth: "1199px",
+                  maxWidth: "100%",
                   height: "auto",
                   minHeight: "400px",
                   background: "rgba(255, 255, 255, 1)",
                   borderWidth: "1px",
                   borderStyle: "solid",
                   borderColor: "rgba(225, 225, 225, 1)",
-                  borderRadius: "20px",
-                  padding: "24px",
-                  marginTop: "32px",
+                  borderRadius: "12px",
+                  padding: "16px",
+                  marginTop: "0px",
                   overflow: "visible",
                   boxSizing: "border-box",
                 }}
@@ -1492,7 +1724,7 @@ const AllListings = () => {
                 {/* Results Header */}
                 <div style={{ marginBottom: "24px" }}>
                   <h2
-                    className="font-lufga"
+                    className="font-lufga text-xl md:text-3xl"
                     style={{
                       fontFamily: "Lufga, sans-serif",
                       fontWeight: 700,
@@ -1507,7 +1739,7 @@ const AllListings = () => {
                     {filteredListings.length} Results
                   </h2>
                   <p
-                    className="font-lufga"
+                    className="font-lufga text-sm md:text-base"
                     style={{
                       fontFamily: "Lufga, sans-serif",
                       fontWeight: 400,

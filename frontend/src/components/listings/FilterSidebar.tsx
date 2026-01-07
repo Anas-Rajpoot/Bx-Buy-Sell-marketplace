@@ -179,7 +179,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
         >
         {/* Title */}
         <h2 
-          className="font-lufga text-white"
+          className="font-lufga text-white text-base md:text-lg"
           style={{
             fontWeight: 600,
             fontSize: "18px",
@@ -212,7 +212,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
             placeholder="Search"
             value={filters.search}
             onChange={(e) => updateFilter("search", e.target.value)}
-            className="flex-1 bg-transparent border-0 outline-0 font-lufga text-white placeholder:text-white"
+            className="flex-1 bg-transparent border-0 outline-0 font-lufga text-white placeholder:text-white text-xs md:text-sm"
             style={{
               fontWeight: 500,
               fontSize: "14px",
@@ -226,7 +226,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
         {/* Niche */}
         <div className="space-y-2">
           <label 
-            className="font-lufga text-white"
+            className="font-lufga text-white text-xs md:text-sm"
             style={{
               fontWeight: 500,
               fontSize: "14px",
@@ -274,7 +274,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
         {/* Revenue Generating */}
         <div className="space-y-2">
           <label 
-            className="font-lufga text-white"
+            className="font-lufga text-white text-xs md:text-sm"
             style={{
               fontWeight: 500,
               fontSize: "14px",
@@ -290,7 +290,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
               type="button"
               variant="ghost"
               onClick={() => updateFilter("revenueGenerating", filters.revenueGenerating === "yes" ? "all" : "yes")}
-              className={`${
+              className={`text-xs md:text-sm ${
                 filters.revenueGenerating === "yes"
                   ? "bg-[#D3FC50] text-black hover:bg-[#D3FC50]/90"
                   : "text-white hover:opacity-80"
@@ -313,7 +313,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
               type="button"
               variant="ghost"
               onClick={() => updateFilter("revenueGenerating", filters.revenueGenerating === "no" ? "all" : "no")}
-              className={`${
+              className={`text-xs md:text-sm ${
                 filters.revenueGenerating === "no"
                   ? "bg-[#D3FC50] text-black hover:bg-[#D3FC50]/90"
                   : "text-white hover:opacity-80"
