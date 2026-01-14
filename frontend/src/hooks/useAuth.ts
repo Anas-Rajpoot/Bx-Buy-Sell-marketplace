@@ -18,12 +18,13 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAuth();
+    // Initial auth check on mount
+    checkAuth(true);
     
     // Listen for storage changes (when user logs in/out in another tab)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'auth_token' || e.key === 'user_data') {
-        checkAuth();
+        checkAuth(false);
       }
     };
     
@@ -32,14 +33,16 @@ export const useAuth = () => {
       setUser(null);
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user_data');
+      // Don't set loading to false here - let checkAuth handle it
     };
     
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('auth:logout', handleLogout);
     
     // Also check periodically (every 5 seconds) to catch local changes
+    // Only update user state, don't reset loading after initial check
     const interval = setInterval(() => {
-      checkAuth();
+      checkAuth(false);
     }, 5000);
     
     return () => {
@@ -49,7 +52,7 @@ export const useAuth = () => {
     };
   }, []);
 
-  const checkAuth = async () => {
+  const checkAuth = async (isInitial: boolean = false) => {
     try {
       const token = localStorage.getItem('auth_token');
       const userData = localStorage.getItem('user_data');
@@ -76,7 +79,11 @@ export const useAuth = () => {
       console.error('Error checking auth:', error);
       setUser(null);
     } finally {
-      setLoading(false);
+      // Only set loading to false on initial check
+      // Subsequent checks (periodic, storage changes) should not reset loading
+      if (isInitial) {
+        setLoading(false);
+      }
     }
   };
 

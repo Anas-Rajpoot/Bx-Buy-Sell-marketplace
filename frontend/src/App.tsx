@@ -44,6 +44,7 @@ import ListingDetail from "./pages/ListingDetail";
 import HowToBuy from "./pages/HowToBuy";
 import HowToSell from "./pages/HowToSell";
 import EditListing from "./pages/EditListing";
+import { AdminProtectedRoute } from "./components/AdminProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -75,28 +76,30 @@ const App = () => (
           <Route path="/verify-otp" element={<VerifyOTP />} />
           <Route path="/register" element={<Register />} />
           
-          {/* Admin Routes */}
+          {/* Admin Routes - Public (no auth required) */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
           <Route path="/admin/verify-otp" element={<AdminVerifyOTP />} />
           <Route path="/admin/reset-password" element={<AdminResetPassword />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/team" element={<AdminTeamMembers />} />
-          <Route path="/admin/team/:id" element={<AdminMemberDetails />} />
-          <Route path="/admin/users" element={<AdminUsers />} />
-          <Route path="/admin/users/:id" element={<AdminUserDetails />} />
-          <Route path="/admin/users/:id/listings" element={<AdminUserListings />} />
-          <Route path="/admin/users/:id/favorites" element={<AdminUserFavorites />} />
-          <Route path="/admin/users/:id/chats" element={<AdminUserChats />} />
-          <Route path="/admin/listings" element={<AdminListings />} />
-          <Route path="/admin/listings/:id" element={<AdminListingDetails />} />
-          <Route path="/admin/chats" element={<AdminChats />} />
-          <Route path="/admin/chat-list" element={<AdminChatList />} />
-          <Route path="/admin/chat-analytics" element={<AdminChatAnalytics />} />
-          <Route path="/admin/monitoring-alerts" element={<AdminMonitoringAlerts />} />
-          <Route path="/admin/detect-words" element={<AdminDetectWords />} />
-          <Route path="/admin/content/*" element={<AdminContentManagement />} />
-          <Route path="/admin/settings" element={<AdminSettings />} />
+          
+          {/* Admin Routes - Protected (requires admin authentication) */}
+          <Route path="/admin/dashboard" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
+          <Route path="/admin/team" element={<AdminProtectedRoute><AdminTeamMembers /></AdminProtectedRoute>} />
+          <Route path="/admin/team/:id" element={<AdminProtectedRoute><AdminMemberDetails /></AdminProtectedRoute>} />
+          <Route path="/admin/users" element={<AdminProtectedRoute><AdminUsers /></AdminProtectedRoute>} />
+          <Route path="/admin/users/:id" element={<AdminProtectedRoute><AdminUserDetails /></AdminProtectedRoute>} />
+          <Route path="/admin/users/:id/listings" element={<AdminProtectedRoute><AdminUserListings /></AdminProtectedRoute>} />
+          <Route path="/admin/users/:id/favorites" element={<AdminProtectedRoute><AdminUserFavorites /></AdminProtectedRoute>} />
+          <Route path="/admin/users/:id/chats" element={<AdminProtectedRoute><AdminUserChats /></AdminProtectedRoute>} />
+          <Route path="/admin/listings" element={<AdminProtectedRoute><AdminListings /></AdminProtectedRoute>} />
+          <Route path="/admin/listings/:id" element={<AdminProtectedRoute><AdminListingDetails /></AdminProtectedRoute>} />
+          <Route path="/admin/chats" element={<AdminProtectedRoute><AdminChats /></AdminProtectedRoute>} />
+          <Route path="/admin/chat-list" element={<AdminProtectedRoute><AdminChatList /></AdminProtectedRoute>} />
+          <Route path="/admin/chat-analytics" element={<AdminProtectedRoute><AdminChatAnalytics /></AdminProtectedRoute>} />
+          <Route path="/admin/monitoring-alerts" element={<AdminProtectedRoute><AdminMonitoringAlerts /></AdminProtectedRoute>} />
+          <Route path="/admin/detect-words" element={<AdminProtectedRoute><AdminDetectWords /></AdminProtectedRoute>} />
+          <Route path="/admin/content/*" element={<AdminProtectedRoute><AdminContentManagement /></AdminProtectedRoute>} />
+          <Route path="/admin/settings" element={<AdminProtectedRoute><AdminSettings /></AdminProtectedRoute>} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
