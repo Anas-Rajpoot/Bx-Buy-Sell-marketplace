@@ -150,7 +150,7 @@ export const DashboardHeader = ({ onSearchClick, sidebarOpen, onSidebarOpenChang
         )}
 
         {/* Right Side - Icons and Profile */}
-        <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+        <div className="ml-auto flex items-center gap-2 sm:gap-3 md:gap-4">
           {/* Search Icon */}
           <div
             onClick={handleSearchIconClick}

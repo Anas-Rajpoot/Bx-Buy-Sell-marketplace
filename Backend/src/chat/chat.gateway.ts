@@ -16,6 +16,7 @@ import { ChatService } from './chat.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { z } from 'zod';
 import parsePhoneNumberFromString from 'libphonenumber-js';
+import { JwtService } from '@nestjs/jwt';
 
 @WebSocketGateway({ 
   cors: { 
@@ -39,7 +40,60 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     private readonly messageQueueService: MessageQueueService,
     private readonly chatService: ChatService,
     private readonly db: PrismaService,
+    private readonly jwtService: JwtService,
   ) {}
+
+  private isStaffRole(role?: string | null) {
+    return role === 'ADMIN' || role === 'MONITER' || role === 'STAFF';
+  }
+
+  private async ensureChatAccess(chatId: string, userId: string | null, role?: string | null) {
+    if (!chatId) {
+      throw new WsException('chatId is required');
+    }
+
+    if (this.isStaffRole(role)) {
+      return;
+    }
+
+    if (!userId) {
+      throw new WsException('User not authenticated');
+    }
+
+    const chat = await this.db.chat.findUnique({
+      where: { id: chatId },
+      select: { userId: true, sellerId: true },
+    });
+
+    if (!chat) {
+      throw new WsException('Chat not found');
+    }
+
+    if (chat.userId !== userId && chat.sellerId !== userId) {
+      throw new WsException('Unauthorized to access this chat');
+    }
+  }
+
+  private async emitMessageNotify(chatId: string, senderId: string) {
+    try {
+      const chat = await this.db.chat.findUnique({
+        where: { id: chatId },
+        select: { userId: true, sellerId: true },
+      });
+
+      if (!chat) return;
+
+      const recipientIds = [chat.userId, chat.sellerId];
+      recipientIds.forEach((id) => {
+        this.io.to(`user:${id}`).emit('message:notify', {
+          chatId,
+          senderId,
+        });
+      });
+    } catch (error) {
+      console.error('❌ Failed to emit message:notify:', error);
+    }
+  }
 
   async afterInit(server: Server) {
     this.io = server;
@@ -65,48 +119,56 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     
     let userId: string | null = null;
     
-    // Check if user is ADMIN/MONITER and join monitor room
-    if (token) {
-      try {
-        // Decode JWT to check role (simple decode, no verification needed here)
-        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-        const userRole = payload.role;
-        userId = payload.id;
-        
-        // Store userId on socket for later use
-        (client as any).userId = userId;
-        
-        if (userRole === 'ADMIN' || userRole === 'MONITER' || userRole === 'STAFF') {
-          client.join('monitor-room');
-          console.log('✅ Monitor user joined monitor-room:', {
-            clientId: client.id,
-            role: userRole,
-            userId: userId
-          });
-        }
-        
-        // CRITICAL: Update user online status when they connect
-        if (userId) {
-          try {
-            await this.db.user.update({
-              where: { id: userId },
-              data: { is_online: true },
-            });
-            console.log('✅ User marked as online:', userId);
-            
-            // Emit user online status to all clients
-            this.io.emit('user:status-changed', {
-              userId: userId,
-              isOnline: true,
-            });
-          } catch (error) {
-            console.error('❌ Error updating user online status:', error);
-          }
-        }
-      } catch (error) {
-        // If token decode fails, continue without monitor room
-        console.warn('⚠️ Could not decode token for monitor room check:', error);
+    if (!token) {
+      console.warn('⚠️ Missing auth token for socket connection. Disconnecting.');
+      client.disconnect(true);
+      return;
+    }
+
+    try {
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) {
+        console.error('❌ JWT_SECRET is not set. Disconnecting socket.');
+        client.disconnect(true);
+        return;
       }
+
+      const payload = await this.jwtService.verifyAsync(token, { secret: jwtSecret });
+      const userRole = payload.role;
+      userId = payload.id;
+
+      (client as any).userId = userId;
+      (client as any).userRole = userRole;
+
+      if (this.isStaffRole(userRole)) {
+        client.join('monitor-room');
+        console.log('✅ Monitor user joined monitor-room:', {
+          clientId: client.id,
+          role: userRole,
+          userId: userId
+        });
+      }
+
+      if (userId) {
+        try {
+          await this.db.user.update({
+            where: { id: userId },
+            data: { is_online: true },
+          });
+          console.log('✅ User marked as online:', userId);
+
+          this.io.emit('user:status-changed', {
+            userId: userId,
+            isOnline: true,
+          });
+        } catch (error) {
+          console.error('❌ Error updating user online status:', error);
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Invalid socket auth token. Disconnecting.', error);
+      client.disconnect(true);
+      return;
     }
     
     // Note: Authentication can be added here if needed
@@ -153,14 +215,14 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   // Join Room - CRITICAL: Only allow joining ONE room at a time
   @SubscribeMessage('join:room')
-  handleJoinRoom(
+  async handleJoinRoom(
     @MessageBody() { chatId }: { chatId: string },
     @ConnectedSocket() client: Socket,
   ) {
     try {
-      if (!chatId) {
-        throw new WsException('chatId is required');
-      }
+      const userId = (client as any).userId;
+      const userRole = (client as any).userRole;
+      await this.ensureChatAccess(chatId, userId, userRole);
 
       // CRITICAL: Leave all other rooms first to ensure isolation
       const currentRooms = this.activeConnections.get(client.id) || new Set();
@@ -325,10 +387,17 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @ConnectedSocket() client: Socket,
   ) {
     try {
+      const socketUserId = (client as any).userId;
+      const socketUserRole = (client as any).userRole;
+
       // Validate message
       if (!message.chatId || !message.senderId || !message.content) {
         console.error('❌ Invalid message format:', message);
         throw new WsException('Invalid message format: chatId, senderId, and content are required');
+      }
+
+      if (!socketUserId || message.senderId !== socketUserId) {
+        throw new WsException('Unauthorized sender');
       }
 
       console.log('📨 send_message called with:', {
@@ -418,6 +487,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
               senderId: message.senderId,
             });
 
+            if (message.senderId !== message.userId && message.senderId !== message.sellerId) {
+              throw new WsException('Sender is not a participant in this chat');
+            }
+
             chatRoom = await this.chatService.createChatRoom(message.userId, message.sellerId, message.listingId);
             console.log('✅ Chat room created:', chatRoom.id);
           }
@@ -432,6 +505,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       // Save message to database (idempotent - will return existing if duplicate)
       let savedMessage;
       try {
+        if (!chatRoom || (chatRoom.userId !== message.senderId && chatRoom.sellerId !== message.senderId)) {
+          throw new WsException('Sender is not a participant in this chat');
+        }
+
         savedMessage = await this.chatService.createMessage({
           chatId: message.chatId,
           senderId: message.senderId,
@@ -578,6 +655,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         messageId: message.id,
       });
       console.log('🔔 Notification event emitted for new message:', message.id);
+
+      await this.emitMessageNotify(message.chatId, message.senderId);
       
       // NOTE: Removed queueMessage call to prevent duplicate message saves
       // Message is already saved directly via createMessage() above
@@ -616,10 +695,21 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @ConnectedSocket() client: Socket,
   ) {
     try {
+      const socketUserId = (client as any).userId;
+      const socketUserRole = (client as any).userRole;
+
       // Validate message
       if (!message.chatId || !message.senderId || !message.content) {
         console.error('❌ Invalid admin message format:', message);
         throw new WsException('Invalid message format: chatId, senderId, and content are required');
+      }
+
+      if (!socketUserId || message.senderId !== socketUserId) {
+        throw new WsException('Unauthorized sender');
+      }
+
+      if (!this.isStaffRole(socketUserRole)) {
+        throw new WsException('Admin privileges required');
       }
 
       console.log('📨 Admin message received:', {
@@ -790,6 +880,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       }
 
       console.log('✅ Admin message broadcasted successfully');
+
+      await this.emitMessageNotify(message.chatId, message.senderId);
     } catch (error) {
       console.error('❌ Error in handleSendAdminMessage:', error);
       throw new WsException(error instanceof Error ? error.message : 'Failed to send admin message');
@@ -803,6 +895,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @ConnectedSocket() client: Socket,
   ) {
     try {
+      const socketUserId = (client as any).userId;
+      if (!socketUserId || message.senderId !== socketUserId) {
+        throw new WsException('Unauthorized sender');
+      }
       message.type = 'OFFER';
       await this.chatService.updateOfferStatus(message.chatId, true);
       this.messageQueueService.queueMessage(message);
@@ -820,6 +916,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @ConnectedSocket() client: Socket,
   ) {
     try {
+      const socketUserId = (client as any).userId;
+      if (!socketUserId || message.senderId !== socketUserId) {
+        throw new WsException('Unauthorized sender');
+      }
       message.type = 'OFFER';
       const response = message.response === 'true' ? true : false;
       await this.chatService.updateOfferStatus(message.chatId, response);
@@ -838,6 +938,11 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @MessageBody() message: { userId: string },
     @ConnectedSocket() client: Socket,
   ) {
+    const socketUserId = (client as any).userId;
+    if (!socketUserId || socketUserId !== message.userId) {
+      throw new WsException('Unauthorized registration');
+    }
+
     // Join a room for this user ID so we can send video call notifications
     const userRoom = `user:${message.userId}`;
     client.join(userRoom);
@@ -857,6 +962,24 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @MessageBody() message: { from: string; to: string; channelName: string; chatId: string },
     @ConnectedSocket() client: Socket,
   ) {
+    const socketUserId = (client as any).userId;
+    if (!socketUserId || socketUserId !== message.from) {
+      throw new WsException('Unauthorized caller');
+    }
+
+    if (!message.chatId) {
+      throw new WsException('chatId is required for video calls');
+    }
+
+    const chat = await this.db.chat.findUnique({
+      where: { id: message.chatId },
+      select: { userId: true, sellerId: true },
+    });
+
+    if (!chat || ![chat.userId, chat.sellerId].includes(message.from) || ![chat.userId, chat.sellerId].includes(message.to)) {
+      throw new WsException('Unauthorized video call participants');
+    }
+
     // Get the target user's room
     const targetUserRoom = `user:${message.to}`;
     
@@ -948,13 +1071,17 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @MessageBody() message: { from: string; to: string; channelName: string },
     @ConnectedSocket() client: Socket,
   ) {
-    const callerRoom = `user:${message.from}`;
-    console.log('✅ Video call accepted, notifying caller:', message.from, 'in room:', callerRoom);
+    const socketUserId = (client as any).userId;
+    if (!socketUserId || socketUserId !== message.from) {
+      throw new WsException('Unauthorized accept');
+    }
+    const callerRoom = `user:${message.to}`;
+    console.log('✅ Video call accepted, notifying caller:', message.to, 'in room:', callerRoom);
     
     // Notify the caller that the call was accepted
     this.io.to(callerRoom).emit('video:call-accepted', {
-      from: message.to,
-      to: message.from,
+      from: message.from,
+      to: message.to,
       channelName: message.channelName,
     });
   }
@@ -964,8 +1091,12 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @MessageBody() message: { from: string; to: string; chatId?: string },
     @ConnectedSocket() client: Socket,
   ) {
-    const callerRoom = `user:${message.from}`;
-    console.log('❌ Video call rejected, notifying caller:', message.from);
+    const socketUserId = (client as any).userId;
+    if (!socketUserId || socketUserId !== message.from) {
+      throw new WsException('Unauthorized reject');
+    }
+    const callerRoom = `user:${message.to}`;
+    console.log('❌ Video call rejected, notifying caller:', message.to);
     
     // Create missed call message in chat
     if (message.chatId) {
@@ -1000,8 +1131,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     
     // Notify the caller that the call was rejected
     this.io.to(callerRoom).emit('video:call-rejected', {
-      from: message.to,
-      to: message.from,
+      from: message.from,
+      to: message.to,
     });
   }
 
@@ -1010,6 +1141,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @MessageBody() message: { from: string; to: string; chatId?: string; duration?: number },
     @ConnectedSocket() client: Socket,
   ) {
+    const socketUserId = (client as any).userId;
+    if (!socketUserId || socketUserId !== message.from) {
+      throw new WsException('Unauthorized end');
+    }
     const targetRoom = `user:${message.to}`;
     console.log('📴 Video call ended, notifying:', message.to, 'duration:', message.duration, 'chatId:', message.chatId);
     
@@ -1063,6 +1198,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @MessageBody() message: { to: string; from: string; mic?: boolean; camera?: boolean },
     @ConnectedSocket() client: Socket,
   ) {
+    const socketUserId = (client as any).userId;
+    if (!socketUserId || socketUserId !== message.from) {
+      throw new WsException('Unauthorized media status');
+    }
     const targetRoom = `user:${message.to}`;
     console.log('🎤 Video call media status update:', message);
     
@@ -1090,6 +1229,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @MessageBody() message: { from: string; to: string; offer: any },
     @ConnectedSocket() client: Socket,
   ) {
+    const socketUserId = (client as any).userId;
+    if (!socketUserId || socketUserId !== message.from) {
+      throw new WsException('Unauthorized offer');
+    }
     const targetRoom = `user:${message.to}`;
     console.log('📤 WebRTC offer from:', message.from, 'to:', message.to);
     
@@ -1106,6 +1249,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @MessageBody() message: { from: string; to: string; answer: any },
     @ConnectedSocket() client: Socket,
   ) {
+    const socketUserId = (client as any).userId;
+    if (!socketUserId || socketUserId !== message.from) {
+      throw new WsException('Unauthorized answer');
+    }
     const targetRoom = `user:${message.to}`;
     console.log('📥 WebRTC answer from:', message.from, 'to:', message.to);
     
@@ -1122,6 +1269,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @MessageBody() message: { from: string; to: string; candidate: any },
     @ConnectedSocket() client: Socket,
   ) {
+    const socketUserId = (client as any).userId;
+    if (!socketUserId || socketUserId !== message.from) {
+      throw new WsException('Unauthorized ICE candidate');
+    }
     const targetRoom = `user:${message.to}`;
     console.log('🧊 ICE candidate from:', message.from, 'to:', message.to);
     

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Put, Query, Delete, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Put, Query, Delete, Post, Req, ForbiddenException } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { ChatLabelType } from '@prisma/client';
 import { ZodValidationPipe } from 'common/validator/zod.validator';
@@ -9,18 +9,38 @@ import { Roles } from 'common/decorator/roles.decorator';
 @Controller('chat')
 export class ChatController {
   constructor(private chatService: ChatService) {}
+  private isStaffRole(role?: string) {
+    return role === 'ADMIN' || role === 'MONITER' || role === 'STAFF';
+  }
+
+  private ensureSelfOrStaff(userId: string, req: any) {
+    const currentUser = req?.user;
+    if (!currentUser) {
+      throw new ForbiddenException('Unauthorized');
+    }
+
+    if (this.isStaffRole(currentUser.role)) {
+      return;
+    }
+
+    if (currentUser.id !== userId) {
+      throw new ForbiddenException('Access denied');
+    }
+  }
   //  Chat Specific
   @Roles(['ADMIN', 'MONITER', 'USER']) // CRITICAL: Allow USER role to fetch their own chats
   @Get('/fetch/user/:userId')
   @ApiParam({ name: 'userId', description: 'User ID', type: String })
-  getChatRoomsByUserId(@Param('userId') userId: string) {
+  getChatRoomsByUserId(@Param('userId') userId: string, @Req() req: any) {
+    this.ensureSelfOrStaff(userId, req);
     return this.chatService.getChatRoomsByUserId(userId);
   }
 
   @Roles(['ADMIN', 'MONITER', 'USER']) // CRITICAL: Allow USER role to fetch chats where they are seller
   @Get('/fetch/seller/:sellerId')
   @ApiParam({ name: 'sellerId', description: 'Seller ID', type: String })
-  getChatRoomsBySellerId(@Param('sellerId') sellerId: string) {
+  getChatRoomsBySellerId(@Param('sellerId') sellerId: string, @Req() req: any) {
+    this.ensureSelfOrStaff(sellerId, req);
     return this.chatService.getChatRoomsBySellerId(sellerId);
   }
   @Roles(['ADMIN', 'MONITER', 'USER', 'STAFF'])
@@ -30,8 +50,13 @@ export class ChatController {
   fetchChatRoom(
     @Param('userId') userId: string,
     @Param('sellerId') sellerId: string,
+    @Req() req: any,
     @Query('listingId') listingId?: string, // CRITICAL: Optional listingId to scope chat to specific listing
   ) {
+    const currentUser = req?.user;
+    if (!currentUser || (!this.isStaffRole(currentUser.role) && currentUser.id !== userId && currentUser.id !== sellerId)) {
+      throw new ForbiddenException('Access denied');
+    }
     return this.chatService.getChatRoom(userId, sellerId, listingId);
   }
 
@@ -226,8 +251,9 @@ export class ChatController {
   @Roles(['ADMIN', 'MONITER', 'USER', 'STAFF'])
   @Put('/update/label')
   @ApiBody({ type: () => UpdateLabelDTO })
-  updateChatLabelStatus(@Body(new ZodValidationPipe(updateLabelSchema)) body) {
+  updateChatLabelStatus(@Body(new ZodValidationPipe(updateLabelSchema)) body, @Req() req: any) {
     const { userId, chatId, label } = body;
+    this.ensureSelfOrStaff(userId, req);
     return this.chatService.updateChatLabelStatus(
       chatId,
       userId,
@@ -243,7 +269,9 @@ export class ChatController {
   async deleteChat(
     @Param('chatId') chatId: string,
     @Param('userId') userId: string,
+    @Req() req: any,
   ) {
+    this.ensureSelfOrStaff(userId, req);
     return this.chatService.deleteChat(chatId, userId);
   }
 
@@ -255,7 +283,9 @@ export class ChatController {
   async archiveChat(
     @Param('chatId') chatId: string,
     @Param('userId') userId: string,
+    @Req() req: any,
   ) {
+    this.ensureSelfOrStaff(userId, req);
     return this.chatService.archiveChat(chatId, userId);
   }
 
@@ -267,7 +297,9 @@ export class ChatController {
   async unarchiveChat(
     @Param('chatId') chatId: string,
     @Param('userId') userId: string,
+    @Req() req: any,
   ) {
+    this.ensureSelfOrStaff(userId, req);
     return this.chatService.unarchiveChat(chatId, userId);
   }
 
@@ -279,7 +311,9 @@ export class ChatController {
   async blockUser(
     @Param('blockerId') blockerId: string,
     @Param('blockedUserId') blockedUserId: string,
+    @Req() req: any,
   ) {
+    this.ensureSelfOrStaff(blockerId, req);
     return this.chatService.blockUser(blockerId, blockedUserId);
   }
 
@@ -291,7 +325,9 @@ export class ChatController {
   async unblockUser(
     @Param('blockerId') blockerId: string,
     @Param('blockedUserId') blockedUserId: string,
+    @Req() req: any,
   ) {
+    this.ensureSelfOrStaff(blockerId, req);
     return this.chatService.unblockUser(blockerId, blockedUserId);
   }
 
@@ -303,7 +339,9 @@ export class ChatController {
   async markMessagesAsRead(
     @Param('chatId') chatId: string,
     @Param('userId') userId: string,
+    @Req() req: any,
   ) {
+    this.ensureSelfOrStaff(userId, req);
     return this.chatService.markMessagesAsRead(chatId, userId);
   }
 
@@ -369,7 +407,15 @@ export class ChatController {
   @Get('/:id')
   @Roles(['ADMIN', 'MONITER', 'STAFF', 'USER'])
   @ApiParam({ name: 'id', description: 'Chat ID', type: String })
-  getChatById(@Param('id') id: string) {
-    return this.chatService.getChatById(id);
+  async getChatById(@Param('id') id: string, @Req() req: any) {
+    const chat = await this.chatService.getChatById(id);
+    const currentUser = req?.user;
+    if (!currentUser) {
+      throw new ForbiddenException('Unauthorized');
+    }
+    if (!this.isStaffRole(currentUser.role) && chat && chat.userId !== currentUser.id && chat.sellerId !== currentUser.id) {
+      throw new ForbiddenException('Access denied');
+    }
+    return chat;
   }
 }

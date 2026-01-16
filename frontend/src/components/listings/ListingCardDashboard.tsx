@@ -41,6 +41,16 @@ export const ListingCardDashboard = ({
   onUpdate,
 }: ListingCardDashboardProps) => {
   const [isPublishing, setIsPublishing] = useState(false);
+  const normalizedPrice =
+    typeof price === "number" ? price : Number(price ?? 0);
+  const displayPrice = Number.isFinite(normalizedPrice) ? normalizedPrice : 0;
+  const formattedPrice = new Intl.NumberFormat("en-US").format(displayPrice);
+  const categoryLabel =
+    typeof category === "string"
+      ? category
+      : category
+      ? String((category as any)?.name ?? "")
+      : "";
 
   const handlePublish = async () => {
     setIsPublishing(true);
@@ -118,10 +128,10 @@ export const ListingCardDashboard = ({
         )}
 
         {/* Category Badge */}
-        {category && (
+        {categoryLabel && (
           <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 h-8 sm:h-9 px-3 sm:px-4 md:px-[17px] py-1.5 sm:py-2 md:py-[7px] rounded-full bg-[rgba(0,0,0,0.25)] backdrop-blur-[44px] flex items-center justify-center">
             <span className="font-['Lufga'] font-medium text-xs sm:text-sm md:text-base leading-[140%] text-center text-white whitespace-nowrap">
-              {category}
+              {categoryLabel}
             </span>
           </div>
         )}
@@ -206,7 +216,7 @@ export const ListingCardDashboard = ({
               color: 'rgba(0, 0, 0, 1)',
             }}
           >
-            ${price.toLocaleString()}
+            ${formattedPrice}
           </p>
           {status === 'published' && unread_messages_count > 0 ? (
             <div className="flex items-center gap-2 flex-wrap">

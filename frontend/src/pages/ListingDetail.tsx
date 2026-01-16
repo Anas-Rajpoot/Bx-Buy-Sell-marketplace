@@ -965,7 +965,11 @@ const AttachmentCard = ({ fileName, fileSize, url }: { fileName: string; fileSiz
 };
 
 
-const ListingDetail = () => {
+type ListingDetailProps = {
+  embedded?: boolean;
+};
+
+const ListingDetail = ({ embedded = false }: ListingDetailProps = {}) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
@@ -1511,7 +1515,16 @@ console.log("detasdetail", listing)
   };
 
   if (isLoading) {
-    return (
+    return embedded ? (
+      <div className="bg-background">
+        <div className="flex items-center justify-center min-h-[60vh] pt-6">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading listing...</p>
+          </div>
+        </div>
+      </div>
+    ) : (
       <div className="min-h-screen bg-background">
         <Header />
         <div className="flex items-center justify-center min-h-[60vh] pt-24">
@@ -1526,7 +1539,20 @@ console.log("detasdetail", listing)
   }
 
   if (error || !listing) {
-    return (
+    return embedded ? (
+      <div className="bg-background">
+        <div className="flex items-center justify-center min-h-[60vh] pt-6">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Listing Not Found</h1>
+            <p className="text-muted-foreground mb-6">The listing you're looking for doesn't exist or has been removed.</p>
+            <Button onClick={() => navigate(-1)} className="rounded-full">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Go Back
+            </Button>
+          </div>
+        </div>
+      </div>
+    ) : (
       <div className="min-h-screen bg-background">
         <Header />
         <div className="flex items-center justify-center min-h-[60vh] pt-24">
@@ -1544,11 +1570,8 @@ console.log("detasdetail", listing)
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <div className={`pt-24 ${isMobile ? 'pb-12' : 'pb-20'}`}>
+  const content = (
+      <div className={`${embedded ? 'pt-6' : 'pt-24'} ${isMobile ? 'pb-12' : 'pb-20'}`}>
         <div className={`container mx-auto ${isMobile ? 'px-4' : 'px-4'} max-w-7xl`}>
           {/* Back Button */}
           <Button
@@ -3254,7 +3277,14 @@ console.log("detasdetail", listing)
           )}
         </div>
       </div>
+  );
 
+  return embedded ? (
+    <div className="bg-background">{content}</div>
+  ) : (
+    <div className="min-h-screen bg-background">
+      <Header />
+      {content}
       <Footer />
     </div>
   );

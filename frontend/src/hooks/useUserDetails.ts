@@ -39,16 +39,33 @@ export const useUserDetails = (userId: string | undefined) => {
         const userData = (userResponse.data as any).data || userResponse.data;
         console.log('User found:', userData);
 
-        // Get favorites count
+        // Get favorites count for the target user
         let favoritesCount = 0;
         try {
-          const favResponse = await apiClient.getFavorites();
-          if (favResponse.success && favResponse.data) {
-            const favorites = Array.isArray(favResponse.data) ? favResponse.data : [];
-            favoritesCount = favorites.length;
+          const favCountResponse = await apiClient.getFavoritesCountByUserId(userId);
+          if (favCountResponse.success && favCountResponse.data) {
+            const payload = favCountResponse.data as any;
+            if (typeof payload?.count === 'number') {
+              favoritesCount = payload.count;
+            }
           }
         } catch (error) {
           console.error('Error fetching favorites count:', error);
+        }
+
+        // Get listings count for the target user
+        let listingsCount = 0;
+        try {
+          const listingsResponse = await apiClient.getListings();
+          if (listingsResponse.success && listingsResponse.data) {
+            const listings = Array.isArray(listingsResponse.data) ? listingsResponse.data : [];
+            listingsCount = listings.filter((listing: any) => {
+              const listingUserId = listing.userId || listing.user_id;
+              return listingUserId === userId;
+            }).length;
+          }
+        } catch (error) {
+          console.error('Error fetching listings count:', error);
         }
 
         // Get chats count
@@ -78,7 +95,11 @@ export const useUserDetails = (userId: string | undefined) => {
         const profile = {
           id: userData.id,
           full_name: `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || null,
+          first_name: userData.first_name || null,
+          last_name: userData.last_name || null,
+          email: userData.email || null,
           avatar_url: userData.profile_pic || null,
+          background: userData.background || null,
           bio: null, // Not in backend schema
           company_name: userData.business_name || null,
           location: userData.city && userData.country 
@@ -86,20 +107,31 @@ export const useUserDetails = (userId: string | undefined) => {
             : userData.city || userData.country || null,
           phone: userData.phone || null,
           website: null, // Not in backend schema
+          birthday: userData.birthday || null,
+          address: userData.address || null,
+          city: userData.city || null,
+          country: userData.country || null,
+          state: userData.state || null,
+          zip: userData.zip || null,
           user_type: userData.role || null,
           created_at: userData.created_at || new Date().toISOString(),
           updated_at: userData.updated_at || new Date().toISOString(),
+          email_verified: Boolean(userData.is_email_verified),
+          phone_verified: Boolean(userData.is_phone_verified),
+          funds_verified: Boolean(userData.funds_verified),
+          id_verified: Boolean(userData.id_verified),
+          preferences: userData.preferences || null,
         };
 
         console.log('User stats:', {
-          listingsCount: 0, // Will be calculated separately if needed
+          listingsCount,
           favoritesCount,
           chatsCount
         });
 
         return {
           profile,
-          listingsCount: 0, // TODO: Get from listings endpoint when available
+          listingsCount,
           favoritesCount,
           chatsCount,
         };

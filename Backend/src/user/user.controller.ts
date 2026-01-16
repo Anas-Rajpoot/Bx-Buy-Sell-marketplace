@@ -11,6 +11,7 @@ import {
   Req,
   HttpException,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { ZodValidationPipe } from 'common/validator/zod.validator';
@@ -43,13 +44,20 @@ export class UserController {
   ) {}
 
   @Get('/')
-  async findAll() {
-    const value = await this.cacheManager.get(`${this.constructor.name}`);
-    if (value) {
-      return value;
+  async findAll(@Query('nocache') nocache?: string) {
+    if (nocache !== 'true') {
+      const value = await this.cacheManager.get(`${this.constructor.name}`);
+      if (value) {
+        return value;
+      }
     }
+
     const data = await this.userService.findAll();
-    await this.cacheManager.set(`${this.constructor.name}`, data, CACHE_TTL);
+
+    if (nocache !== 'true') {
+      await this.cacheManager.set(`${this.constructor.name}`, data, CACHE_TTL);
+    }
+
     return data;
   }
 
@@ -60,6 +68,23 @@ export class UserController {
   @ApiParam({ name: 'id', description: 'User ID', type: String })
   async getAllFavourite(@Req() req: Request) {
     return await this.userService.getAllFavourite((req as any).user.id);
+  }
+
+  @Roles(['ADMIN', 'MONITER', 'STAFF'])
+  @UseGuards(RolesGuard)
+  @Get('/favourite/user/:id')
+  @ApiParam({ name: 'id', description: 'User ID', type: String })
+  async getAllFavouriteByUserId(@Param('id') id: string) {
+    return await this.userService.getAllFavourite(id);
+  }
+
+  @Roles(['ADMIN', 'MONITER', 'STAFF'])
+  @UseGuards(RolesGuard)
+  @Get('/favourite/user/:id/count')
+  @ApiParam({ name: 'id', description: 'User ID', type: String })
+  async getFavouriteCountByUserId(@Param('id') id: string) {
+    const count = await this.userService.getFavouriteCount(id);
+    return { count };
   }
 
   @Roles(['ADMIN', 'MONITER', 'USER', 'STAFF'])
@@ -156,6 +181,30 @@ export class UserController {
     
     const payload = await this.userService.updateUser(id, body);
     await this.cacheManager.del(`${this.constructor.name}`);
+    return payload;
+  }
+
+  @Roles(['ADMIN', 'MONITER', 'STAFF'])
+  @UseGuards(RolesGuard)
+  @Patch('preferences/:id')
+  @ApiParam({ name: 'id', description: 'User ID', type: String })
+  async updateUserPreferences(
+    @Param('id') id: string,
+    @Body() body: {
+      background?: string | null;
+      businessCategories?: string[];
+      niches?: string[];
+      sellerLocation?: string | null;
+      targetLocation?: string | null;
+      listingPriceRange?: { min?: string | null; max?: string | null } | null;
+      businessAgeRange?: { min?: string | null; max?: string | null } | null;
+      yearlyProfitRange?: { min?: string | null; max?: string | null } | null;
+      profitMultipleRange?: { min?: string | null; max?: string | null } | null;
+    },
+  ) {
+    const payload = await this.userService.upsertPreferences(id, body);
+    await this.cacheManager.del(`${this.constructor.name}`);
+    await this.cacheManager.del(`${this.constructor.name}:${id}`);
     return payload;
   }
 

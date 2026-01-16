@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
@@ -31,6 +31,7 @@ export default function AdminUsers() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 15;
   const { data: users, isLoading, error } = useAdminUsers();
 
   if (error) {
@@ -46,26 +47,49 @@ export default function AdminUsers() {
     );
   }) || [];
 
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const paginatedUsers = filteredUsers.slice(startIndex, startIndex + pageSize);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const getStatusBadge = (user: AdminUser) => {
-    // Check if user is blocked (verified: false)
-    // Only show Blocked if explicitly verified === false (strict equality check)
+    // Blocked takes priority
     if (user.verified === false) {
-      return <Badge className="bg-red-500 text-white border-0 rounded-full px-3 py-0.5 text-xs font-medium">Blocked</Badge>;
+      return (
+        <Badge
+          variant="accent"
+          className="bg-red-500 text-white border-0 rounded-full px-3 py-0.5 text-xs font-medium hover:bg-red-500 cursor-default"
+        >
+          Blocked
+        </Badge>
+      );
     }
-    
-    // For non-blocked users, show Online/Offline based on last_sign_in_at
-    // If user has last_sign_in_at, check if they're online (signed in within last hour)
-    if (user.last_sign_in_at) {
-      const lastSignInDate = new Date(user.last_sign_in_at);
-      const hoursSinceLastSignIn = (Date.now() - lastSignInDate.getTime()) / (1000 * 60 * 60);
-      
-      if (hoursSinceLastSignIn < 1) {
-        return <Badge className="bg-green-500/20 text-green-700 border-green-500/30 rounded-full px-3 py-0.5 text-xs font-medium">Online</Badge>;
-      }
+
+    if (user.is_online) {
+      return (
+        <Badge
+          variant="accent"
+          className="bg-green-500/20 text-green-700 border-green-500/30 rounded-full px-3 py-0.5 text-xs font-medium hover:bg-green-500/20 cursor-default"
+        >
+          Online
+        </Badge>
+      );
     }
-    
-    // Default to Offline for users without recent sign-in
-    return <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/30 rounded-full px-3 py-0.5 text-xs font-medium">Offline</Badge>;
+
+    return (
+      <Badge
+        variant="accent"
+        className="bg-yellow-500/20 text-yellow-700 border-yellow-500/30 rounded-full px-3 py-0.5 text-xs font-medium hover:bg-yellow-500/20 cursor-default"
+      >
+        Offline
+      </Badge>
+    );
   };
 
   const formatDate = (dateString: string) => {
@@ -236,12 +260,12 @@ export default function AdminUsers() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                    {filteredUsers.map((user, index) => (
+                    {paginatedUsers.map((user, index) => (
                       <TableRow 
                         key={user.id}
                         className="border-border hover:bg-muted/5"
                       >
-                        <TableCell className="font-medium whitespace-nowrap">{index + 1}</TableCell>
+                        <TableCell className="font-medium whitespace-nowrap">{startIndex + index + 1}</TableCell>
                         <TableCell className="whitespace-nowrap">
                           <div className="flex items-center gap-3">
                             <div className="relative">
@@ -336,35 +360,62 @@ export default function AdminUsers() {
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 sm:px-6 py-4 border-t border-border">
                   <p className="text-sm text-muted-foreground">
-                    Showing {filteredUsers.length} of {users?.length || 0}
+                    Showing {paginatedUsers.length} of {filteredUsers.length}
                   </p>
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" disabled>
-                      ←
-                    </Button>
-                    <Button 
+                  <div className="flex items-center gap-[10px]">
+                    <Button
+                      variant="ghost"
                       size="icon"
-                      className={currentPage === 1 ? "bg-accent text-black" : ""}
-                      onClick={() => setCurrentPage(1)}
+                      className="h-8 w-8"
+                      disabled={safeCurrentPage === 1}
+                      onClick={() => setCurrentPage(Math.max(1, safeCurrentPage - 1))}
+                      style={{
+                        borderRadius: '10px',
+                        border: '1px solid #EBF0ED',
+                        background: '#FFFFFF',
+                        padding: '10px 16px',
+                      }}
                     >
-                      1
+                      <svg width="6" height="12" viewBox="0 0 6 12" fill="none">
+                        <path d="M5 1L1 6L5 11" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
                     </Button>
-                    <Button 
-                      variant="ghost" 
+                    {Array.from({ length: totalPages }, (_, i) => {
+                      const page = i + 1;
+                      return (
+                        <Button 
+                          key={page}
+                          size="icon"
+                          className="h-8 w-8 text-xs"
+                          onClick={() => setCurrentPage(page)}
+                          style={{
+                            borderRadius: '10px',
+                            border: '1px solid #EBF0ED',
+                            background: safeCurrentPage === page ? '#C6FE1F' : '#FFFFFF',
+                            padding: '10px 16px',
+                            color: '#000000',
+                          }}
+                        >
+                          {page}
+                        </Button>
+                      );
+                    })}
+                    <Button
+                      variant="ghost"
                       size="icon"
-                      onClick={() => setCurrentPage(2)}
+                      className="h-8 w-8"
+                      disabled={safeCurrentPage === totalPages}
+                      onClick={() => setCurrentPage(Math.min(totalPages, safeCurrentPage + 1))}
+                      style={{
+                        borderRadius: '10px',
+                        border: '1px solid #EBF0ED',
+                        background: '#FFFFFF',
+                        padding: '10px 16px',
+                      }}
                     >
-                      2
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => setCurrentPage(3)}
-                    >
-                      3
-                    </Button>
-                    <Button variant="ghost" size="icon">
-                      →
+                      <svg width="6" height="12" viewBox="0 0 6 12" fill="none">
+                        <path d="M1 1L5 6L1 11" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
                     </Button>
                   </div>
                 </div>

@@ -55,6 +55,7 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
   const [newMessage, setNewMessage] = useState("");
   const [chatRoom, setChatRoom] = useState<any>(null);
   const [otherUser, setOtherUser] = useState<any>(null);
+  const [callUser, setCallUser] = useState<any>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -78,6 +79,7 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
+  const windowIncomingCallHandlerRef = useRef<(event: Event) => void | null>(null);
   const chatRoomLoadedRef = useRef(false);
   const sendingMessageRef = useRef(false); // Prevent double sending
   const messagesLoadedFromDBRef = useRef(false); // Track if messages were loaded from DB
@@ -263,12 +265,9 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
           // CRITICAL: Ensure chatRoom state is set before connecting socket
           // Use the loadedChatRoom directly instead of waiting for state update
           setChatRoom(loadedChatRoom);
-          // Use a small delay to ensure state is set, then connect socket
-          setTimeout(() => {
-            if (mounted) {
-              connectSocket();
-            }
-          }, 100);
+          if (mounted) {
+            connectSocket(loadedChatRoom.id);
+          }
         } else if (!loadedChatRoom) {
           console.error('❌ Chat room failed to load!', { 
             mounted, 
@@ -693,9 +692,9 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
   };
 
   // Connect WebSocket - called AFTER chat room is loaded
-  const connectSocket = () => {
+  const connectSocket = (chatRoomId?: string) => {
     // Use chatRoom from state - try both chatRoom and check if it's being set
-    const currentChatRoomId = chatRoom?.id;
+    const currentChatRoomId = chatRoomId || chatRoom?.id;
     if (!currentChatRoomId) {
       console.warn('⚠️ Cannot connect socket: chatRoom.id not available yet, will retry', { chatRoom });
       setIsConnected(false);
@@ -734,6 +733,7 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
       listenersRegisteredRef.current = false; // Reset listener registration flag
     }
     
+    const authToken = localStorage.getItem('auth_token') || undefined;
     const newSocket = createSocketConnection({
       transports: ['websocket', 'polling'],
       reconnection: true,
@@ -742,6 +742,9 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
       timeout: 3000, // Reduced from 5000ms to 3000ms (3 seconds) for faster connection
       forceNew: true, // Force new connection
       upgrade: true, // Allow transport upgrade
+      auth: {
+        token: authToken,
+      },
     });
     
     socketRef.current = newSocket;
@@ -897,6 +900,12 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
     newSocket.on('video:incoming-call', async (data: { from: string; to: string; channelName: string; chatId: string }) => {
       console.log('📞 ChatWindow: Incoming video call from:', data.from, 'chatId:', data.chatId);
       
+      // Ignore events for calls we initiated (caller may also be in chat room)
+      if (data.from === currentUserId) {
+        console.log('📞 Ignoring incoming-call event for caller:', currentUserId);
+        return;
+      }
+      
       // Show call immediately - don't check if it's for current chat
       // This allows calls to show even if user is on a different page
       setIncomingVideoCall(data);
@@ -919,7 +928,7 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
             const callerId = data.from;
             const callerInfo = chat.userId === callerId ? chat.user : chat.seller;
             if (callerInfo) {
-              setOtherUser({
+              setCallUser({
                 first_name: callerInfo.first_name,
                 last_name: callerInfo.last_name,
                 profile_pic: callerInfo.profile_pic,
@@ -979,6 +988,11 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
       const data = customEvent.detail as { from: string; to: string; channelName: string; chatId: string };
       console.log('📞 ChatWindow: Received incoming call from window event:', data);
       
+      if (data.from === currentUserId) {
+        console.log('📞 Ignoring window incoming-call for caller:', currentUserId);
+        return;
+      }
+      
       // Show call immediately regardless of current chat
       setIncomingVideoCall(data);
       setCallStatus('ringing');
@@ -994,7 +1008,7 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
             const callerId = data.from;
             const callerInfo = chat.userId === callerId ? chat.user : chat.seller;
             if (callerInfo) {
-              setOtherUser({
+              setCallUser({
                 first_name: callerInfo.first_name,
                 last_name: callerInfo.last_name,
                 profile_pic: callerInfo.profile_pic,
@@ -1007,15 +1021,12 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
       }
     };
     
+    if (windowIncomingCallHandlerRef.current) {
+      window.removeEventListener('video:incoming-call', windowIncomingCallHandlerRef.current);
+    }
+
+    windowIncomingCallHandlerRef.current = handleWindowIncomingCall;
     window.addEventListener('video:incoming-call', handleWindowIncomingCall);
-    
-    // Cleanup window event listener
-    const cleanup = () => {
-      window.removeEventListener('video:incoming-call', handleWindowIncomingCall);
-    };
-    
-    // Return cleanup function
-    return cleanup;
 
     // Listen for video call accepted
     newSocket.removeAllListeners('video:call-accepted');
@@ -1036,6 +1047,7 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
       });
       
       setIncomingVideoCall(null);
+      setCallUser(null);
       setIsInCall(true);
       setIsIncomingCall(false); // ABSOLUTELY CRITICAL: Must be false - User A is the CALLER
       setCallStatus('connected'); // Change to 'connected' - this triggers automatic offer creation in VideoCall component
@@ -1073,6 +1085,11 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
       console.log('🔇 Ringing sound stopped (call ended event)');
       
       setIncomingVideoCall(null);
+      setCallUser(null);
+      setIncomingVideoCall(null);
+      setCallUser(null);
+      setIncomingVideoCall(null);
+      setCallUser(null);
       setIsInCall(false);
       setIsIncomingCall(false); // Reset incoming call flag
       setCallStatus('ended');
@@ -1085,10 +1102,11 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
     newSocket.removeAllListeners('video:user-offline');
     newSocket.on('video:user-offline', (data: { userId: string }) => {
       console.log('⚠️ User is offline:', data.userId);
+      // Keep call UI open and show "calling" state, but stop ringing
       stopRingingSound();
-      setIsInCall(false);
-      setIsIncomingCall(false); // Reset incoming call flag
-      setCallStatus('ended');
+      setIsInCall(true);
+      setIsIncomingCall(false); // Outgoing call
+      setCallStatus('calling');
       setIsVideoCallDialogOpen(false);
       toast.error('User is offline');
       
@@ -3649,7 +3667,7 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
               socket={socketRef.current}
               fromUserId={currentUserId}
               toUserId={currentUserId === userId ? (sellerId || '') : (userId || '')}
-              otherUser={otherUser}
+              otherUser={callUser || otherUser}
               isIncoming={isIncomingCall}
               callStatus={callStatus}
               onEndCall={handleEndVideoCall}

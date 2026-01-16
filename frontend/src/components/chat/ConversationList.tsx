@@ -132,21 +132,12 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
       }
     });
     
-    // Listen for new messages to update conversation list in real-time
-    // NOTE: This socket is NOT in any room, so it receives ALL messages
-    // We use this to refresh the conversation list when ANY message is sent
-    socket.on('message', (data: string) => {
-      try {
-        const message = typeof data === 'string' ? JSON.parse(data) : data;
-        console.log('📨 ConversationList: Received message event, refreshing list:', message.chatId);
-        // Refresh conversation list when a new message arrives
-        // Use debounce to avoid too many refreshes
-        setTimeout(() => {
-          fetchConversations();
-        }, 500);
-      } catch (error) {
-        console.error('Error parsing message in ConversationList:', error);
-      }
+    // Listen for lightweight notifications to update conversation list in real-time
+    socket.on('message:notify', (data: { chatId: string; senderId: string }) => {
+      console.log('📨 ConversationList: Received message:notify, refreshing list:', data.chatId);
+      setTimeout(() => {
+        fetchConversations();
+      }, 500);
     });
     
     // REMOVED: 'message:recieve' listener - backend only emits 'message' event now
@@ -557,9 +548,25 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
       >
         {filteredConversations.map((convo) => {
           const isUnread = convo.unreadCount > 0 && selectedConversation !== convo.id;
-          const truncateMessage = (text: string, maxLength: number = 40) => {
+          const getDisplayMessage = (text: string, maxLength: number = 40) => {
             if (!text) return 'No messages yet';
-            return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+
+            const trimmed = text.trim();
+            if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+              try {
+                const parsed = JSON.parse(trimmed);
+                if (parsed?.type === 'missed_video_call') {
+                  return 'Missed video call';
+                }
+                if (parsed?.type === 'video_call_completed') {
+                  return 'Video call ended';
+                }
+              } catch {
+                // Fall through to raw text
+              }
+            }
+
+            return trimmed.length > maxLength ? `${trimmed.substring(0, maxLength)}...` : trimmed;
           };
 
           return (
@@ -681,7 +688,7 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
                     color: isUnread ? 'rgba(0, 0, 0, 0.9)' : 'rgba(0, 0, 0, 0.6)',
                   }}
                 >
-                  {truncateMessage(convo.lastMessage || 'No messages yet')}
+                  {getDisplayMessage(convo.lastMessage || 'No messages yet')}
                 </p>
               </div>
 

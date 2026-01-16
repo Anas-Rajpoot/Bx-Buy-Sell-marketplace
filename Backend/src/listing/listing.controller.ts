@@ -31,18 +31,20 @@ export class ListingController {
   @Get()
   @ApiQuery({ name: 'status', required: false, description: 'Filter by status (PUBLISH, DRAFT)' })
   @ApiQuery({ name: 'category', required: false, description: 'Filter by category name' })
+  @ApiQuery({ name: 'userId', required: false, description: 'Filter by user ID' })
   @ApiQuery({ name: 'page', required: false, description: 'Page number for pagination' })
   @ApiQuery({ name: 'limit', required: false, description: 'Number of items per page' })
   @ApiQuery({ name: 'nocache', required: false, description: 'Bypass cache (true/false)' })
   async findAll(
     @Query('status') status?: string,
     @Query('category') category?: string,
+    @Query('userId') userId?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('nocache') nocache?: string,
   ) {
     // Create cache key based on query parameters
-    const cacheKey = `${this.constructor.name}:${status || 'all'}:${category || 'all'}:${page || '1'}:${limit || 'all'}`;
+    const cacheKey = `${this.constructor.name}:${status || 'all'}:${category || 'all'}:${userId || 'all'}:${page || '1'}:${limit || 'all'}`;
     
     // Check cache only if nocache is not set
     if (nocache !== 'true') {
@@ -56,6 +58,7 @@ export class ListingController {
     const filters = {
       status: status as 'PUBLISH' | 'DRAFT' | undefined,
       category,
+      userId,
       page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
     };

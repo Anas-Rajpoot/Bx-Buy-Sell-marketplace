@@ -10,6 +10,7 @@ export class ListingService {
   async findAll(filters?: {
     status?: 'PUBLISH' | 'DRAFT';
     category?: string;
+    userId?: string;
     page?: number;
     limit?: number;
   }) {
@@ -28,6 +29,11 @@ export class ListingService {
           name: filters.category,
         },
       };
+    }
+
+    // Filter by user ID if provided
+    if (filters?.userId) {
+      where.userId = filters.userId;
     }
     
     // Calculate pagination

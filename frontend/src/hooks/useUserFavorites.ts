@@ -8,21 +8,26 @@ export const useUserFavorites = (userId: string | undefined) => {
       if (!userId) throw new Error("User ID is required");
 
       try {
-        // Get favorites from backend (already includes listing data)
-        const response = await apiClient.getFavorites();
+        // Get favorites for the target user (includes listing data)
+        const response = await apiClient.getFavoritesByUserId(userId);
         
         if (response.success && response.data) {
-          const favorites = Array.isArray(response.data) ? response.data : [];
-          
-          // Backend returns favorites with listing included
-          // Map to expected format
-          return favorites.map((fav: any) => ({
-            id: fav.id,
-            user_id: fav.userId || userId,
-            listing_id: fav.listingId || (fav.listing?.id),
-            created_at: fav.createdAt || fav.created_at,
-            listing: fav.listing || null,
+          const payload = response.data as any;
+          const favorites = Array.isArray(payload)
+            ? payload
+            : Array.isArray(payload?.data)
+              ? payload.data
+              : Array.isArray(payload?.favorites)
+                ? payload.favorites
+                : [];
+
+          // Keep raw favorites with listing data (used to build the same UI as /favourites)
+          const favoritesWithListings = favorites.map((fav: any) => ({
+            ...fav,
+            listing: fav.listing || fav,
           }));
+
+          return favoritesWithListings;
         }
         
         return [];

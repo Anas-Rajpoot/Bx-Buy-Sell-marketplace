@@ -27,6 +27,22 @@ export class UserService {
       omit: {
         password_hash: true,
       },
+      include: {
+        preferences: {
+          include: {
+            businessCategory: true,
+            niche: true,
+            financial: {
+              include: {
+                age_range: true,
+                yearly_profit_range: true,
+                profit_multiple_range: true,
+                revenue_multiple_range: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -70,6 +86,14 @@ export class UserService {
     });
   }
 
+  async getFavouriteCount(id: string) {
+    return this.db.favourite.count({
+      where: {
+        userId: `${id}`,
+      },
+    });
+  }
+
   async addToFavourite(id: string, listingId: string) {
     return this.db.favourite.create({
       data: {
@@ -105,5 +129,134 @@ export class UserService {
 
   async deleteUser(id: string) {
     return await this.db.user.delete({ where: { id: id } });
+  }
+
+  async upsertPreferences(
+    userId: string,
+    payload: {
+      background?: string | null;
+      businessCategories?: string[];
+      niches?: string[];
+      sellerLocation?: string | null;
+      targetLocation?: string | null;
+      listingPriceRange?: { min?: string | null; max?: string | null } | null;
+      businessAgeRange?: { min?: string | null; max?: string | null } | null;
+      yearlyProfitRange?: { min?: string | null; max?: string | null } | null;
+      profitMultipleRange?: { min?: string | null; max?: string | null } | null;
+    },
+  ) {
+    if (payload.background !== undefined) {
+      await this.db.user.update({
+        where: { id: userId },
+        data: { background: payload.background || null },
+      });
+    }
+
+    const existing = await this.db.preference.findUnique({
+      where: { userId },
+      include: {
+        financial: {
+          include: {
+            age_range: true,
+            yearly_profit_range: true,
+            profit_multiple_range: true,
+            revenue_multiple_range: true,
+          },
+        },
+      },
+    });
+
+    const businessCategories = (payload.businessCategories || [])
+      .map((name) => name.trim())
+      .filter(Boolean)
+      .map((name) => ({ name }));
+
+    const niches = (payload.niches || [])
+      .map((name) => name.trim())
+      .filter(Boolean)
+      .map((name) => ({ name }));
+
+    const rangeData = (range?: { min?: string | null; max?: string | null } | null, country?: string | null) => {
+      if (!range?.min && !range?.max && !country) return null;
+      return {
+        min: range?.min || "",
+        max: range?.max || "",
+        country: country || null,
+      };
+    };
+
+    const listingPriceRange = rangeData(payload.listingPriceRange, payload.targetLocation);
+    const businessAgeRange = rangeData(payload.businessAgeRange);
+    const yearlyProfitRange = rangeData(payload.yearlyProfitRange);
+    const profitMultipleRange = rangeData(payload.profitMultipleRange);
+
+    if (existing) {
+      await this.db.businessCategory.deleteMany({ where: { preferenceId: existing.id } });
+      await this.db.niche.deleteMany({ where: { preferenceId: existing.id } });
+
+      const financialUpdate: any = {
+        seller_location: payload.sellerLocation || null,
+      };
+
+      if (businessAgeRange) {
+        financialUpdate.age_range = existing.financial?.age_range
+          ? { update: businessAgeRange }
+          : { create: businessAgeRange };
+      }
+
+      if (yearlyProfitRange) {
+        financialUpdate.yearly_profit_range = existing.financial?.yearly_profit_range
+          ? { update: yearlyProfitRange }
+          : { create: yearlyProfitRange };
+      }
+
+      if (profitMultipleRange) {
+        financialUpdate.profit_multiple_range = existing.financial?.profit_multiple_range
+          ? { update: profitMultipleRange }
+          : { create: profitMultipleRange };
+      }
+
+      if (listingPriceRange) {
+        financialUpdate.revenue_multiple_range = existing.financial?.revenue_multiple_range
+          ? { update: listingPriceRange }
+          : { create: listingPriceRange };
+      }
+
+      return this.db.preference.update({
+        where: { id: existing.id },
+        data: {
+          businessCategory: businessCategories.length ? { create: businessCategories } : undefined,
+          niche: niches.length ? { create: niches } : undefined,
+          financial: existing.financial
+            ? { update: financialUpdate }
+            : {
+                create: {
+                  seller_location: payload.sellerLocation || null,
+                  age_range: businessAgeRange ? { create: businessAgeRange } : undefined,
+                  yearly_profit_range: yearlyProfitRange ? { create: yearlyProfitRange } : undefined,
+                  profit_multiple_range: profitMultipleRange ? { create: profitMultipleRange } : undefined,
+                  revenue_multiple_range: listingPriceRange ? { create: listingPriceRange } : undefined,
+                },
+              },
+        },
+      });
+    }
+
+    return this.db.preference.create({
+      data: {
+        user: { connect: { id: userId } },
+        businessCategory: businessCategories.length ? { create: businessCategories } : undefined,
+        niche: niches.length ? { create: niches } : undefined,
+        financial: {
+          create: {
+            seller_location: payload.sellerLocation || null,
+            age_range: businessAgeRange ? { create: businessAgeRange } : undefined,
+            yearly_profit_range: yearlyProfitRange ? { create: yearlyProfitRange } : undefined,
+            profit_multiple_range: profitMultipleRange ? { create: profitMultipleRange } : undefined,
+            revenue_multiple_range: listingPriceRange ? { create: listingPriceRange } : undefined,
+          },
+        },
+      },
+    });
   }
 }

@@ -278,7 +278,7 @@ const Chat = () => {
           {/* Third Div - Chat Details */}
           {selectedConversation && chatRoomData && (
             <div
-              className="hidden 2xl:flex flex-col flex-shrink-0 w-full 2xl:w-[383px]"
+              className="hidden xl:flex flex-col flex-shrink-0 w-full xl:w-[320px] 2xl:w-[383px]"
               style={{
                 height: '100%',
                 maxHeight: '100%',

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
@@ -44,6 +44,7 @@ export default function AdminTeamMembers() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 15;
   const { data: members, isLoading, error, refetch } = useTeamMembers();
   const updateAvailability = useUpdateAvailability();
 
@@ -59,6 +60,17 @@ export default function AdminTeamMembers() {
       member.email.toLowerCase().includes(query)
     );
   }) || [];
+
+  const totalPages = Math.max(1, Math.ceil(filteredMembers.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const paginatedMembers = filteredMembers.slice(startIndex, startIndex + pageSize);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -363,7 +375,7 @@ export default function AdminTeamMembers() {
                       </TableRow>
                     </TableHeader>
                       <TableBody>
-                    {filteredMembers.map((member, index) => {
+                    {paginatedMembers.map((member, index) => {
                       // Determine status button styling
                       const getStatusStyle = (status: string) => {
                         if (status === 'available' || status === 'online') {
@@ -398,7 +410,9 @@ export default function AdminTeamMembers() {
                         key={member.id}
                         className="border-border hover:bg-muted/5"
                       >
-                        <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap">{index + 1}</TableCell>
+                        <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap">
+                          {startIndex + index + 1}
+                        </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <div className="flex items-center gap-2 sm:gap-3">
                             <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
@@ -542,37 +556,62 @@ export default function AdminTeamMembers() {
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-border">
                   <p className="text-xs sm:text-sm text-muted-foreground">
-                    Showing {filteredMembers.length} of {members?.length || 0}
+                    Showing {paginatedMembers.length} of {filteredMembers.length}
                   </p>
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" disabled>
-                      <span className="text-xs sm:text-sm">←</span>
-                    </Button>
-                    <Button 
+                  <div className="flex items-center gap-[10px]">
+                    <Button
+                      variant="ghost"
                       size="icon"
-                      className={`h-8 w-8 sm:h-10 sm:w-10 text-xs sm:text-sm ${currentPage === 1 ? "bg-accent text-accent-foreground" : ""}`}
-                      onClick={() => setCurrentPage(1)}
+                      className="h-8 w-8"
+                      disabled={safeCurrentPage === 1}
+                      onClick={() => setCurrentPage(Math.max(1, safeCurrentPage - 1))}
+                      style={{
+                        borderRadius: '10px',
+                        border: '1px solid #EBF0ED',
+                        background: '#FFFFFF',
+                        padding: '10px 16px',
+                      }}
                     >
-                      1
+                      <svg width="6" height="12" viewBox="0 0 6 12" fill="none">
+                        <path d="M5 1L1 6L5 11" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
                     </Button>
-                    <Button 
-                      variant="ghost" 
+                    {Array.from({ length: totalPages }, (_, i) => {
+                      const page = i + 1;
+                      return (
+                        <Button 
+                          key={page}
+                          size="icon"
+                          className="h-8 w-8 text-xs"
+                          onClick={() => setCurrentPage(page)}
+                          style={{
+                            borderRadius: '10px',
+                            border: '1px solid #EBF0ED',
+                            background: safeCurrentPage === page ? '#C6FE1F' : '#FFFFFF',
+                            padding: '10px 16px',
+                            color: '#000000',
+                          }}
+                        >
+                          {page}
+                        </Button>
+                      );
+                    })}
+                    <Button
+                      variant="ghost"
                       size="icon"
-                      className="h-8 w-8 sm:h-10 sm:w-10 text-xs sm:text-sm"
-                      onClick={() => setCurrentPage(2)}
+                      className="h-8 w-8"
+                      disabled={safeCurrentPage === totalPages}
+                      onClick={() => setCurrentPage(Math.min(totalPages, safeCurrentPage + 1))}
+                      style={{
+                        borderRadius: '10px',
+                        border: '1px solid #EBF0ED',
+                        background: '#FFFFFF',
+                        padding: '10px 16px',
+                      }}
                     >
-                      2
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="h-8 w-8 sm:h-10 sm:w-10 text-xs sm:text-sm"
-                      onClick={() => setCurrentPage(3)}
-                    >
-                      3
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
-                      <span className="text-xs sm:text-sm">→</span>
+                      <svg width="6" height="12" viewBox="0 0 6 12" fill="none">
+                        <path d="M1 1L5 6L1 11" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
                     </Button>
                   </div>
                 </div>

@@ -461,6 +461,7 @@ class ApiClient {
     category?: string;
     status?: string;
     nocache?: string;
+    userId?: string;
   }) {
     const queryParams = new URLSearchParams();
     if (params) {
@@ -770,8 +771,9 @@ class ApiClient {
   }
 
   // User endpoints
-  async getAllUsers() {
-    return this.request('/user');
+  async getAllUsers(nocache: boolean = false) {
+    const url = nocache ? '/user?nocache=true' : '/user';
+    return this.request(url);
   }
 
   async getUserById(id: string) {
@@ -816,6 +818,23 @@ class ApiClient {
     });
   }
 
+  async updateUserPreferences(userId: string, preferences: {
+    background?: string | null;
+    businessCategories?: string[];
+    niches?: string[];
+    sellerLocation?: string | null;
+    targetLocation?: string | null;
+    listingPriceRange?: { min?: string | null; max?: string | null } | null;
+    businessAgeRange?: { min?: string | null; max?: string | null } | null;
+    yearlyProfitRange?: { min?: string | null; max?: string | null } | null;
+    profitMultipleRange?: { min?: string | null; max?: string | null } | null;
+  }) {
+    return this.request(`/user/preferences/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(preferences),
+    });
+  }
+
   async deleteUser(id: string) {
     return this.request(`/user/${id}`, {
       method: 'DELETE',
@@ -840,6 +859,14 @@ class ApiClient {
   // Favorites endpoints
   async getFavorites() {
     return this.request('/user/favourite');
+  }
+
+  async getFavoritesByUserId(userId: string) {
+    return this.request(`/user/favourite/user/${userId}`);
+  }
+
+  async getFavoritesCountByUserId(userId: string) {
+    return this.request(`/user/favourite/user/${userId}/count`);
   }
 
   async addFavorite(listingId: string) {
