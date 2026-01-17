@@ -370,12 +370,23 @@ export const AdminConversationList = ({
             const lastMessageAt = conv.last_message_at || conv.updatedAt || conv.createdAt;
             
             // Truncate message
-            const truncateMessage = (text: string, maxLength: number = 40) => {
+            const getMessagePreview = (text: string | null, maxLength: number = 40) => {
               if (!text) return 'No messages yet';
+              try {
+                const parsed = JSON.parse(text);
+                if (parsed?.type === 'missed_video_call') {
+                  return 'Missed video call';
+                }
+                if (parsed?.type === 'video_call_completed') {
+                  return 'Video call ended';
+                }
+              } catch (e) {
+                // Not JSON, continue
+              }
               return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
             };
             
-            const lastMessage = truncateMessage(conv.last_message || 'No messages yet');
+            const lastMessage = getMessagePreview(conv.last_message);
             const isUnread = conv.unread_count > 0;
             
             return (

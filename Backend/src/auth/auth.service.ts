@@ -75,8 +75,6 @@ export class AuthService {
     const hashedToken = await this.hashData(refreshToken);
     const loggedInUser = await this.userService.updateUser(user.id, {
       refresh_token: hashedToken,
-
-      is_online: true,
     });
 
     // Formatting Response
@@ -125,6 +123,7 @@ export class AuthService {
     await this.userService.updateUser(userId, {
       refresh_token: null,
       is_online: false,
+      last_offline: new Date(),
     });
     return true;
   }

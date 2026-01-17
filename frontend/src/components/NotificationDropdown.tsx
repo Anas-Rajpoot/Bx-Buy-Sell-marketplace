@@ -17,6 +17,12 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api";
 import { createSocketConnection } from "@/lib/socket";
+import {
+  deleteLocalNotification,
+  getLocalNotifications,
+  markAllLocalNotificationsAsRead,
+  markLocalNotificationAsRead,
+} from "@/lib/localNotifications";
 
 interface Notification {
   id: string;
@@ -79,14 +85,28 @@ export const NotificationDropdown = ({ userId, variant = "dark", customStyle = f
       const response = await apiClient.getNotifications();
       if (response.success && response.data) {
         const notifs = Array.isArray(response.data) ? response.data : [];
-        setNotifications(notifs);
-        setUnreadCount(notifs.filter((n) => !n.read).length || 0);
+        const localNotifs = userId ? getLocalNotifications(userId) : [];
+        const merged = [...localNotifs, ...notifs];
+        merged.sort((a: any, b: any) => {
+          const dateA = new Date(a.createdAt || a.created_at || 0).getTime();
+          const dateB = new Date(b.createdAt || b.created_at || 0).getTime();
+          return dateB - dateA;
+        });
+        setNotifications(merged);
+        setUnreadCount(merged.filter((n) => !n.read).length || 0);
       } else {
         // If response structure is different, try to extract data
         const data = (response as any).data;
         if (Array.isArray(data)) {
-          setNotifications(data);
-          setUnreadCount(data.filter((n: any) => !n.read).length || 0);
+          const localNotifs = userId ? getLocalNotifications(userId) : [];
+          const merged = [...localNotifs, ...data];
+          merged.sort((a: any, b: any) => {
+            const dateA = new Date(a.createdAt || a.created_at || 0).getTime();
+            const dateB = new Date(b.createdAt || b.created_at || 0).getTime();
+            return dateB - dateA;
+          });
+          setNotifications(merged);
+          setUnreadCount(merged.filter((n: any) => !n.read).length || 0);
         }
       }
     } catch (error) {
@@ -96,6 +116,12 @@ export const NotificationDropdown = ({ userId, variant = "dark", customStyle = f
 
   const markAsRead = async (notificationId: string) => {
     try {
+      if (userId && notificationId.startsWith("local-")) {
+        const updated = markLocalNotificationAsRead(userId, notificationId);
+        setNotifications(updated);
+        setUnreadCount(updated.filter((n) => !n.read).length || 0);
+        return;
+      }
       const response = await apiClient.markNotificationAsRead(notificationId);
       if (response.success) {
         // Update local state immediately
@@ -113,6 +139,12 @@ export const NotificationDropdown = ({ userId, variant = "dark", customStyle = f
 
   const deleteNotification = async (notificationId: string) => {
     try {
+      if (userId && notificationId.startsWith("local-")) {
+        const updated = deleteLocalNotification(userId, notificationId);
+        setNotifications(updated);
+        setUnreadCount(updated.filter((n) => !n.read).length || 0);
+        return;
+      }
       const response = await apiClient.deleteNotification(notificationId);
       if (response.success) {
         // Update local state immediately
@@ -134,6 +166,9 @@ export const NotificationDropdown = ({ userId, variant = "dark", customStyle = f
   const markAllAsRead = async () => {
     if (!userId) return;
     try {
+      const localUpdated = markAllLocalNotificationsAsRead(userId);
+      setNotifications(prev => prev.map(n => n.id.startsWith("local-") ? { ...n, read: true } : n));
+      setUnreadCount(localUpdated.filter((n) => !n.read).length || 0);
       const response = await apiClient.markAllNotificationsAsRead();
       if (response.success) {
         // Update local state immediately

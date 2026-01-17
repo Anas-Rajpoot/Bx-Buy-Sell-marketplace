@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { RoleEnum } from 'common/enum/role.enum';
 import { createZodDto } from '@anatine/zod-nestjs';
 import * as bcrypt from 'bcrypt';
-import { UserSchema } from './user.dto';
+import { UserSchema, UserUpdateSchema } from './user.dto';
 
 const UserAdminSchema = z
   .object({
@@ -41,7 +41,7 @@ export const AddUserSchema = UserAdminSchema.superRefine((data, ctx) => {
 export type addUserType = z.infer<typeof AddUserSchema>;
 export class AddUserSchemaDTO extends createZodDto(AddUserSchema) {}
 
- export const UserAdminUpdateSchema = UserSchema.partial().superRefine((data, ctx) => {
+ export const UserAdminUpdateSchema = UserUpdateSchema.superRefine((data, ctx) => {
     if(data.role)
     {
         if (!RoleEnum.Values[data.role.toUpperCase()]) {

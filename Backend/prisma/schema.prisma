@@ -84,6 +84,7 @@ model User {
   otp_code          String?
   profile_pic       String?
   is_online         Boolean?        @default(false)
+  last_offline      DateTime?
   zip_code          String?
   background        String?
   is_email_verified Boolean         @default(false)

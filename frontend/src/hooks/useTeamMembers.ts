@@ -9,6 +9,7 @@ export interface TeamMember {
   role: string;
   created_at: string;
   availability_status: string;
+  last_offline?: string | null;
 }
 
 export const useTeamMembers = () => {
@@ -65,6 +66,7 @@ export const useTeamMembers = () => {
             role: user.role?.toLowerCase() || "user",
             created_at: user.created_at || user.createdAt || new Date().toISOString(),
             availability_status: user.availability_status || availabilityStatus,
+          last_offline: user.last_offline || null,
           };
         });
 

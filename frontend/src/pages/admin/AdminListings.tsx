@@ -27,6 +27,9 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { AssignResponsibleDialog } from "@/components/admin/AssignResponsibleDialog";
 import { ExLogo } from "@/components/ExLogo";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { addLocalNotification } from "@/lib/localNotifications";
+import { setLocalListingAssignment } from "@/lib/adminAssignments";
 
 type SortField = "created_at" | "status" | "user_name";
 type SortOrder = "asc" | "desc";
@@ -35,6 +38,7 @@ export default function AdminListings() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: listings, isLoading, refetch } = useAdminListings();
+  const { data: teamMembers } = useTeamMembers();
   const { data: categories } = useCategories();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -82,7 +86,7 @@ export default function AdminListings() {
   };
 
   const handleQuickEdit = (listingId: string) => {
-    navigate(`/admin/listings/${listingId}`);
+    navigate(`/listing/${listingId}/edit`);
   };
 
   const handleToggleManagedByEx = async (listingId: string, currentStatus: boolean) => {
@@ -163,35 +167,87 @@ export default function AdminListings() {
     }
   };
 
-  const handleAssignResponsible = async (listingId: string, teamMemberId: string | null) => {
+  const handleAssignResponsible = async (listingId: string, rememberMemberId: string | null) => {
+    const teamMember = teamMembers?.find((member) => member.id === rememberMemberId) || null;
+    const applyLocalAssignment = () => {
+      if (rememberMemberId && teamMember) {
+        setLocalListingAssignment(listingId, {
+          userId: teamMember.id,
+          full_name: teamMember.full_name || null,
+          avatar_url: teamMember.avatar_url || null,
+          email: teamMember.email || null,
+          role: teamMember.role || null,
+        });
+      } else {
+        setLocalListingAssignment(listingId, null);
+      }
+
+      queryClient.setQueryData(["admin-listings"], (oldData: any) => {
+        if (!oldData) return oldData;
+        return oldData.map((listing: any) => {
+          if (listing.id !== listingId) return listing;
+          if (!rememberMemberId || !teamMember) {
+            return { ...listing, responsible_user_id: null, responsible_user: null };
+          }
+          return {
+            ...listing,
+            responsible_user_id: teamMember.id,
+            responsible_user: {
+              id: teamMember.id,
+              full_name: teamMember.full_name || null,
+              avatar_url: teamMember.avatar_url || null,
+              user_type: teamMember.role?.toLowerCase() || null,
+              verified: teamMember.verified ?? null,
+            },
+          };
+        });
+      });
+    };
+
     try {
-      console.log(`Assigning responsible for listing ${listingId}:`, teamMemberId);
+      console.log(`Assigning responsible for listing ${listingId}:`, rememberMemberId);
       
       // Try to update responsible_user_id
       // Note: Backend may need to add this field to the listing schema
-      const response = await apiClient.updateListing(listingId, { responsible_user_id: teamMemberId });
+      const response = await apiClient.updateListing(listingId, { responsible_user_id: rememberMemberId });
       
       console.log('Assign response:', response);
       
       if (!response.success) {
         // If backend doesn't support it yet, show a helpful message
         if (response.error?.includes('responsible_user_id') || response.error?.includes('Unknown')) {
-          toast.info("Backend support for 'Responsible User' is being added. This feature will be available soon.");
+          applyLocalAssignment();
+          toast.success(
+            rememberMemberId
+              ? "Assigned locally. Backend support will sync this automatically once available."
+              : "Assignment removed locally."
+          );
         } else {
           throw new Error(response.error || "Failed to assign responsible member");
         }
         return;
       }
 
-      const memberName = teamMemberId 
-        ? listings?.find(l => l.id === listingId)?.responsible_user?.full_name || "Team member"
+      applyLocalAssignment();
+      const memberName = rememberMemberId 
+        ? teamMember?.full_name || "Team member"
         : null;
       
       toast.success(
-        teamMemberId 
+        rememberMemberId 
           ? `✓ Assigned to ${memberName || "team member"}` 
           : "✗ Responsible member removed"
       );
+      
+      if (rememberMemberId && teamMember) {
+        const listingTitle = listings?.find(l => l.id === listingId)?.title || "listing";
+        addLocalNotification(rememberMemberId, {
+          title: "New listing assigned",
+          message: `You were assigned to handle "${listingTitle}".`,
+          type: "info",
+          link: `/admin/listings/${listingId}`,
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["admin-listings"] });
     } catch (error: any) {
       toast.error(error.message || "Failed to assign responsible member");
@@ -219,6 +275,55 @@ export default function AdminListings() {
   const handleRefresh = () => {
     refetch();
     toast.success("Listings refreshed");
+  };
+
+  const handleBlockUser = async (userId: string, userName: string) => {
+    if (!confirm(`Are you sure you want to block user "${userName}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await apiClient.updateUser(userId, { verified: false });
+      if (!response.success) {
+        if (response.error?.includes('verified') || response.error?.includes('Unknown')) {
+          toast.info("Backend support for blocking users is being added. This feature will be available soon.");
+        } else {
+          throw new Error(response.error || "Failed to block user");
+        }
+        return;
+      }
+
+      toast.success(`✓ User "${userName}" has been blocked`, {
+        duration: 4000,
+        description: "The user's account is now blocked and they cannot access the platform."
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin-listings"] });
+    } catch (error: any) {
+      toast.error(error.message || "Failed to block user");
+      console.error("Error blocking user:", error);
+    }
+  };
+
+  const handleUnblockUser = async (userId: string, userName: string) => {
+    if (!confirm(`Are you sure you want to unblock user "${userName}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await apiClient.updateUser(userId, { verified: true });
+      if (!response.success) {
+        throw new Error(response.error || "Failed to unblock user");
+      }
+
+      toast.success(`✓ User "${userName}" has been unblocked`, {
+        duration: 4000,
+        description: "The user's account is now active and they can access the platform."
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin-listings"] });
+    } catch (error: any) {
+      toast.error(error.message || "Failed to unblock user");
+      console.error("Error unblocking user:", error);
+    }
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -788,12 +893,21 @@ export default function AdminListings() {
                                 <DropdownMenuItem 
                                   className="cursor-pointer hover:bg-accent/20 rounded-md"
                                   onClick={() => {
-                                    // Block/Disable functionality - you can implement this
-                                    toast.info("Block/Disable functionality coming soon");
+                                    const ownerId = listing.user_id || listing.userId;
+                                    const ownerName = listing.profile?.full_name || 'Unknown User';
+                                    if (!ownerId) {
+                                      toast.error("User ID not found for this listing");
+                                      return;
+                                    }
+                                    if (listing.profile?.verified === false) {
+                                      handleUnblockUser(ownerId, ownerName);
+                                    } else {
+                                      handleBlockUser(ownerId, ownerName);
+                                    }
                                   }}
                                 >
                                   <XCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-2 text-gray-600" />
-                                  <span>Block</span>
+                                  <span>{listing.profile?.verified === false ? "Unblock" : "Block"}</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
                                   className="cursor-pointer text-red-600 hover:bg-red-50 rounded-md"

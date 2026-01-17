@@ -124,7 +124,11 @@ export class UserService {
 
 
   async updateUser(id: string, body: UpdateUserType | UpdateAdminUserType) {
-    return await this.db.user.update({ where: { id: id }, data: body });
+    const data: any = { ...body };
+    if (body && (body as any).is_online === false) {
+      data.last_offline = new Date();
+    }
+    return await this.db.user.update({ where: { id: id }, data });
   }
 
   async deleteUser(id: string) {

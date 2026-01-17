@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
+import { getLocalListingAssignments } from "@/lib/adminAssignments";
 
 export const useAdminListings = () => {
   return useQuery({
@@ -40,6 +41,7 @@ export const useAdminListings = () => {
                 : user.first_name || user.last_name || null,
               avatar_url: user.profile_pic || null,
               user_type: user.role?.toLowerCase() || null,
+              verified: user.verified ?? null,
             });
           }
         } catch (error) {
@@ -48,6 +50,7 @@ export const useAdminListings = () => {
       }
       
       // Combine listings with profile data and normalize structure
+      const localAssignments = getLocalListingAssignments();
       const listingsWithProfiles = listings.map((listing: any) => {
         // Get title from brand data - brand is an array of ListingQuestion objects
         // Each question has a 'question' and 'answer' field
@@ -106,8 +109,21 @@ export const useAdminListings = () => {
         const categoryName = categoryInfo?.name || null;
         
         // Get responsible user if assigned
-        const responsibleUserId = listing.responsible_user_id || listing.responsibleUserId || null;
-        const responsibleUser = responsibleUserId ? profilesMap.get(responsibleUserId) : null;
+        let responsibleUserId = listing.responsible_user_id || listing.responsibleUserId || null;
+        let responsibleUser = responsibleUserId ? profilesMap.get(responsibleUserId) : null;
+
+        // Fallback to local assignments if backend doesn't provide it
+        const localAssignment = localAssignments[listing.id];
+        if (!responsibleUserId && localAssignment?.userId) {
+          responsibleUserId = localAssignment.userId;
+          responsibleUser = {
+            id: localAssignment.userId,
+            full_name: localAssignment.full_name || null,
+            avatar_url: localAssignment.avatar_url || null,
+            user_type: localAssignment.role?.toLowerCase() || null,
+            verified: null,
+          };
+        }
 
         // Normalize managed_by_ex - check multiple possible formats
         const managedByEx = listing.managed_by_ex === true || 

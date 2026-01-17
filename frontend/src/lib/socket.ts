@@ -20,6 +20,8 @@ export const createSocketConnection = (options?: {
   upgrade?: boolean;
 }): Socket => {
   const authToken = localStorage.getItem('auth_token');
+  let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  const heartbeatIntervalMs = 25_000;
   
   const socket = io(WS_URL, {
     transports: options?.transports || ['websocket', 'polling'],
@@ -42,10 +44,20 @@ export const createSocketConnection = (options?: {
   // Log connection events for debugging
   socket.on('connect', () => {
     console.log('✅ Socket.IO connected successfully! ID:', socket.id);
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+    }
+    heartbeatTimer = setInterval(() => {
+      socket.emit('user:heartbeat', { ts: Date.now() });
+    }, heartbeatIntervalMs);
   });
 
   socket.on('disconnect', (reason) => {
     console.log('❌ Socket.IO disconnected:', reason);
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
   });
 
   socket.on('connect_error', (error) => {

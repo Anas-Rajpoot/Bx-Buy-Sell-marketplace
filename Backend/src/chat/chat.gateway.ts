@@ -34,6 +34,11 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   // Track active connections and their rooms
   private activeConnections = new Map<string, Set<string>>();
+  private userSockets = new Map<string, Set<string>>();
+  private lastSeenByUser = new Map<string, number>();
+  private readonly HEARTBEAT_TIMEOUT_MS = 90_000;
+  private readonly HEARTBEAT_CHECK_INTERVAL_MS = 30_000;
+  private heartbeatInterval?: NodeJS.Timeout;
 
   constructor(
     private readonly redisAdapterService: RedisAdapterService,
@@ -104,6 +109,47 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     } catch (error) {
       console.error('❌ Failed to connect Redis adapter:', error);
     }
+
+    try {
+      // On server boot, clear stale online flags to ensure presence is socket-driven
+      await this.db.user.updateMany({
+        where: { is_online: true },
+        data: { is_online: false, last_offline: new Date() },
+      });
+    } catch (error) {
+      console.error('❌ Failed to reset online status on boot:', error);
+    }
+
+    if (!this.heartbeatInterval) {
+      this.heartbeatInterval = setInterval(() => {
+        const now = Date.now();
+        this.lastSeenByUser.forEach((lastSeen, userId) => {
+          if (now - lastSeen > this.HEARTBEAT_TIMEOUT_MS) {
+            const sockets = this.userSockets.get(userId) || new Set();
+            sockets.forEach((socketId) => {
+              const socket = this.io.sockets.sockets.get(socketId);
+              if (socket) {
+                socket.disconnect(true);
+              }
+            });
+            this.userSockets.delete(userId);
+            this.lastSeenByUser.delete(userId);
+            this.db.user.update({
+              where: { id: userId },
+              data: { is_online: false, last_offline: new Date() },
+            }).then(() => {
+              this.io.emit('user:status-changed', {
+                userId,
+                isOnline: false,
+                last_offline: new Date().toISOString(),
+              });
+            }).catch((error) => {
+              console.error('❌ Error updating user offline status (heartbeat):', error);
+            });
+          }
+        });
+      }, this.HEARTBEAT_CHECK_INTERVAL_MS);
+    }
   }
 
   async handleConnection(client: Socket) {
@@ -151,6 +197,11 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
       if (userId) {
         try {
+          const sockets = this.userSockets.get(userId) || new Set();
+          sockets.add(client.id);
+          this.userSockets.set(userId, sockets);
+          this.lastSeenByUser.set(userId, Date.now());
+
           await this.db.user.update({
             where: { id: userId },
             data: { is_online: true },
@@ -160,6 +211,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           this.io.emit('user:status-changed', {
             userId: userId,
             isOnline: true,
+            last_offline: null,
           });
         } catch (error) {
           console.error('❌ Error updating user online status:', error);
@@ -184,33 +236,44 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     
     // CRITICAL: Update user online status when they disconnect
     if (userId) {
-      // Check if user has other active connections
-      const userRoom = `user:${userId}`;
-      const userRoomClients = this.io.sockets.adapter.rooms.get(userRoom);
-      const hasOtherConnections = userRoomClients && userRoomClients.size > 0;
+      const sockets = this.userSockets.get(userId) || new Set();
+      sockets.delete(client.id);
+      if (sockets.size > 0) {
+        this.userSockets.set(userId, sockets);
+        this.lastSeenByUser.set(userId, Date.now());
+        return;
+      }
+      this.userSockets.delete(userId);
+      this.lastSeenByUser.delete(userId);
       
       // Only mark offline if no other connections exist
-      if (!hasOtherConnections) {
-        this.db.user.update({
-          where: { id: userId },
-          data: { is_online: false },
-        }).then(() => {
-          console.log('✅ User marked as offline:', userId);
-          
-          // Emit user offline status to all clients
-          this.io.emit('user:status-changed', {
-            userId: userId,
-            isOnline: false,
-          });
-        }).catch((error) => {
-          console.error('❌ Error updating user offline status:', error);
+      this.db.user.update({
+        where: { id: userId },
+        data: { is_online: false, last_offline: new Date() },
+      }).then(() => {
+        console.log('✅ User marked as offline:', userId);
+        
+        // Emit user offline status to all clients
+        this.io.emit('user:status-changed', {
+          userId: userId,
+          isOnline: false,
+          last_offline: new Date().toISOString(),
         });
-      } else {
-        console.log('ℹ️ User still has other connections, keeping online status');
-      }
+      }).catch((error) => {
+        console.error('❌ Error updating user offline status:', error);
+      });
     }
     
     this.activeConnections.delete(client.id);
+  }
+
+  @SubscribeMessage('user:heartbeat')
+  async handleHeartbeat(
+    @ConnectedSocket() client: Socket,
+  ) {
+    const userId = (client as any).userId;
+    if (!userId) return;
+    this.lastSeenByUser.set(userId, Date.now());
   }
 
   // Join Room - CRITICAL: Only allow joining ONE room at a time

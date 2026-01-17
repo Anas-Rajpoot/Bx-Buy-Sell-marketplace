@@ -255,17 +255,45 @@ class ApiClient {
         
         // Extract error message from various response formats
         let errorMessage = `API Error: ${response.status}`;
+
+        const formatFieldLabel = (label: string) => {
+          if (!label) return '';
+          const withSpaces = label.replace(/_/g, ' ').trim();
+          return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
+        };
+
+        const extractZodErrors = (payload: any): string | null => {
+          if (!payload || typeof payload !== 'object') return null;
+          const messages: string[] = [];
+          if (Array.isArray(payload._errors) && payload._errors.length > 0) {
+            messages.push(payload._errors.join(', '));
+          }
+          Object.entries(payload).forEach(([key, value]) => {
+            if (key === '_errors' || !value || typeof value !== 'object') return;
+            const fieldErrors = (value as any)._errors;
+            if (Array.isArray(fieldErrors) && fieldErrors.length > 0) {
+              messages.push(`${formatFieldLabel(key)}: ${fieldErrors.join(', ')}`);
+            }
+          });
+          return messages.length > 0 ? messages.join(' | ') : null;
+        };
+
         if (data) {
           if (typeof data === 'string') {
             errorMessage = data;
-          } else if (data.error) {
-            errorMessage = typeof data.error === 'string' 
-              ? data.error 
-              : (data.error.message || JSON.stringify(data.error));
-          } else if (data.message) {
-            errorMessage = typeof data.message === 'string' 
-              ? data.message 
-              : (data.message.message || JSON.stringify(data.message));
+          } else {
+            const zodMessage = extractZodErrors(data);
+            if (zodMessage) {
+              errorMessage = zodMessage;
+            } else if ((data as any).error) {
+              errorMessage = typeof (data as any).error === 'string' 
+                ? (data as any).error 
+                : ((data as any).error.message || JSON.stringify((data as any).error));
+            } else if ((data as any).message) {
+              errorMessage = typeof (data as any).message === 'string' 
+                ? (data as any).message 
+                : ((data as any).message.message || JSON.stringify((data as any).message));
+            }
           }
         }
         
@@ -808,9 +836,15 @@ class ApiClient {
     last_name?: string;
     email?: string;
     phone?: string;
+    address?: string;
+    country?: string;
+    city?: string;
+    state?: string;
+    zip_code?: string;
     role?: string;
     active?: boolean;
     availability_status?: string;
+    verified?: boolean;
   }) {
     return this.request(`/user/update-by-admin/${id}`, {
       method: 'PATCH',

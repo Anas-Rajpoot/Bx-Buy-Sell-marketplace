@@ -35,6 +35,34 @@ export const UserSchema = z.object({
 export type UserType = z.infer<typeof UserSchema>;
 export class UserSchemaDTO extends createZodDto(UserSchema) {}
 
-export const UserUpdateSchema = UserSchema.partial();
+export const UserUpdateSchema = z.object({
+  first_name: z.string().min(1).optional().nullable(),
+  last_name: z.string().min(1).optional().nullable(),
+  role: RoleEnum.optional(),
+
+  business_name: z.string().optional().nullable(),
+  contact_name: z.string().optional(),
+
+  email: z.string().email().optional(),
+  phone: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  country: z.string().optional().nullable(),
+  permissions: z.array(z.string()).optional(),
+  state: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  zip_code: z.string().optional().nullable(),
+  background: z.string().optional().nullable(),
+  profile_pic: z.string().optional().nullable(),
+  is_online: z.boolean().optional(),
+  last_offline: z.date().optional().nullable(),
+
+  password_hash: z.string().optional(),
+  refresh_token: z.string().optional().nullable(),
+  otp_code: z.string().optional(),
+
+  verified: z.boolean().optional(),
+  is_email_verified: z.boolean().optional(),
+  is_phone_verified: z.boolean().optional(),
+});
 export type UpdateUserType = z.infer<typeof UserUpdateSchema>;
 export class UserUpdateSchemaDTO extends createZodDto(UserUpdateSchema) {}

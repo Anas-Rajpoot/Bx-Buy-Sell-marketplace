@@ -22,6 +22,7 @@ import { useHandoverQuestions } from "@/hooks/useHandoverQuestions";
 import { useCategories } from "@/hooks/useCategories";
 import { useTools } from "@/hooks/useTools";
 import { useAccounts } from "@/hooks/useAccounts";
+import { useAccountQuestions } from "@/hooks/useAccountQuestions";
 
 const EditListing = () => {
   const { id } = useParams<{ id: string }>();
@@ -42,6 +43,8 @@ const EditListing = () => {
   const { data: categories = [] } = useCategories();
   const { data: tools = [] } = useTools();
   const { data: socialAccounts = [] } = useAccounts();
+  const { data: accountQuestions = [] } = useAccountQuestions();
+  const [uploadingFields, setUploadingFields] = useState<Set<string>>(new Set());
 
   // Fetch listing data
   const { data: listing, isLoading } = useQuery({
@@ -82,21 +85,46 @@ const EditListing = () => {
                           productQuestions.length > 0 || 
                           managementQuestions.length > 0 || 
                           adQuestions.length > 0 || 
-                          handoverQuestions.length > 0;
+                          handoverQuestions.length > 0 ||
+                          accountQuestions.length > 0 ||
+                          socialAccounts.length > 0;
       
       if (hasQuestions) {
         // Check if form data seems incomplete (only has category/status)
         const currentKeys = Object.keys(formData);
         const hasOnlyBasicData = currentKeys.length <= 2 && 
                                  (currentKeys.includes('category') || currentKeys.includes('listingStatus'));
+        const needsSocialReload = Array.isArray(listing?.social_account) &&
+          listing.social_account.length > 0 &&
+          (socialAccounts.length > 0 || accountQuestions.length > 0) &&
+          (!formData.socialAccounts || !formData.socialAccountQuestions);
         
-        if (hasOnlyBasicData) {
+        if (hasOnlyBasicData || needsSocialReload) {
           console.log('Re-loading form data now that questions are available');
           loadListingIntoForm();
         }
       }
     }
-  }, [listing, id, brandQuestions, statisticQuestions, productQuestions, managementQuestions, adQuestions, handoverQuestions]);
+  }, [
+    listing,
+    id,
+    brandQuestions,
+    statisticQuestions,
+    productQuestions,
+    managementQuestions,
+    adQuestions,
+    handoverQuestions,
+    socialAccounts,
+    accountQuestions,
+  ]);
+
+  const getTodayDate = () => {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const year = today.getFullYear();
+    return `${day}.${month}.${year}`;
+  };
 
   const loadListingIntoForm = () => {
     if (!listing) {
@@ -130,11 +158,12 @@ const EditListing = () => {
     if (listing.brand && Array.isArray(listing.brand)) {
       console.log('Processing brand questions:', listing.brand.length, 'Available question definitions:', brandQuestions.length);
       listing.brand.forEach((item: any) => {
-        if (item.question && item.answer) {
+        const answer = Array.isArray(item.answer) ? item.answer[0] : item.answer;
+        if (item.question && answer) {
           const questionId = matchQuestionToId(item.question, brandQuestions);
           if (questionId) {
             console.log('✓ Matched brand question:', item.question, '→ ID:', questionId, 'Answer:', item.answer);
-            transformedData[questionId] = item.answer;
+            transformedData[questionId] = answer;
           } else {
             console.warn('✗ Could not match brand question:', item.question, 'Available questions:', brandQuestions.map((q: any) => q.question));
           }
@@ -145,10 +174,11 @@ const EditListing = () => {
     // Extract statistics questions
     if (listing.statistics && Array.isArray(listing.statistics)) {
       listing.statistics.forEach((item: any) => {
+        const answer = Array.isArray(item.answer) ? item.answer[0] : item.answer;
         if (item.question) {
           const questionId = matchQuestionToId(item.question, statisticQuestions);
-          if (questionId && item.answer) {
-            transformedData[questionId] = item.answer;
+          if (questionId && answer) {
+            transformedData[questionId] = answer;
           }
         }
       });
@@ -157,10 +187,11 @@ const EditListing = () => {
     // Extract product questions
     if (listing.productQuestion && Array.isArray(listing.productQuestion)) {
       listing.productQuestion.forEach((item: any) => {
+        const answer = Array.isArray(item.answer) ? item.answer[0] : item.answer;
         if (item.question) {
           const questionId = matchQuestionToId(item.question, productQuestions);
-          if (questionId && item.answer) {
-            transformedData[questionId] = item.answer;
+          if (questionId && answer) {
+            transformedData[questionId] = answer;
           }
         }
       });
@@ -169,10 +200,11 @@ const EditListing = () => {
     // Extract management questions
     if (listing.managementQuestion && Array.isArray(listing.managementQuestion)) {
       listing.managementQuestion.forEach((item: any) => {
+        const answer = Array.isArray(item.answer) ? item.answer[0] : item.answer;
         if (item.question) {
           const questionId = matchQuestionToId(item.question, managementQuestions);
-          if (questionId && item.answer) {
-            transformedData[questionId] = item.answer;
+          if (questionId && answer) {
+            transformedData[questionId] = answer;
           }
         }
       });
@@ -181,10 +213,11 @@ const EditListing = () => {
     // Extract advertisement questions
     if (listing.advertisement && Array.isArray(listing.advertisement)) {
       listing.advertisement.forEach((item: any) => {
+        const answer = Array.isArray(item.answer) ? item.answer[0] : item.answer;
         if (item.question) {
           const questionId = matchQuestionToId(item.question, adQuestions);
-          if (questionId && item.answer) {
-            transformedData[questionId] = item.answer;
+          if (questionId && answer) {
+            transformedData[questionId] = answer;
           }
         }
       });
@@ -193,17 +226,95 @@ const EditListing = () => {
     // Extract handover questions
     if (listing.handover && Array.isArray(listing.handover)) {
       listing.handover.forEach((item: any) => {
+        const answer = Array.isArray(item.answer) ? item.answer[0] : item.answer;
         if (item.question) {
           const questionId = matchQuestionToId(item.question, handoverQuestions);
-          if (questionId && item.answer) {
-            transformedData[questionId] = item.answer;
+          if (questionId && answer) {
+            transformedData[questionId] = answer;
           }
         }
       });
     }
 
-    // Extract financials
+    // Extract social accounts (platforms + account questions)
+    if (listing.social_account && Array.isArray(listing.social_account)) {
+      const socialAccountsData: Record<string, { url?: string; followers?: string }> = {};
+      const socialAccountQuestionsData: Record<string, string> = {};
+
+      listing.social_account.forEach((acc: any) => {
+        const questionText = (acc.question || '').toLowerCase();
+        const answerText = acc.answer ? String(acc.answer) : '';
+
+        // Match account questions by question text
+        if (accountQuestions.length > 0 && acc.question) {
+          const questionId = matchQuestionToId(acc.question, accountQuestions);
+          if (questionId && answerText) {
+            socialAccountQuestionsData[questionId] = answerText;
+            return;
+          }
+        }
+
+        // Match platform by name in question text or answer_for
+        const platform = socialAccounts.find((sa: any) => {
+          const platformName = (sa.platform || sa.social_account_option || '').toLowerCase();
+          if (!platformName) return false;
+          return questionText.includes(platformName) || (acc.answer_for && platformName.includes(String(acc.answer_for).toLowerCase()));
+        });
+
+        if (platform) {
+          const platformId = platform.id;
+          if (!socialAccountsData[platformId]) {
+            socialAccountsData[platformId] = {};
+          }
+          if (answerText) {
+            // Try to split followers from URL if possible
+            const followersMatch = answerText.match(/\d+/);
+            if (followersMatch && answerText.toLowerCase().includes('follower')) {
+              socialAccountsData[platformId].followers = followersMatch[0];
+            } else {
+              socialAccountsData[platformId].url = answerText;
+            }
+          }
+        }
+      });
+
+      if (Object.keys(socialAccountsData).length > 0) {
+        transformedData.socialAccounts = socialAccountsData;
+      }
+      if (Object.keys(socialAccountQuestionsData).length > 0) {
+        transformedData.socialAccountQuestions = socialAccountQuestionsData;
+      }
+    }
+
+    // Extract financials (table format or legacy monthly/yearly)
     if (listing.financials && Array.isArray(listing.financials)) {
+      const tableFinancial = listing.financials.find((f: any) => f.name === '__FINANCIAL_TABLE__' && f.revenue_amount);
+      if (tableFinancial && tableFinancial.revenue_amount) {
+        try {
+          const tableData = JSON.parse(tableFinancial.revenue_amount);
+          if (tableData) {
+            transformedData.financialType = tableData.financialType || 'detailed';
+            transformedData.rowLabels = tableData.rowLabels || [
+              'Gross Revenue',
+              'Net Revenue',
+              'Cost of Goods',
+              'Advertising costs',
+              'Freelancer/Employees',
+              'Transaction Costs',
+              'Other Expenses',
+            ];
+            transformedData.columnLabels = tableData.columnLabels || [
+              { key: '2023', label: '2023' },
+              { key: '2024', label: '2024' },
+              { key: 'today', label: getTodayDate() },
+              { key: 'Forecast 2025', label: 'Forecast 2025' },
+            ];
+            transformedData.financialData = tableData.financialData || {};
+          }
+        } catch (error) {
+          console.error('Failed to parse financial table data:', error);
+        }
+      } else {
       const months = listing.financials.map((fin: any) => ({
         period: fin.name || '',
         revenue: fin.revenue_amount || '0',
@@ -212,6 +323,7 @@ const EditListing = () => {
       }));
       transformedData.months = months;
       transformedData.financialType = listing.financials[0]?.type === 'yearly' ? 'yearly' : 'monthly';
+      }
     }
 
     // Extract tools
@@ -248,8 +360,82 @@ const EditListing = () => {
     }
   }, [isAuthenticated, authLoading, navigate]);
 
+  const handleFileUpload = async (questionId: string, file: File, answerType: string) => {
+    setUploadingFields(prev => new Set(prev).add(questionId));
+    try {
+      const uploadType = answerType === "PHOTO" ? "photo" : "attachment";
+      const response = await apiClient.uploadFile(file, uploadType);
+      if (!response.success || !response.data) {
+        throw new Error(response.error || "Upload failed");
+      }
+      const fileUrl = response.data.url || response.data.path || "";
+      if (!fileUrl) {
+        throw new Error("No file URL returned");
+      }
+      setFormData({ ...formData, [questionId]: fileUrl });
+      toast.success("File uploaded successfully");
+    } catch (error: any) {
+      console.error("File upload failed:", error);
+      toast.error(error.message || "Failed to upload file");
+    } finally {
+      setUploadingFields(prev => {
+        const next = new Set(prev);
+        next.delete(questionId);
+        return next;
+      });
+    }
+  };
+
+  const handleAccountQuestionFileUpload = async (questionId: string, file: File, answerType: string) => {
+    setUploadingFields(prev => new Set(prev).add(questionId));
+    try {
+      const uploadType = answerType === "PHOTO" ? "photo" : "attachment";
+      const response = await apiClient.uploadFile(file, uploadType);
+      if (!response.success || !response.data) {
+        throw new Error(response.error || "Upload failed");
+      }
+      const fileUrl = response.data.url || response.data.path || "";
+      if (!fileUrl) {
+        throw new Error("No file URL returned");
+      }
+      setFormData({
+        ...formData,
+        socialAccountQuestions: {
+          ...(formData.socialAccountQuestions || {}),
+          [questionId]: fileUrl,
+        },
+      });
+      toast.success("File uploaded successfully");
+    } catch (error: any) {
+      console.error("File upload failed:", error);
+      toast.error(error.message || "Failed to upload file");
+    } finally {
+      setUploadingFields(prev => {
+        const next = new Set(prev);
+        next.delete(questionId);
+        return next;
+      });
+    }
+  };
+
   const renderField = (question: any) => {
-    const value = formData[question.id] || "";
+    const rawValue = formData[question.id];
+    const value = rawValue ?? "";
+    const isUploading = uploadingFields.has(question.id);
+    const normalizedDate = question.answer_type === "DATE" && typeof value === "string" && value
+      ? (() => {
+          const parsed = new Date(value);
+          return isNaN(parsed.getTime()) ? value : parsed.toISOString().split("T")[0];
+        })()
+      : value;
+    const normalizedYesNo = (question.answer_type === "YESNO" || question.answer_type === "BOOLEAN") && typeof value === "string"
+      ? (() => {
+          const lower = value.toLowerCase();
+          if (lower === "yes" || lower === "true" || lower === "1") return "Yes";
+          if (lower === "no" || lower === "false" || lower === "0") return "No";
+          return value;
+        })()
+      : value;
 
     switch (question.answer_type) {
       case "TEXT":
@@ -287,7 +473,7 @@ const EditListing = () => {
         return (
           <Input
             type="date"
-            value={value}
+            value={normalizedDate}
             onChange={(e) => setFormData({ ...formData, [question.id]: e.target.value })}
             className="bg-background"
           />
@@ -296,13 +482,13 @@ const EditListing = () => {
       case "YESNO":
       case "BOOLEAN":
         return (
-          <Select value={value} onValueChange={(val) => setFormData({ ...formData, [question.id]: val })}>
+          <Select value={normalizedYesNo} onValueChange={(val) => setFormData({ ...formData, [question.id]: val })}>
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="yes">Yes</SelectItem>
-              <SelectItem value="no">No</SelectItem>
+              <SelectItem value="Yes">Yes</SelectItem>
+              <SelectItem value="No">No</SelectItem>
             </SelectContent>
           </Select>
         );
@@ -324,18 +510,31 @@ const EditListing = () => {
       case "PHOTO":
       case "FILE":
         return (
+          <div className="space-y-2">
+            {value && (
+              <div className="text-xs text-muted-foreground">
+                Current:{" "}
+                <a href={String(value)} target="_blank" rel="noreferrer" className="underline">
+                  {String(value).split("/").pop() || "View file"}
+                </a>
+              </div>
+            )}
           <Input
             type="file"
+              disabled={isUploading}
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) {
-                // Handle file upload - for now just store filename
-                setFormData({ ...formData, [question.id]: file.name });
+                  handleFileUpload(question.id, file, question.answer_type);
               }
             }}
             className="bg-background"
             accept={question.answer_type === "PHOTO" ? "image/*" : "*"}
           />
+            {isUploading && (
+              <div className="text-xs text-muted-foreground">Uploading...</div>
+            )}
+          </div>
         );
 
       default:
@@ -348,6 +547,205 @@ const EditListing = () => {
           />
         );
     }
+  };
+
+  const renderAccountQuestionField = (question: any) => {
+    const rawValue = formData.socialAccountQuestions?.[question.id];
+    const value = rawValue ?? "";
+    const isUploading = uploadingFields.has(question.id);
+    const normalizedDate = question.answer_type === "DATE" && typeof value === "string" && value
+      ? (() => {
+          const parsed = new Date(value);
+          return isNaN(parsed.getTime()) ? value : parsed.toISOString().split("T")[0];
+        })()
+      : value;
+    const normalizedYesNo = (question.answer_type === "YESNO" || question.answer_type === "BOOLEAN") && typeof value === "string"
+      ? (() => {
+          const lower = value.toLowerCase();
+          if (lower === "yes" || lower === "true" || lower === "1") return "Yes";
+          if (lower === "no" || lower === "false" || lower === "0") return "No";
+          return value;
+        })()
+      : value;
+
+    const updateValue = (nextValue: any) => {
+      setFormData({
+        ...formData,
+        socialAccountQuestions: {
+          ...(formData.socialAccountQuestions || {}),
+          [question.id]: nextValue,
+        },
+      });
+    };
+
+    switch (question.answer_type) {
+      case "TEXT":
+        return (
+          <Input
+            value={value}
+            onChange={(e) => updateValue(e.target.value)}
+            placeholder="Enter your answer"
+            className="bg-background"
+          />
+        );
+
+      case "NUMBER":
+        return (
+          <Input
+            type="number"
+            value={value}
+            onChange={(e) => updateValue(e.target.value)}
+            placeholder="Enter a number"
+            className="bg-background"
+          />
+        );
+
+      case "TEXTAREA":
+        return (
+          <Textarea
+            value={value}
+            onChange={(e) => updateValue(e.target.value)}
+            placeholder="Enter your answer"
+            className="bg-background min-h-[100px]"
+          />
+        );
+
+      case "DATE":
+        return (
+          <Input
+            type="date"
+            value={normalizedDate}
+            onChange={(e) => updateValue(e.target.value)}
+            className="bg-background"
+          />
+        );
+
+      case "YESNO":
+      case "BOOLEAN":
+        return (
+          <Select value={normalizedYesNo} onValueChange={(val) => updateValue(val)}>
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder="Select an option" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Yes">Yes</SelectItem>
+              <SelectItem value="No">No</SelectItem>
+            </SelectContent>
+          </Select>
+        );
+
+      case "SELECT":
+        return (
+          <Select value={value} onValueChange={(val) => updateValue(val)}>
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder="Select an option" />
+            </SelectTrigger>
+            <SelectContent>
+              {question.option && Array.isArray(question.option) && question.option.map((opt: string, idx: number) => (
+                <SelectItem key={idx} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+
+      case "PHOTO":
+      case "FILE":
+        return (
+          <div className="space-y-2">
+            {value && (
+              <div className="text-xs text-muted-foreground">
+                Current:{" "}
+                <a href={String(value)} target="_blank" rel="noreferrer" className="underline">
+                  {String(value).split("/").pop() || "View file"}
+                </a>
+              </div>
+            )}
+            <Input
+              type="file"
+              disabled={isUploading}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  handleAccountQuestionFileUpload(question.id, file, question.answer_type);
+                }
+              }}
+              className="bg-background"
+              accept={question.answer_type === "PHOTO" ? "image/*" : "*"}
+            />
+            {isUploading && (
+              <div className="text-xs text-muted-foreground">Uploading...</div>
+            )}
+          </div>
+        );
+
+      default:
+        return (
+          <Input
+            value={value}
+            onChange={(e) => updateValue(e.target.value)}
+            placeholder="Enter your answer"
+            className="bg-background"
+          />
+        );
+    }
+  };
+
+  const defaultRowLabels = [
+    "Gross Revenue",
+    "Net Revenue",
+    "Cost of Goods",
+    "Advertising costs",
+    "Freelancer/Employees",
+    "Transaction Costs",
+    "Other Expenses",
+  ];
+
+  const defaultColumnLabels = [
+    { key: "2023", label: "2023" },
+    { key: "2024", label: "2024" },
+    { key: "today", label: getTodayDate() },
+    { key: "Forecast 2025", label: "Forecast 2025" },
+  ];
+
+  const rowLabels = formData.rowLabels || defaultRowLabels;
+  const columnLabels = formData.columnLabels || defaultColumnLabels;
+  const financialData = formData.financialData || {};
+  const financialType = formData.financialType || "detailed";
+
+  const handleFinancialCellChange = (rowLabel: string, colKey: string, value: string) => {
+    setFormData({
+      ...formData,
+      rowLabels,
+      columnLabels,
+      financialData: {
+        ...financialData,
+        [rowLabel]: {
+          ...(financialData[rowLabel] || {}),
+          [colKey]: value,
+        },
+      },
+    });
+  };
+
+  const handleFinancialMonthChange = (index: number, field: string, value: string) => {
+    const months = Array.isArray(formData.months) ? [...formData.months] : [];
+    months[index] = {
+      ...months[index],
+      [field]: value,
+    };
+    setFormData({ ...formData, months });
+  };
+
+  const handleAddFinancialMonth = () => {
+    const months = Array.isArray(formData.months) ? [...formData.months] : [];
+    months.push({ period: "", revenue: "", cost: "" });
+    setFormData({ ...formData, months });
+  };
+
+  const handleRemoveFinancialMonth = (index: number) => {
+    const months = Array.isArray(formData.months) ? [...formData.months] : [];
+    months.splice(index, 1);
+    setFormData({ ...formData, months });
   };
 
   const handleSave = async () => {
@@ -400,6 +798,25 @@ const EditListing = () => {
       };
 
       const transformFinancials = () => {
+        // New table format support
+        if (formData.financialData && formData.rowLabels && formData.columnLabels) {
+          const tableData = {
+            financialType: formData.financialType || 'detailed',
+            rowLabels: formData.rowLabels,
+            columnLabels: formData.columnLabels,
+            financialData: formData.financialData,
+          };
+          
+          return [{
+            type: 'yearly' as const,
+            name: '__FINANCIAL_TABLE__',
+            revenue_amount: JSON.stringify(tableData),
+            annual_cost: '0',
+            net_profit: '0',
+          }];
+        }
+        
+        // Legacy monthly/yearly format
         if (!formData.months || !Array.isArray(formData.months)) return [];
         
         return formData.months
@@ -432,21 +849,30 @@ const EditListing = () => {
           const platform = socialAccounts.find((sa: any) => sa.id === platformId);
           
           if (platform && platformData) {
-            Object.keys(platformData).forEach((questionId) => {
-              const answer = platformData[questionId];
-              if (answer && String(answer).trim().length >= 2) {
+            const url = platformData.url ? String(platformData.url).trim() : '';
+            const followers = platformData.followers ? String(platformData.followers).trim() : '';
+            const answer = url || (followers ? `${followers} followers` : '');
+            
+            if (answer && answer.length >= 2) {
+              const platformName = platform.platform || platform.social_account_option || 'Social';
                 accounts.push({
-                  question: adQuestions.find((q: any) => q.id === questionId)?.question || '',
-                  answer: String(answer),
+                question: `${platformName} account`,
+                answer: answer,
                   answer_type: 'TEXT',
-                  answer_for: platform.social_account_option || 'SOCIAL',
+                answer_for: 'SOCIAL',
+                option: [],
                 });
               }
-            });
           }
         });
         
         return accounts;
+      };
+
+      const transformAccountQuestions = () => {
+        if (!formData.socialAccountQuestions || typeof formData.socialAccountQuestions !== 'object') return [];
+        if (!accountQuestions || !Array.isArray(accountQuestions)) return [];
+        return transformQuestions(accountQuestions, formData.socialAccountQuestions, 'SOCIAL');
       };
 
       // Fetch categories and tools to get names from IDs
@@ -489,7 +915,9 @@ const EditListing = () => {
       const managementQuestionArray = transformQuestions(managementQuestions, formData, 'MANAGEMENT');
       const advertisementArray = transformQuestions(adQuestions, formData, 'ADVERTISMENT');
       const handoverArray = transformQuestions(handoverQuestions, formData, 'HANDOVER');
-      const socialAccountArray = transformSocialAccounts();
+      const socialAccountPlatformsArray = transformSocialAccounts();
+      const accountQuestionsArray = transformAccountQuestions();
+      const socialAccountArray = [...socialAccountPlatformsArray, ...accountQuestionsArray];
       
       // Transform financials
       const financialsArray = transformFinancials();
@@ -745,30 +1173,186 @@ const EditListing = () => {
             </Card>
           )}
 
-          {/* Financials - Simplified version */}
-          {listing?.financials && Array.isArray(listing.financials) && listing.financials.length > 0 && (
+          {/* Social Media Accounts */}
+          {socialAccounts.length > 0 && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-4">Social Media Accounts</h2>
+              <div className="space-y-6">
+                {socialAccounts.map((account: any) => {
+                  const platformLabel = account.platform || account.social_account_option || "Social";
+                  const platformId = account.id;
+                  const platformData = formData.socialAccounts?.[platformId] || {};
+                  return (
+                    <div key={platformId} className="space-y-3">
+                      <Label className="text-base font-semibold capitalize">{platformLabel}</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm text-muted-foreground">Account Link</Label>
+                          <Input
+                            value={platformData.url || ""}
+                            onChange={(e) => {
+                              setFormData({
+                                ...formData,
+                                socialAccounts: {
+                                  ...(formData.socialAccounts || {}),
+                                  [platformId]: {
+                                    ...(formData.socialAccounts?.[platformId] || {}),
+                                    url: e.target.value,
+                                  },
+                                },
+                              });
+                            }}
+                            placeholder="facebook.com/yourname or @yourname"
+                            className="bg-background"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm text-muted-foreground">Followers</Label>
+                          <Input
+                            type="number"
+                            value={platformData.followers || ""}
+                            onChange={(e) => {
+                              setFormData({
+                                ...formData,
+                                socialAccounts: {
+                                  ...(formData.socialAccounts || {}),
+                                  [platformId]: {
+                                    ...(formData.socialAccounts?.[platformId] || {}),
+                                    followers: e.target.value,
+                                  },
+                                },
+                              });
+                            }}
+                            placeholder="1000"
+                            className="bg-background"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+
+          {/* Account Questions */}
+          {accountQuestions.length > 0 && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-4">Account Questions</h2>
+              <div className="space-y-4">
+                {accountQuestions.map((question: any) => (
+                  <div key={question.id} className="space-y-2">
+                    <Label>{question.question}</Label>
+                    {renderAccountQuestionField(question)}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Financials */}
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4">Financials</h2>
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Financial Type</Label>
                 <Select
-                  value={formData.financialType || 'monthly'}
+                  value={financialType}
                   onValueChange={(val) => setFormData({ ...formData, financialType: val })}
                 >
                   <SelectTrigger className="bg-background">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="detailed">Detailed</SelectItem>
+                    <SelectItem value="simple">Simple</SelectItem>
                     <SelectItem value="monthly">Monthly</SelectItem>
                     <SelectItem value="yearly">Yearly</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Financial data is loaded from the listing. To edit financials in detail, please use the full dashboard.
-                </p>
               </div>
-            </Card>
-          )}
+
+              {(financialType === "detailed" || financialType === "simple") && (
+                <div className="overflow-x-auto border border-border rounded-lg">
+                  <div className="min-w-[700px]">
+                    <div className="grid grid-cols-[220px_repeat(auto-fit,minmax(140px,1fr))] border-b border-border">
+                      <div className="p-3 font-medium text-sm text-muted-foreground">Category</div>
+                      {columnLabels.map((col: any) => (
+                        <div key={col.key} className="p-3 font-medium text-sm text-muted-foreground text-center">
+                          {col.label}
+                        </div>
+                      ))}
+                    </div>
+                    {rowLabels.map((rowLabel: string) => (
+                      <div key={rowLabel} className="grid grid-cols-[220px_repeat(auto-fit,minmax(140px,1fr))] border-b border-border last:border-b-0">
+                        <div className="p-3 text-sm font-medium">{rowLabel}</div>
+                        {columnLabels.map((col: any) => (
+                          <div key={col.key} className="p-2">
+                            <Input
+                              value={financialData[rowLabel]?.[col.key] || ""}
+                              onChange={(e) => handleFinancialCellChange(rowLabel, col.key, e.target.value)}
+                              className="bg-background h-8 text-sm"
+                              placeholder="0"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(financialType === "monthly" || financialType === "yearly") && (
+                <div className="space-y-3">
+                  {(formData.months || []).map((month: any, index: number) => (
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Period</Label>
+                        <Input
+                          value={month.period || ""}
+                          onChange={(e) => handleFinancialMonthChange(index, "period", e.target.value)}
+                          placeholder="Jan 2024"
+                          className="bg-background"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Revenue</Label>
+                        <Input
+                          type="number"
+                          value={month.revenue || ""}
+                          onChange={(e) => handleFinancialMonthChange(index, "revenue", e.target.value)}
+                          placeholder="0"
+                          className="bg-background"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Cost</Label>
+                        <Input
+                          type="number"
+                          value={month.cost || ""}
+                          onChange={(e) => handleFinancialMonthChange(index, "cost", e.target.value)}
+                          placeholder="0"
+                          className="bg-background"
+                        />
+                      </div>
+                      <div className="flex justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRemoveFinancialMonth(index)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  <Button variant="outline" onClick={handleAddFinancialMonth}>
+                    Add Period
+                  </Button>
+                </div>
+              )}
+            </div>
+          </Card>
 
           {/* Portfolio Link */}
           <Card className="p-6">

@@ -35,6 +35,19 @@ export default function AdminUserDetails() {
   const { data, isLoading, refetch } = useUserDetails(id);
   const { data: userFavorites } = useUserFavorites(id);
   const [isPrefsOpen, setIsPrefsOpen] = useState(false);
+  const [isEditingInfo, setIsEditingInfo] = useState(false);
+  const [infoForm, setInfoForm] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    country: "",
+    state: "",
+    zip_code: "",
+  });
+  const [isSavingInfo, setIsSavingInfo] = useState(false);
   const [prefsForm, setPrefsForm] = useState({
     background: "",
     businessCategories: "",
@@ -149,6 +162,49 @@ export default function AdminUserDetails() {
     });
     await refetch();
     setIsPrefsOpen(false);
+  };
+
+  const openInfoEditor = () => {
+    setInfoForm({
+      first_name: profile.first_name || "",
+      last_name: profile.last_name || "",
+      email: profile.email || "",
+      phone: profile.phone || "",
+      address: profile.address || "",
+      city: profile.city || "",
+      country: profile.country || "",
+      state: profile.state || "",
+      zip_code: profile.zip || profile.zip_code || "",
+    });
+    setIsEditingInfo(true);
+  };
+
+  const saveInfo = async () => {
+    if (!id) return;
+    setIsSavingInfo(true);
+    try {
+      const response = await apiClient.updateUserByAdmin(id, {
+        first_name: infoForm.first_name || "",
+        last_name: infoForm.last_name || "",
+        email: infoForm.email || "",
+        phone: infoForm.phone || "",
+        address: infoForm.address || "",
+        city: infoForm.city || "",
+        country: infoForm.country || "",
+        state: infoForm.state || "",
+        zip_code: infoForm.zip_code || "",
+      });
+      if (!response.success) {
+        throw new Error(response.error || "Failed to update user");
+      }
+      toast.success("User information updated");
+      await refetch();
+      setIsEditingInfo(false);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update user");
+    } finally {
+      setIsSavingInfo(false);
+    }
   };
   const handleMessageUser = () => {
     if (!id) return;
@@ -415,28 +471,81 @@ export default function AdminUserDetails() {
                 >
                   Address Information
                 </h3>
-                <Button variant="ghost" size="icon">
-                  <Edit2 className="h-4 w-4" />
-                </Button>
+                {isEditingInfo ? (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditingInfo(false)}
+                      disabled={isSavingInfo}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={saveInfo}
+                      disabled={isSavingInfo}
+                      className="bg-accent text-black hover:bg-accent/90"
+                    >
+                      {isSavingInfo ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button variant="ghost" size="icon" onClick={openInfoEditor}>
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span style={{ fontFamily: 'ABeeZee', fontWeight: 400, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>Fast Name</span>
-                  <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.first_name || "-"}</span>
+                  {isEditingInfo ? (
+                    <Input
+                      value={infoForm.first_name}
+                      onChange={(e) => setInfoForm({ ...infoForm, first_name: e.target.value })}
+                      className="h-8 max-w-[220px] text-right"
+                    />
+                  ) : (
+                    <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.first_name || "-"}</span>
+                  )}
                 </div>
                 <div className="flex justify-between">
                   <span style={{ fontFamily: 'ABeeZee', fontWeight: 400, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>Last Name</span>
-                  <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.last_name || "-"}</span>
+                  {isEditingInfo ? (
+                    <Input
+                      value={infoForm.last_name}
+                      onChange={(e) => setInfoForm({ ...infoForm, last_name: e.target.value })}
+                      className="h-8 max-w-[220px] text-right"
+                    />
+                  ) : (
+                    <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.last_name || "-"}</span>
+                  )}
                 </div>
                 <div className="flex justify-between">
                   <span style={{ fontFamily: 'ABeeZee', fontWeight: 400, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>Email</span>
-                  <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.email || "-"}</span>
+                  {isEditingInfo ? (
+                    <Input
+                      value={infoForm.email}
+                      onChange={(e) => setInfoForm({ ...infoForm, email: e.target.value })}
+                      className="h-8 max-w-[260px] text-right"
+                    />
+                  ) : (
+                    <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.email || "-"}</span>
+                  )}
                 </div>
                 <div className="flex justify-between">
                   <span style={{ fontFamily: 'ABeeZee', fontWeight: 400, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>Phone Nr.</span>
-                  <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.phone || "-"}</span>
+                  {isEditingInfo ? (
+                    <Input
+                      value={infoForm.phone}
+                      onChange={(e) => setInfoForm({ ...infoForm, phone: e.target.value })}
+                      className="h-8 max-w-[220px] text-right"
+                    />
+                  ) : (
+                    <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.phone || "-"}</span>
+                  )}
                 </div>
                 <div className="flex justify-between">
                   <span style={{ fontFamily: 'ABeeZee', fontWeight: 400, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>Birthday</span>
@@ -446,23 +555,63 @@ export default function AdminUserDetails() {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span style={{ fontFamily: 'ABeeZee', fontWeight: 400, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>Address</span>
-                  <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.address || "-"}</span>
+                  {isEditingInfo ? (
+                    <Input
+                      value={infoForm.address}
+                      onChange={(e) => setInfoForm({ ...infoForm, address: e.target.value })}
+                      className="h-8 max-w-[260px] text-right"
+                    />
+                  ) : (
+                    <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.address || "-"}</span>
+                  )}
                 </div>
                 <div className="flex justify-between">
                   <span style={{ fontFamily: 'ABeeZee', fontWeight: 400, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>City</span>
-                  <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.city || "-"}</span>
+                  {isEditingInfo ? (
+                    <Input
+                      value={infoForm.city}
+                      onChange={(e) => setInfoForm({ ...infoForm, city: e.target.value })}
+                      className="h-8 max-w-[220px] text-right"
+                    />
+                  ) : (
+                    <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.city || "-"}</span>
+                  )}
                 </div>
                 <div className="flex justify-between">
                   <span style={{ fontFamily: 'ABeeZee', fontWeight: 400, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>Country</span>
-                  <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.country || "-"}</span>
+                  {isEditingInfo ? (
+                    <Input
+                      value={infoForm.country}
+                      onChange={(e) => setInfoForm({ ...infoForm, country: e.target.value })}
+                      className="h-8 max-w-[220px] text-right"
+                    />
+                  ) : (
+                    <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.country || "-"}</span>
+                  )}
                 </div>
                 <div className="flex justify-between">
                   <span style={{ fontFamily: 'ABeeZee', fontWeight: 400, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>State</span>
-                  <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.state || "-"}</span>
+                  {isEditingInfo ? (
+                    <Input
+                      value={infoForm.state}
+                      onChange={(e) => setInfoForm({ ...infoForm, state: e.target.value })}
+                      className="h-8 max-w-[220px] text-right"
+                    />
+                  ) : (
+                    <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.state || "-"}</span>
+                  )}
                 </div>
                 <div className="flex justify-between">
                   <span style={{ fontFamily: 'ABeeZee', fontWeight: 400, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>Zip Code</span>
-                  <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.zip || "-"}</span>
+                  {isEditingInfo ? (
+                    <Input
+                      value={infoForm.zip_code}
+                      onChange={(e) => setInfoForm({ ...infoForm, zip_code: e.target.value })}
+                      className="h-8 max-w-[160px] text-right"
+                    />
+                  ) : (
+                    <span style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.zip || "-"}</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -631,7 +780,6 @@ export default function AdminUserDetails() {
                     style={{
                       width: '23.000001907348633px',
                       height: '23.00000000000002px',
-                      transform: 'rotate(-90deg)',
                       color: '#000000',
                       marginRight: '4px',
                     }}
@@ -681,7 +829,6 @@ export default function AdminUserDetails() {
                     style={{
                       width: '23.000001907348633px',
                       height: '23.00000000000002px',
-                      transform: 'rotate(-90deg)',
                       color: '#000000',
                       marginRight: '4px',
                     }}
@@ -731,7 +878,6 @@ export default function AdminUserDetails() {
                     style={{
                       width: '23.000001907348633px',
                       height: '23.00000000000002px',
-                      transform: 'rotate(-90deg)',
                       color: '#000000',
                       marginRight: '4px',
                     }}

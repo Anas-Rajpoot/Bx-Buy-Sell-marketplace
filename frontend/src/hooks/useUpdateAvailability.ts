@@ -9,11 +9,10 @@ export const useUpdateAvailability = () => {
     mutationFn: async ({ userId, status }: { userId: string; status: string }) => {
       console.log('Updating availability:', { userId, status });
       
-      // Map frontend status to backend format
-      // Backend schema has is_online (Boolean), but we'll try availability_status first
-      // If backend doesn't support it, we might need to map to is_online
-      const response = await apiClient.updateUser(userId, {
-        availability_status: status,
+      // Map frontend status to backend format (is_online boolean)
+      const isOnline = status === "available" || status === "online";
+      const response = await apiClient.updateUserByAdmin(userId, {
+        is_online: isOnline,
       });
 
       console.log('Update availability response:', response);

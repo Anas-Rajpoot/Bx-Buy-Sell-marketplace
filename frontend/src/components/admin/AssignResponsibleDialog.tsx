@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -27,6 +27,12 @@ export function AssignResponsibleDialog({
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(currentResponsibleId || null);
   const [isAssigning, setIsAssigning] = useState(false);
   const { data: teamMembers, isLoading } = useTeamMembers();
+
+  useEffect(() => {
+    if (open) {
+      setSelectedMemberId(currentResponsibleId || null);
+    }
+  }, [open, currentResponsibleId]);
 
   const filteredMembers = teamMembers?.filter((member) => {
     const query = searchQuery.toLowerCase();

@@ -31,10 +31,10 @@ import {
 import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
 import { EditMemberDialog } from "@/components/admin/EditMemberDialog";
 import { useTeamMembers, TeamMember } from "@/hooks/useTeamMembers";
-import { useUpdateAvailability } from "@/hooks/useUpdateAvailability";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
+import { createSocketConnection } from "@/lib/socket";
 
 export default function AdminTeamMembers() {
   const navigate = useNavigate();
@@ -46,7 +46,32 @@ export default function AdminTeamMembers() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
   const { data: members, isLoading, error, refetch } = useTeamMembers();
-  const updateAvailability = useUpdateAvailability();
+
+  useEffect(() => {
+    const socket = createSocketConnection({
+      transports: ["websocket", "polling"],
+      reconnection: true,
+    });
+
+    socket.on("user:status-changed", (payload: { userId: string; isOnline: boolean; last_offline?: string | null }) => {
+      queryClient.setQueryData(["team-members"], (oldData: any) => {
+        if (!oldData) return oldData;
+        return oldData.map((member: TeamMember) => {
+          if (member.id !== payload.userId) return member;
+          const availability_status = payload.isOnline ? "available" : "offline";
+          return {
+            ...member,
+            availability_status,
+            last_offline: payload.isOnline ? member.last_offline : (payload.last_offline || new Date().toISOString()),
+          };
+        });
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [queryClient]);
 
   if (error) {
     console.error("Team members error:", error);
@@ -98,9 +123,6 @@ export default function AdminTeamMembers() {
     }
   };
 
-  const handleAvailabilityChange = (userId: string, newStatus: string) => {
-    updateAvailability.mutate({ userId, status: newStatus });
-  };
 
   const handleDelete = async (member: TeamMember) => {
     if (!confirm(`Are you sure you want to delete team member "${member.full_name || member.email}"? This action cannot be undone.`)) {
@@ -402,8 +424,30 @@ export default function AdminTeamMembers() {
                         }
                       };
 
-                      const statusStyle = getStatusStyle(member.availability_status || 'offline');
-                      const lastOfflineDate = member.last_offline || member.created_at || new Date().toISOString();
+                      const statusValue = member.availability_status || 'offline';
+                      const statusStyle = getStatusStyle(statusValue);
+                      const lastOfflineDate = member.last_offline || null;
+                      const formatRelative = (dateString: string) => {
+                        const now = Date.now();
+                        const target = new Date(dateString).getTime();
+                        const diffMs = now - target;
+                        const minute = 60 * 1000;
+                        const hour = 60 * minute;
+                        const day = 24 * hour;
+                        const week = 7 * day;
+
+                        if (diffMs < minute) return "just now";
+                        if (diffMs < hour) return `${Math.floor(diffMs / minute)} min ago`;
+                        if (diffMs < day) return `${Math.floor(diffMs / hour)} hour ago`;
+                        if (diffMs < week) return `${Math.floor(diffMs / day)} day ago`;
+                        return `${Math.floor(diffMs / week)} week ago`;
+                      };
+                      const lastOfflineLabel =
+                        statusValue === "available"
+                          ? "just now"
+                          : lastOfflineDate
+                          ? formatRelative(lastOfflineDate)
+                          : "-";
 
                       return (
                       <TableRow 
@@ -472,7 +516,7 @@ export default function AdminTeamMembers() {
                             color: '#000000',
                           }}
                         >
-                          {new Date(lastOfflineDate).toLocaleDateString()}
+                          {lastOfflineLabel}
                         </TableCell>
                         <TableCell>
                           <div
