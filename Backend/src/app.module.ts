@@ -27,6 +27,7 @@ import { FinancialAdminModule } from './financial-admin/financial-admin.module';
 import { QuestionAdminModule } from './question-admin/question-admin.module';
 import { AdminSocialAccountModule } from './admin-social-account/admin-social-account.module';
 import { NotificationModule } from './notification/notification.module';
+import { MonitoringAlertModule } from './monitoring-alert/monitoring-alert.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { NotificationModule } from './notification/notification.module';
     QuestionAdminModule,
     AdminSocialAccountModule,
     NotificationModule,
+    MonitoringAlertModule,
   ],
   controllers: [AppController],
   providers: [AppService, AuthGuard, RolesGuard, ResponseInterceptor, LogInterceptor],

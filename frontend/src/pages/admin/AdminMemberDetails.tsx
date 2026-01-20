@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { Button } from "@/components/ui/button";
@@ -10,18 +10,25 @@ import { apiClient } from "@/lib/api";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAdminListings } from "@/hooks/useAdminListings";
 
 export default function AdminMemberDetails() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
+  const { data: adminListings, isLoading: listingsLoading } = useAdminListings();
   const [member, setMember] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedMember, setEditedMember] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [stats, setStats] = useState({
+    managedChats: 0,
+    activityLog: 0,
+    loading: false,
+  });
   const settingsRef = useRef<HTMLDivElement>(null);
   
   const isSuperAdmin = currentUser?.role === 'ADMIN';
@@ -30,6 +37,48 @@ export default function AdminMemberDetails() {
     if (id) {
       loadMemberData();
     }
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    let isActive = true;
+    const loadStats = async () => {
+      try {
+        setStats((prev) => ({ ...prev, loading: true }));
+        const [chatCountRes, activityCountRes] = await Promise.all([
+          apiClient.getChatCount(id),
+          apiClient.getActivityLogCount(id),
+        ]);
+
+        const managedChats =
+          chatCountRes?.success && chatCountRes?.data
+            ? Number(chatCountRes.data.count ?? chatCountRes.data?.data?.count ?? 0)
+            : 0;
+
+        const activityLog =
+          activityCountRes?.success && activityCountRes?.data
+            ? Number(activityCountRes.data.log_count ?? activityCountRes.data?.data?.log_count ?? 0)
+            : 0;
+
+        if (isActive) {
+          setStats({
+            managedChats,
+            activityLog,
+            loading: false,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load member stats:", error);
+        if (isActive) {
+          setStats((prev) => ({ ...prev, loading: false }));
+        }
+      }
+    };
+
+    loadStats();
+    return () => {
+      isActive = false;
+    };
   }, [id]);
 
   // Close dropdown when clicking outside
@@ -123,6 +172,11 @@ export default function AdminMemberDetails() {
     setEditedMember(member);
     setIsEditing(false);
   };
+
+  const managedListingsCount = useMemo(() => {
+    if (!member?.id || !adminListings) return 0;
+    return adminListings.filter((listing: any) => listing.responsible_user_id === member.id).length;
+  }, [adminListings, member?.id]);
 
   const handleChat = () => {
     setIsSettingsOpen(false);
@@ -744,6 +798,98 @@ export default function AdminMemberDetails() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Statistics Section */}
+          <div className="mt-10">
+            <h3
+              className="font-lufga mb-5"
+              style={{
+                fontWeight: 700,
+                fontSize: '18px',
+                lineHeight: '100%',
+                letterSpacing: '0%',
+                color: '#000000',
+              }}
+            >
+              Statistics
+            </h3>
+
+            <div className="flex flex-wrap gap-6">
+              {[
+                {
+                  label: "Actually managed Listings",
+                  value: listingsLoading ? "-" : String(managedListingsCount),
+                },
+                {
+                  label: "Actually managed Chats",
+                  value: stats.loading ? "-" : String(stats.managedChats),
+                },
+                {
+                  label: "Activity Log",
+                  value: stats.loading ? "-" : String(stats.activityLog),
+                },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className="flex flex-col justify-between"
+                  style={{
+                    width: '316px',
+                    height: '148px',
+                    borderRadius: '24px',
+                    background: '#FFFFFF',
+                    boxShadow: '0px 3px 33px 0px #00000012',
+                    padding: '20px',
+                  }}
+                >
+                  <div>
+                    <p
+                      className="font-abeezee"
+                      style={{
+                        fontWeight: 400,
+                        fontSize: '14px',
+                        lineHeight: '100%',
+                        letterSpacing: '0%',
+                        color: '#4D4D4D',
+                      }}
+                    >
+                      {stat.label}
+                    </p>
+                    <p
+                      className="font-lufga mt-4"
+                      style={{
+                        fontWeight: 700,
+                        fontSize: '24px',
+                        lineHeight: '100%',
+                        letterSpacing: '0%',
+                        color: '#000000',
+                      }}
+                    >
+                      {stat.value}
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      className="font-lufga font-medium"
+                      style={{
+                        width: '87px',
+                        height: '34px',
+                        borderRadius: '56px',
+                        background: '#C6FE1F',
+                        color: '#000000',
+                        fontSize: '14px',
+                        lineHeight: '150%',
+                        letterSpacing: '0%',
+                        padding: '0',
+                      }}
+                    >
+                      View
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

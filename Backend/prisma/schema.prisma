@@ -107,6 +107,27 @@ model User {
   ActivityLog    ActivityLog[]
   AdminFinancial AdminFinancial[]
   Notification   Notification[]
+  MonitoringAlertReporter   MonitoringAlert[] @relation("AlertReporter")
+  MonitoringAlertProblematic MonitoringAlert[] @relation("AlertProblematic")
+  MonitoringAlertResponsible MonitoringAlert[] @relation("AlertResponsible")
+}
+
+model MonitoringAlert {
+  id                String   @id @default(uuid()) @map("_id")
+  problem_type      String
+  status            String   @default("unsolved")
+  notes             String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  reporterId        String?
+  reporter          User?    @relation("AlertReporter", fields: [reporterId], references: [id])
+
+  problematicUserId String?
+  problematic_user  User?    @relation("AlertProblematic", fields: [problematicUserId], references: [id])
+
+  responsibleId     String?
+  responsible       User?    @relation("AlertResponsible", fields: [responsibleId], references: [id])
 }
 
 model ActivityLog {

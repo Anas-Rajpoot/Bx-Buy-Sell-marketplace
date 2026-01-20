@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
+import { getAdminUserNotes } from "@/lib/adminUserNotes";
 
 export interface AdminUser {
   id: string;
@@ -14,6 +15,7 @@ export interface AdminUser {
   user_type: string | null;
   listings_count: number;
   verified: boolean | null;
+  note?: string | null;
 }
 
 export const useAdminUsers = () => {
@@ -54,6 +56,8 @@ export const useAdminUsers = () => {
       console.log('Total listings:', listings.length);
       console.log('Sample listing userId:', listings[0]?.userId || listings[0]?.user_id);
       
+      const notesMap = getAdminUserNotes();
+
       // Map backend user structure to AdminUser interface
       const mappedUsers: AdminUser[] = users.map((user: any) => ({
         id: user.id,
@@ -76,6 +80,7 @@ export const useAdminUsers = () => {
         // Note: Backend defaults verified to false, but we'll only treat it as blocked if it's explicitly false
         // For now, we'll use verified as-is from backend
         verified: user.verified !== undefined ? user.verified : null,
+        note: notesMap[user.id]?.text || null,
       }));
       
       console.log('Users with verified status:', mappedUsers.map(u => ({ 

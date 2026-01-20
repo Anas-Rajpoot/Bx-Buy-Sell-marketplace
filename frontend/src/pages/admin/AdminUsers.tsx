@@ -248,15 +248,15 @@ export default function AdminUsers() {
                     <Table>
                       <TableHeader>
                         <TableRow className="border-border hover:bg-transparent">
-                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm">ID</TableHead>
-                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm">User name</TableHead>
-                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm hidden md:table-cell">Email</TableHead>
-                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm hidden lg:table-cell">Phone Number</TableHead>
-                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm hidden sm:table-cell">Listings</TableHead>
-                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm hidden lg:table-cell">Registration date</TableHead>
-                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm hidden md:table-cell">Verification</TableHead>
-                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm">Status</TableHead>
-                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm">Action</TableHead>
+                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm" style={{ width: '70px' }}>ID</TableHead>
+                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm" style={{ width: '200px' }}>Username</TableHead>
+                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm hidden lg:table-cell" style={{ width: '160px' }}>Phone Number</TableHead>
+                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm hidden sm:table-cell" style={{ width: '90px' }}>Listings</TableHead>
+                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm hidden lg:table-cell" style={{ width: '140px' }}>Registration date</TableHead>
+                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm hidden md:table-cell" style={{ width: '140px' }}>Verification</TableHead>
+                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm" style={{ width: '110px' }}>Status</TableHead>
+                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm" style={{ width: '220px' }}>Notes</TableHead>
+                          <TableHead className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm" style={{ width: '90px' }}>Action</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -281,13 +281,59 @@ export default function AdminUsers() {
                                 </div>
                               )}
                             </div>
-                            <span className="font-medium">{user.full_name || "Unknown"}</span>
+                            <span
+                              style={{
+                                fontFamily: 'Outfit',
+                                fontWeight: 400,
+                                fontSize: '14px',
+                                lineHeight: '100%',
+                                letterSpacing: '0%',
+                                color: '#000000',
+                              }}
+                            >
+                              {user.full_name || "Unknown"}
+                            </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground whitespace-nowrap hidden md:table-cell">{user.email}</TableCell>
-                        <TableCell className="text-muted-foreground whitespace-nowrap hidden lg:table-cell">{user.phone || "-"}</TableCell>
-                        <TableCell className="whitespace-nowrap hidden sm:table-cell">{user.listings_count}</TableCell>
-                        <TableCell className="text-muted-foreground whitespace-nowrap hidden lg:table-cell">{formatDate(user.created_at)}</TableCell>
+                        <TableCell
+                          className="whitespace-nowrap hidden lg:table-cell"
+                          style={{
+                            fontFamily: 'Outfit',
+                            fontWeight: 400,
+                            fontSize: '14px',
+                            lineHeight: '100%',
+                            letterSpacing: '0%',
+                            color: '#000000',
+                          }}
+                        >
+                          {user.phone || "-"}
+                        </TableCell>
+                        <TableCell
+                          className="whitespace-nowrap hidden sm:table-cell"
+                          style={{
+                            fontFamily: 'Outfit',
+                            fontWeight: 400,
+                            fontSize: '14px',
+                            lineHeight: '100%',
+                            letterSpacing: '0%',
+                            color: '#000000',
+                          }}
+                        >
+                          {user.listings_count}
+                        </TableCell>
+                        <TableCell
+                          className="whitespace-nowrap hidden lg:table-cell"
+                          style={{
+                            fontFamily: 'Lufga',
+                            fontWeight: 500,
+                            fontSize: '14px',
+                            lineHeight: '150%',
+                            letterSpacing: '0%',
+                            color: '#6C6C6C',
+                          }}
+                        >
+                          {formatDate(user.created_at)}
+                        </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <div className="flex flex-col gap-1">
                             {user.phone_confirmed_at && (
@@ -305,6 +351,20 @@ export default function AdminUsers() {
                           </div>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">{getStatusBadge(user)}</TableCell>
+                        <TableCell
+                          className="max-w-[220px] truncate"
+                          title={user.note || ""}
+                          style={{
+                            fontFamily: 'Lufga',
+                            fontWeight: 500,
+                            fontSize: '14px',
+                            lineHeight: '150%',
+                            letterSpacing: '0%',
+                            color: '#6C6C6C',
+                          }}
+                        >
+                          {user.note || "-"}
+                        </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -316,16 +376,43 @@ export default function AdminUsers() {
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-[#AEF31F] border-[#AEF31F] rounded-lg shadow-lg">
-                              <DropdownMenuItem 
+                            <DropdownMenuContent
+                              align="end"
+                              className="shadow-lg"
+                              style={{
+                                width: '56px',
+                                height: '138px',
+                                borderRadius: '12px',
+                                border: '1px solid #C6FE1F',
+                                background: '#FFFFFF',
+                                paddingTop: '15px',
+                                paddingRight: '12px',
+                                paddingBottom: '15px',
+                                paddingLeft: '12px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '10px',
+                              }}
+                            >
+                              <DropdownMenuItem
                                 onClick={() => navigate(`/admin/users/${user.id}`)}
-                                className="cursor-pointer hover:bg-[#000000] hover:text-[#FFFFFF] rounded-md transition-colors"
+                                className="p-0 focus:bg-transparent"
                               >
-                                <Eye className="h-4 w-4 mr-2" />
-                                <span className="text-black hover:text-white">View</span>
+                                <div
+                                  className="flex items-center justify-center"
+                                  style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '10px',
+                                    background: '#F4F4F4',
+                                    border: '1px solid #EBF0ED',
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4 text-black" />
+                                </div>
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                className="cursor-pointer hover:bg-[#000000] hover:text-[#FFFFFF] rounded-md transition-colors"
+                              <DropdownMenuItem
+                                className="p-0 focus:bg-transparent"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (user.verified === false) {
@@ -335,18 +422,38 @@ export default function AdminUsers() {
                                   }
                                 }}
                               >
-                                <Ban className="h-4 w-4 mr-2" />
-                                <span className="text-black hover:text-white">{user.verified === false ? "Unblock" : "Block"}</span>
+                                <div
+                                  className="flex items-center justify-center"
+                                  style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '10px',
+                                    background: '#F4F4F4',
+                                    border: '1px solid #EBF0ED',
+                                  }}
+                                >
+                                  <Ban className="h-4 w-4 text-black" />
+                                </div>
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                className="cursor-pointer text-red-600 hover:bg-[#000000] hover:text-[#FFFFFF] rounded-md transition-colors"
+                              <DropdownMenuItem
+                                className="p-0 focus:bg-transparent"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleDeleteUser(user.id, user.full_name || user.email);
                                 }}
                               >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                <span className="hover:text-white">Delete</span>
+                                <div
+                                  className="flex items-center justify-center"
+                                  style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '10px',
+                                    background: '#F4F4F4',
+                                    border: '1px solid #EBF0ED',
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 text-black" />
+                                </div>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

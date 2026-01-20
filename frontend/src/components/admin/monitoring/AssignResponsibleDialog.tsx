@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-// TODO: Implement assign responsible backend endpoints
-// import { apiClient } from "@/lib/api";
+import { apiClient } from "@/lib/api";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 
 interface TeamMember {
   id: string;
@@ -38,48 +38,26 @@ export const AssignResponsibleDialog = ({
   alert,
   onAssigned,
 }: AssignResponsibleDialogProps) => {
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [selectedMember, setSelectedMember] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { data: teamMembers = [], isLoading: teamMembersLoading } = useTeamMembers();
 
   useEffect(() => {
     if (open) {
-      fetchTeamMembers();
+      setSelectedMember("");
     }
   }, [open]);
-
-  const fetchTeamMembers = async () => {
-    try {
-      // TODO: Implement backend endpoints for fetching team members
-      // const response = await apiClient.getTeamMembers();
-      // if (response.success && response.data) {
-      //   setTeamMembers(response.data);
-      // }
-      setTeamMembers([]); // Disabled until backend endpoints are implemented
-
-      setTeamMembers(profiles || []);
-    } catch (error) {
-      console.error('Error fetching team members:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch team members",
-        variant: "destructive"
-      });
-    }
-  };
 
   const handleAssign = async () => {
     if (!selectedMember || !alert) return;
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('monitoring_alerts')
-        .update({ responsible_id: selectedMember })
-        .eq('id', alert.id);
-
-      if (error) throw error;
+      const response = await apiClient.assignMonitoringAlert(alert.id, selectedMember);
+      if (!response.success) {
+        throw new Error(response.error || "Failed to assign alert");
+      }
 
       toast({
         title: "Success",
@@ -107,7 +85,7 @@ export const AssignResponsibleDialog = ({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <Select value={selectedMember} onValueChange={setSelectedMember}>
+          <Select value={selectedMember} onValueChange={setSelectedMember} disabled={teamMembersLoading}>
             <SelectTrigger>
               <SelectValue placeholder="Select a team member" />
             </SelectTrigger>

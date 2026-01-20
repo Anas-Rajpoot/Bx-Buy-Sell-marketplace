@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-// TODO: Implement monitoring alerts backend endpoints
-// import { apiClient } from "@/lib/api";
+import { apiClient } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -39,61 +38,45 @@ export const MonitoringAlertsTable = ({ searchQuery }: MonitoringAlertsTableProp
   const [loading, setLoading] = useState(true);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 15;
   const { toast } = useToast();
-
   useEffect(() => {
     fetchAlerts();
-
-    const channel = supabase
-      .channel('monitoring-alerts')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'monitoring_alerts'
-      }, () => {
-        fetchAlerts();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   const fetchAlerts = async () => {
     try {
-      const { data: alertsData, error } = await supabase
-        .from('monitoring_alerts')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const response = await apiClient.getMonitoringAlerts();
+      if (!response.success) {
+        throw new Error(response.error || "Failed to fetch monitoring alerts");
+      }
 
-      if (error) throw error;
+      const rawAlerts = Array.isArray(response.data) ? response.data : [];
+      const normalizeUser = (user: any) => {
+        if (!user) return null;
+        const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
+        return {
+          full_name: fullName || null,
+          avatar_url: user.profile_pic || null,
+        };
+      };
 
-      // Fetch profiles for reporter, problematic_user, and responsible
-      const alertsWithProfiles = await Promise.all(
-        (alertsData || []).map(async (alert) => {
-          const [reporter, problematicUser, responsible] = await Promise.all([
-            alert.reporter_id
-              ? supabase.from('profiles').select('full_name, avatar_url').eq('id', alert.reporter_id).single()
-              : Promise.resolve({ data: null }),
-            alert.problematic_user_id
-              ? supabase.from('profiles').select('full_name, avatar_url').eq('id', alert.problematic_user_id).single()
-              : Promise.resolve({ data: null }),
-            alert.responsible_id
-              ? supabase.from('profiles').select('full_name, avatar_url').eq('id', alert.responsible_id).single()
-              : Promise.resolve({ data: null }),
-          ]);
+      const normalizedAlerts: Alert[] = rawAlerts.map((alert: any) => ({
+        id: alert.id,
+        problem_type: alert.problem_type,
+        reporter_id: alert.reporterId || alert.reporter_id || null,
+        problematic_user_id: alert.problematicUserId || alert.problematic_user_id || null,
+        status: alert.status || "unsolved",
+        responsible_id: alert.responsibleId || alert.responsible_id || null,
+        notes: alert.notes || null,
+        created_at: alert.created_at,
+        reporter: normalizeUser(alert.reporter),
+        problematic_user: normalizeUser(alert.problematic_user),
+        responsible: normalizeUser(alert.responsible),
+      }));
 
-          return {
-            ...alert,
-            reporter: reporter.data,
-            problematic_user: problematicUser.data,
-            responsible: responsible.data,
-          };
-        })
-      );
-
-      setAlerts(alertsWithProfiles);
+      setAlerts(normalizedAlerts);
     } catch (error) {
       console.error('Error fetching alerts:', error);
       toast({
@@ -108,12 +91,10 @@ export const MonitoringAlertsTable = ({ searchQuery }: MonitoringAlertsTableProp
 
   const updateStatus = async (alertId: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('monitoring_alerts')
-        .update({ status: newStatus })
-        .eq('id', alertId);
-
-      if (error) throw error;
+      const response = await apiClient.updateMonitoringAlertStatus(alertId, newStatus);
+      if (!response.success) {
+        throw new Error(response.error || "Failed to update alert status");
+      }
 
       toast({
         title: "Success",
@@ -139,6 +120,17 @@ export const MonitoringAlertsTable = ({ searchQuery }: MonitoringAlertsTableProp
     alert.reporter?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     alert.problematic_user?.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const totalPages = Math.max(1, Math.ceil(filteredAlerts.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const paginatedAlerts = filteredAlerts.slice(startIndex, startIndex + pageSize);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const getProblemIcon = (type: string) => {
     switch (type) {
@@ -178,23 +170,43 @@ export const MonitoringAlertsTable = ({ searchQuery }: MonitoringAlertsTableProp
         <table className="w-full">
           <thead>
             <tr className="border-b">
-              <th className="text-left py-4 px-4 font-semibold text-sm">Problem</th>
-              <th className="text-left py-4 px-4 font-semibold text-sm">Reporter</th>
-              <th className="text-left py-4 px-4 font-semibold text-sm">Problematic User</th>
-              <th className="text-left py-4 px-4 font-semibold text-sm">Status</th>
-              <th className="text-left py-4 px-4 font-semibold text-sm">Date</th>
-              <th className="text-left py-4 px-4 font-semibold text-sm">Responsible</th>
-              <th className="text-left py-4 px-4 font-semibold text-sm">Notes</th>
-              <th className="text-left py-4 px-4 font-semibold text-sm">Edit</th>
+              {["Problem", "Reporter", "Problematic User", "Status", "Date", "Responsible", "Notes", "Edit"].map((label) => (
+                <th
+                  key={label}
+                  className="text-left py-4 px-4"
+                  style={{
+                    fontFamily: 'Body/Font Family',
+                    fontWeight: 'Body/Font Weight Regular',
+                    fontSize: 'Body/Size Medium',
+                    lineHeight: '140%',
+                    letterSpacing: '0%',
+                    color: '#515151',
+                  }}
+                >
+                  {label}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {filteredAlerts.map((alert) => (
+            {paginatedAlerts.map((alert) => (
               <tr key={alert.id} className="border-b hover:bg-muted/50">
                 <td className="py-4 px-4">
                   <div className="flex items-center gap-2">
                     {getProblemIcon(alert.problem_type)}
-                    <span className="capitalize">{alert.problem_type}</span>
+                    <span
+                      className="capitalize"
+                      style={{
+                        fontFamily: 'Lufga',
+                        fontWeight: 500,
+                        fontSize: '14px',
+                        lineHeight: '150%',
+                        letterSpacing: '0%',
+                        color: '#6C6C6C',
+                      }}
+                    >
+                      {alert.problem_type}
+                    </span>
                     <ExternalLink className="h-3 w-3 text-muted-foreground" />
                   </div>
                 </td>
@@ -206,7 +218,18 @@ export const MonitoringAlertsTable = ({ searchQuery }: MonitoringAlertsTableProp
                         {alert.reporter?.full_name?.[0] || 'A'}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm">{alert.reporter?.full_name || 'Automatic'}</span>
+                    <span
+                      style={{
+                        fontFamily: 'Lufga',
+                        fontWeight: 500,
+                        fontSize: '14px',
+                        lineHeight: '150%',
+                        letterSpacing: '0%',
+                        color: '#6C6C6C',
+                      }}
+                    >
+                      {alert.reporter?.full_name || 'Automatic'}
+                    </span>
                   </div>
                 </td>
                 <td className="py-4 px-4">
@@ -215,7 +238,18 @@ export const MonitoringAlertsTable = ({ searchQuery }: MonitoringAlertsTableProp
                       <AvatarImage src={alert.problematic_user?.avatar_url || ''} />
                       <AvatarFallback>{alert.problematic_user?.full_name?.[0] || 'U'}</AvatarFallback>
                     </Avatar>
-                    <span className="text-sm">{alert.problematic_user?.full_name || 'Unknown'}</span>
+                    <span
+                      style={{
+                        fontFamily: 'Lufga',
+                        fontWeight: 500,
+                        fontSize: '14px',
+                        lineHeight: '150%',
+                        letterSpacing: '0%',
+                        color: '#000000',
+                      }}
+                    >
+                      {alert.problematic_user?.full_name || 'Unknown'}
+                    </span>
                   </div>
                 </td>
                 <td className="py-4 px-4">
@@ -233,7 +267,17 @@ export const MonitoringAlertsTable = ({ searchQuery }: MonitoringAlertsTableProp
                     </SelectContent>
                   </Select>
                 </td>
-                <td className="py-4 px-4 text-sm text-muted-foreground">
+                <td
+                  className="py-4 px-4"
+                  style={{
+                    fontFamily: 'Lufga',
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    lineHeight: '150%',
+                    letterSpacing: '0%',
+                    color: '#6C6C6C',
+                  }}
+                >
                   {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true })}
                 </td>
                 <td className="py-4 px-4">
@@ -243,7 +287,18 @@ export const MonitoringAlertsTable = ({ searchQuery }: MonitoringAlertsTableProp
                         <AvatarImage src={alert.responsible.avatar_url || ''} />
                         <AvatarFallback>{alert.responsible.full_name?.[0] || 'R'}</AvatarFallback>
                       </Avatar>
-                      <span className="text-sm">{alert.responsible.full_name}</span>
+                      <span
+                        style={{
+                          fontFamily: 'Lufga',
+                          fontWeight: 500,
+                          fontSize: '14px',
+                          lineHeight: '150%',
+                          letterSpacing: '0%',
+                          color: '#000000',
+                        }}
+                      >
+                        {alert.responsible.full_name}
+                      </span>
                     </div>
                   ) : (
                     <Button 
@@ -255,7 +310,17 @@ export const MonitoringAlertsTable = ({ searchQuery }: MonitoringAlertsTableProp
                     </Button>
                   )}
                 </td>
-                <td className="py-4 px-4 text-sm text-muted-foreground max-w-xs truncate">
+                <td
+                  className="py-4 px-4 max-w-xs truncate"
+                  style={{
+                    fontFamily: 'Lufga',
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    lineHeight: '150%',
+                    letterSpacing: '0%',
+                    color: '#6C6C6C',
+                  }}
+                >
                   {alert.notes || '-'}
                 </td>
                 <td className="py-4 px-4">
@@ -275,16 +340,69 @@ export const MonitoringAlertsTable = ({ searchQuery }: MonitoringAlertsTableProp
         )}
 
         {/* Pagination */}
-        <div className="mt-6 flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">
-            Showing 1-{filteredAlerts.length} of {filteredAlerts.length}
-          </span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="w-10 h-10 rounded-full">1</Button>
-            <Button variant="ghost" size="sm" className="w-10 h-10 rounded-full">2</Button>
-            <Button variant="ghost" size="sm" className="w-10 h-10 rounded-full">3</Button>
+        {totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              Showing {paginatedAlerts.length} of {filteredAlerts.length}
+            </span>
+            <div className="flex items-center gap-[10px]">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                disabled={safeCurrentPage === 1}
+                onClick={() => setCurrentPage(Math.max(1, safeCurrentPage - 1))}
+                style={{
+                  borderRadius: '10px',
+                  border: '1px solid #EBF0ED',
+                  background: '#FFFFFF',
+                  padding: '10px 16px',
+                }}
+              >
+                <svg width="6" height="12" viewBox="0 0 6 12" fill="none">
+                  <path d="M5 1L1 6L5 11" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => {
+                const page = i + 1;
+                return (
+                  <Button 
+                    key={page}
+                    size="icon"
+                    className="h-8 w-8 text-xs"
+                    onClick={() => setCurrentPage(page)}
+                    style={{
+                      borderRadius: '10px',
+                      border: '1px solid #EBF0ED',
+                      background: safeCurrentPage === page ? '#C6FE1F' : '#FFFFFF',
+                      padding: '10px 16px',
+                      color: '#000000',
+                    }}
+                  >
+                    {page}
+                  </Button>
+                );
+              })}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                disabled={safeCurrentPage === totalPages}
+                onClick={() => setCurrentPage(Math.min(totalPages, safeCurrentPage + 1))}
+                style={{
+                  borderRadius: '10px',
+                  border: '1px solid #EBF0ED',
+                  background: '#FFFFFF',
+                  padding: '10px 16px',
+                }}
+              >
+                <svg width="6" height="12" viewBox="0 0 6 12" fill="none">
+                  <path d="M1 1L5 6L1 11" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <AssignResponsibleDialog

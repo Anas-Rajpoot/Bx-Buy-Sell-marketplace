@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
@@ -16,6 +16,7 @@ import { useUserDetails } from "@/hooks/useUserDetails";
 import { useUserFavorites } from "@/hooks/useUserFavorites";
 import { apiClient } from "@/lib/api";
 import { toast } from "sonner";
+import { getAdminUserNote, setAdminUserNote } from "@/lib/adminUserNotes";
 import {
   Dialog,
   DialogContent,
@@ -63,6 +64,12 @@ export default function AdminUserDetails() {
     profitMultipleMin: "",
     profitMultipleMax: "",
   });
+  const [adminNote, setAdminNote] = useState("");
+
+  useEffect(() => {
+    if (!id) return;
+    setAdminNote(getAdminUserNote(id));
+  }, [id]);
 
   if (isLoading) {
     return (
@@ -413,6 +420,14 @@ export default function AdminUserDetails() {
                 <Textarea
                   placeholder="Type important notes about this user..."
                   className="min-h-[44px] resize-none bg-muted/30 border-border"
+                  value={adminNote}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    setAdminNote(nextValue);
+                    if (id) {
+                      setAdminUserNote(id, nextValue);
+                    }
+                  }}
                 />
               </div>
 

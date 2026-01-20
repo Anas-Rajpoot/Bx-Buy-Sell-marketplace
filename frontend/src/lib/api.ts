@@ -1034,6 +1034,32 @@ class ApiClient {
     });
   }
 
+  async getActivityLogCount(userId: string) {
+    return this.request(`/activity-log/log-count/${userId}`, {
+      method: 'GET',
+    });
+  }
+
+  async getMonitoringAlerts() {
+    return this.request('/monitoring-alerts', {
+      method: 'GET',
+    });
+  }
+
+  async updateMonitoringAlertStatus(alertId: string, status: string) {
+    return this.request(`/monitoring-alerts/${alertId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async assignMonitoringAlert(alertId: string, responsibleId: string | null) {
+    return this.request(`/monitoring-alerts/${alertId}/assign`, {
+      method: 'PATCH',
+      body: JSON.stringify({ responsibleId }),
+    });
+  }
+
   async updateChatLabel(chatId: string, label: 'GOOD' | 'BAD' | 'MEDIUM', userId: string) {
     return this.request('/chat/update/label', {
       method: 'PUT',
