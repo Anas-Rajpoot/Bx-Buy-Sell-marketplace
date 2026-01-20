@@ -366,7 +366,7 @@ export default function AdminTeamMembers() {
                             color: '#6C6C6C',
                           }}
                         >
-                          Last Offline
+                          Last Online
                         </TableHead>
                         <TableHead 
                           className="font-outfit whitespace-nowrap"
@@ -426,7 +426,7 @@ export default function AdminTeamMembers() {
 
                       const statusValue = member.availability_status || 'offline';
                       const statusStyle = getStatusStyle(statusValue);
-                      const lastOfflineDate = member.last_offline || null;
+                      const lastOnlineDate = member.last_offline || null;
                       const formatRelative = (dateString: string) => {
                         const now = Date.now();
                         const target = new Date(dateString).getTime();
@@ -442,11 +442,11 @@ export default function AdminTeamMembers() {
                         if (diffMs < week) return `${Math.floor(diffMs / day)} day ago`;
                         return `${Math.floor(diffMs / week)} week ago`;
                       };
-                      const lastOfflineLabel =
+                      const lastOnlineLabel =
                         statusValue === "available"
-                          ? "just now"
-                          : lastOfflineDate
-                          ? formatRelative(lastOfflineDate)
+                          ? "online"
+                          : lastOnlineDate
+                          ? formatRelative(lastOnlineDate)
                           : "-";
 
                       return (
@@ -516,7 +516,7 @@ export default function AdminTeamMembers() {
                             color: '#000000',
                           }}
                         >
-                          {lastOfflineLabel}
+                          {lastOnlineLabel}
                         </TableCell>
                         <TableCell>
                           <div
