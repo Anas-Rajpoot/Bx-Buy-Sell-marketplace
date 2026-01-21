@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import Header from "@/components/Header";
@@ -17,6 +17,7 @@ import {
   PieChart as PieChartIcon, Settings, Globe as GlobeIcon
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,6 +38,9 @@ import InstagramIcon from "@/assets/instaaa.svg";
 import XIcon from "@/assets/x.svg";
 import TikTokIcon from "@/assets/tiktok.svg";
 import PdfIcon from "@/assets/pdf.svg";
+import InfoIcon from "@/assets/i.svg";
+import RequestIcon from "@/assets/request.svg";
+import DateIcon from "@/assets/date.svg";
 
 // Helper function to extract answer from question array by question text
 const getAnswerByQuestion = (questions: any[], searchText: string | string[]): string | null => {
@@ -967,11 +971,13 @@ const AttachmentCard = ({ fileName, fileSize, url }: { fileName: string; fileSiz
 
 type ListingDetailProps = {
   embedded?: boolean;
+  adminLayout?: boolean;
 };
 
-const ListingDetail = ({ embedded = false }: ListingDetailProps = {}) => {
+const ListingDetail = ({ embedded = false, adminLayout = false }: ListingDetailProps = {}) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const routeLocation = useLocation();
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -1063,6 +1069,8 @@ const ListingDetail = ({ embedded = false }: ListingDetailProps = {}) => {
             ? `${user.first_name} ${user.last_name}`.trim()
             : user.first_name || user.last_name || null,
           avatar_url: user.profile_pic || null,
+          user_type: user.user_type || user.role || null,
+          id_verified: user.id_verified ?? null,
         };
       } else if (listingData.user_id || listingData.userId) {
         // Fallback: fetch user if not included
@@ -1076,6 +1084,8 @@ const ListingDetail = ({ embedded = false }: ListingDetailProps = {}) => {
                 ? `${user.first_name} ${user.last_name}`.trim()
                 : user.first_name || user.last_name || null,
               avatar_url: user.profile_pic || null,
+              user_type: user.user_type || user.role || null,
+              id_verified: user.id_verified ?? null,
             };
           }
         } catch (error) {
@@ -1163,7 +1173,10 @@ console.log("detasdetail", listing)
                              'No description available';
   const location = getAnswerByQuestion(listing?.brand || [], ['country', 'location', 'address']) || 
                   'USA';
-  const askingPrice = getAnswerByQuestion(listing?.brand || [], ['asking price', 'price', 'selling price']) || 
+  const adQuestions = listing?.advertisement || [];
+  const askingPrice = getAnswerByQuestion(adQuestions, ['listing price', 'price']) ||
+                     getAnswerByQuestion(listing?.brand || [], ['asking price', 'price', 'selling price']) || 
+                     listing?.price ||
                      '0';
   const businessAge = getAnswerByQuestion(listing?.brand || [], ['business age', 'age', 'years']) || '5 years';
   const website = getAnswerByQuestion(listing?.brand || [], ['website', 'url', 'domain']) || 'www.beauty.de';
@@ -1228,6 +1241,19 @@ console.log("detasdetail", listing)
     : 4360;
   const profitMargin = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 100) : 30;
   const profitMultiple = totalProfit > 0 && avgMonthlyProfit > 0 ? (parseFloat(askingPrice.toString()) / (avgMonthlyProfit * 12)).toFixed(1) : '1.5x';
+  const revenueMultiple = totalRevenue > 0 
+    ? `${(parseFloat(askingPrice.toString()) / totalRevenue).toFixed(1)}x Revenue`
+    : '0.5x Revenue';
+  const profitMultipleDisplay = profitMultiple.toString().replace(/x$/i, '');
+
+  const unreadMessagesCount = listing?.unread_messages_count ?? 0;
+  const requestsCount = listing?.requests_count ?? 0;
+  const createdAtDate = listing?.created_at || listing?.createdAt || listing?.createdAtDate;
+  const createdAtLabel = createdAtDate
+    ? formatDistanceToNow(new Date(createdAtDate), { addSuffix: true })
+    : '-';
+  const adminIntroRaw = intro || adDescription || businessDescription || '';
+  const adminIntro = adminIntroRaw.length > 140 ? `${adminIntroRaw.slice(0, 140)}...` : adminIntroRaw;
 
   // Management
   const freelancers = getAnswerByQuestion(listing?.managementQuestion || [], ['freelancer', 'freelance']) || '2';
@@ -1570,55 +1596,381 @@ console.log("detasdetail", listing)
     );
   }
 
+  const isAdminView = adminLayout || embedded || routeLocation.pathname.startsWith('/admin/listings/');
+
+  const parsedAskingPrice = Number.parseFloat(String(askingPrice));
+  const fallbackPrice = listing?.price || listing?.asking_price || listing?.askingPrice || listing?.price_amount;
+  const resolvedPrice = !Number.isNaN(parsedAskingPrice) && parsedAskingPrice > 0
+    ? parsedAskingPrice
+    : Number.parseFloat(String(fallbackPrice || 0)) || 0;
+
+  const ownerProfile: any = listing?.user || listing?.profile || {};
+  const ownerName = ownerProfile.full_name
+    || [ownerProfile.first_name, ownerProfile.last_name].filter(Boolean).join(" ")
+    || "Unknown User";
+  const ownerAvatar = ownerProfile.avatar_url || ownerProfile.profile_pic || null;
+  const ownerUserType = (ownerProfile.user_type || ownerProfile.role || '').toLowerCase();
+  const ownerIsPro = ownerUserType === 'seller';
+  const ownerIdVerified = Boolean(ownerProfile.id_verified);
+
   const content = (
-      <div className={`${embedded ? 'pt-6' : 'pt-24'} ${isMobile ? 'pb-12' : 'pb-20'}`}>
+      <div className={`${isAdminView ? 'pt-6' : 'pt-24'} ${isMobile ? 'pb-12' : 'pb-20'}`}>
         <div className={`container mx-auto ${isMobile ? 'px-4' : 'px-4'} max-w-7xl`}>
-          {/* Back Button */}
-          <Button
-            variant="ghost"
-            onClick={() => navigate(-1)}
-            className="mb-6"
-            style={{
-              fontFamily: 'Lufga',
-              fontWeight: 600,
-              fontStyle: 'normal',
-              fontSize: getFontSize('14px', '16px', '20px'),
-              lineHeight: '150%',
-              letterSpacing: '0%',
-              textTransform: 'capitalize',
-              color: 'rgba(0, 0, 0, 1)',
-              background: 'transparent',
-              padding: 0
-            }}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Go Back
-          </Button>
+          {!isAdminView && (
+            <Button
+              variant="ghost"
+              onClick={() => navigate(-1)}
+              className="mb-6"
+              style={{
+                fontFamily: 'Lufga',
+                fontWeight: 600,
+                fontStyle: 'normal',
+                fontSize: getFontSize('14px', '16px', '20px'),
+                lineHeight: '150%',
+                letterSpacing: '0%',
+                textTransform: 'capitalize',
+                color: 'rgba(0, 0, 0, 1)',
+                background: 'transparent',
+                padding: 0
+              }}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Go Back
+            </Button>
+          )}
 
-          {/* Hero Section - Two Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* Left - Media Carousel */}
-            <div className="lg:col-span-2">
-              <MediaCarousel
-                images={images}
-                isFavorite={isFavorite}
-                isTogglingFavorite={isTogglingFavorite}
-                onFavorite={handleFavorite}
-                onShare={handleShare}
-                categoryName={categoryName}
-              />
-            </div>
+          {isAdminView ? (
+            <div className="flex flex-col gap-6 mb-8">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <img src={InfoIcon} alt="" style={{ width: '14px', height: '14px' }} />
+                    <span style={{
+                      fontFamily: 'ABeeZee',
+                      fontWeight: 400,
+                      fontStyle: 'normal',
+                      fontSize: '12px',
+                      lineHeight: '140%',
+                      letterSpacing: '0%',
+                      color: '#808080',
+                    }}>
+                      unanswered messages
+                    </span>
+                    <span style={{
+                      fontFamily: 'Lufga',
+                      fontWeight: 500,
+                      fontStyle: 'normal',
+                      fontSize: '12px',
+                      lineHeight: '140%',
+                      letterSpacing: '0%',
+                      color: 'rgba(0, 0, 0, 1)',
+                    }}>
+                      {unreadMessagesCount}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <img src={RequestIcon} alt="" style={{ width: '14px', height: '14px' }} />
+                    <span style={{
+                      fontFamily: 'ABeeZee',
+                      fontWeight: 400,
+                      fontStyle: 'normal',
+                      fontSize: '12px',
+                      lineHeight: '140%',
+                      letterSpacing: '0%',
+                      color: '#808080',
+                    }}>
+                      Request
+                    </span>
+                    <span style={{
+                      fontFamily: 'Lufga',
+                      fontWeight: 500,
+                      fontStyle: 'normal',
+                      fontSize: '12px',
+                      lineHeight: '140%',
+                      letterSpacing: '0%',
+                      color: 'rgba(0, 0, 0, 1)',
+                    }}>
+                      {requestsCount}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <img src={DateIcon} alt="" style={{ width: '14px', height: '14px' }} />
+                    <span style={{
+                      fontFamily: 'ABeeZee',
+                      fontWeight: 400,
+                      fontStyle: 'normal',
+                      fontSize: '12px',
+                      lineHeight: '140%',
+                      letterSpacing: '0%',
+                      color: '#808080',
+                    }}>
+                      Created at Date
+                    </span>
+                    <span style={{
+                      fontFamily: 'Lufga',
+                      fontWeight: 500,
+                      fontStyle: 'normal',
+                      fontSize: '12px',
+                      lineHeight: '140%',
+                      letterSpacing: '0%',
+                      color: 'rgba(0, 0, 0, 1)',
+                    }}>
+                      {createdAtLabel}
+                    </span>
+                  </div>
+                </div>
 
-            {/* Right - Summary Card */}
-            <div className="lg:col-span-1">
-              <SummaryCard
-                listing={listing}
-                onContactSeller={handleContactSeller}
-                onMakeOffer={handleMakeOffer}
-                isStartingChat={isStartingChat}
-              />
+                <h2 style={{
+                  fontFamily: 'Lufga',
+                  fontWeight: 500,
+                  fontStyle: 'normal',
+                  fontSize: '24.07px',
+                  lineHeight: '120%',
+                  letterSpacing: '0%',
+                  color: 'rgba(0, 0, 0, 1)',
+                }}>
+                  {businessName}
+                </h2>
+
+                <p style={{
+                  fontFamily: 'ABeeZee',
+                  fontWeight: 400,
+                  fontStyle: 'normal',
+                  fontSize: '12.04px',
+                  lineHeight: '150%',
+                  letterSpacing: '0%',
+                  color: 'rgba(0, 0, 0, 0.5)',
+                }}>
+                  {adminIntro}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <span style={{
+                    fontFamily: 'Lufga',
+                    fontWeight: 500,
+                    fontStyle: 'normal',
+                    fontSize: '38.11px',
+                    lineHeight: '120%',
+                    letterSpacing: '0%',
+                    color: 'rgba(0, 0, 0, 1)',
+                  }}>
+                    {formatPrice(resolvedPrice)}
+                  </span>
+
+                  <div style={{
+                    height: '25.08px',
+                    borderRadius: '60.18px',
+                    borderWidth: '1px',
+                    paddingTop: '5.02px',
+                    paddingRight: '12.04px',
+                    paddingBottom: '5.02px',
+                    paddingLeft: '12.04px',
+                    background: 'rgba(255, 255, 255, 1)',
+                    border: '1px solid rgba(0, 0, 0, 0.3)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '10.03px',
+                  }}>
+                    <span style={{
+                      fontFamily: 'Lufga',
+                      fontWeight: 500,
+                      fontStyle: 'normal',
+                      fontSize: '10px',
+                      lineHeight: '150%',
+                      letterSpacing: '0%',
+                      color: 'rgba(0, 0, 0, 1)',
+                      paddingRight: '12px',
+                      borderRight: '1px solid rgba(0, 0, 0, 0.1)',
+                    }}>
+                      Multiple {profitMultipleDisplay}x Profit
+                    </span>
+                    <span style={{
+                      fontFamily: 'Lufga',
+                      fontWeight: 500,
+                      fontStyle: 'normal',
+                      fontSize: '10px',
+                      lineHeight: '150%',
+                      letterSpacing: '0%',
+                      color: 'rgba(0, 0, 0, 1)',
+                    }}>
+                      {revenueMultiple}
+                    </span>
+                  </div>
+
+                  <span style={{
+                    fontFamily: 'Lufga',
+                    fontWeight: 500,
+                    fontStyle: 'normal',
+                    fontSize: '16.05px',
+                    lineHeight: '120%',
+                    letterSpacing: '0%',
+                    color: 'rgba(0, 0, 0, 0.7)',
+                  }}>
+                    Pay in {Math.round(resolvedPrice / 10)}$ monthly
+                  </span>
+
+                  <div style={{
+                    width: '7.02px',
+                    height: '7.02px',
+                    borderRadius: '50%',
+                    background: 'rgba(217, 217, 217, 1)',
+                    flexShrink: 0,
+                  }} />
+
+                  <span style={{
+                    fontFamily: 'Lufga',
+                    fontWeight: 500,
+                    fontStyle: 'normal',
+                    fontSize: '16.05px',
+                    lineHeight: '120%',
+                    letterSpacing: '0%',
+                    color: 'rgba(0, 0, 0, 0.7)',
+                  }}>
+                    10 installments
+                  </span>
+                </div>
+
+                <a 
+                  href="#"
+                  style={{
+                    fontFamily: 'Lufga',
+                    fontWeight: 500,
+                    fontStyle: 'normal',
+                    fontSize: '16.05px',
+                    lineHeight: '120%',
+                    letterSpacing: '0%',
+                    textDecoration: 'underline',
+                    textDecorationStyle: 'solid',
+                    textUnderlineOffset: '0%',
+                    textDecorationThickness: 'auto',
+                    textDecorationSkipInk: 'auto',
+                    color: 'rgba(0, 103, 255, 1)',
+                    display: 'inline-block',
+                  }}
+                >
+                  Financing
+                </a>
+
+                <div
+                  style={{
+                    width: '100%',
+                    border: '1px solid rgba(0, 0, 0, 0.05)',
+                  }}
+                />
+
+                {ownerProfile && (
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <Avatar className="h-14 w-14">
+                        <AvatarImage src={ownerAvatar || undefined} />
+                        <AvatarFallback
+                          style={{
+                            background: '#AEF31F',
+                            color: 'rgba(0, 0, 0, 1)',
+                            fontFamily: 'Lufga',
+                            fontWeight: 500,
+                            fontSize: '18px',
+                          }}
+                        >
+                          {(ownerName?.charAt(0) || 'U').toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      {ownerIsPro && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: '-6px',
+                            bottom: '-6px',
+                            padding: '3px 8px',
+                            borderRadius: '40px',
+                            background: '#C6FE1F',
+                            fontFamily: 'Lufga',
+                            fontWeight: 600,
+                            fontSize: '12px',
+                            lineHeight: '100%',
+                            color: '#000000',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                        >
+                          Pro
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <div
+                        style={{
+                          fontFamily: 'Lufga',
+                          fontWeight: 600,
+                          fontStyle: 'normal',
+                          fontSize: '20px',
+                          lineHeight: '120%',
+                          letterSpacing: '0%',
+                          color: 'rgba(0, 0, 0, 1)',
+                        }}
+                      >
+                        {ownerName}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={FaceScanSquareIcon}
+                          alt="ID Verified"
+                          style={{ width: '24px', height: '24px' }}
+                        />
+                        <span
+                          style={{
+                            fontFamily: 'Lufga',
+                            fontWeight: 500,
+                            fontStyle: 'normal',
+                            fontSize: '20.06px',
+                            lineHeight: '120%',
+                            letterSpacing: '0%',
+                            color: 'rgba(125, 125, 125, 1)',
+                          }}
+                        >
+                          ID Verified
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <MediaCarousel
+                  images={images}
+                  isFavorite={isFavorite}
+                  isTogglingFavorite={isTogglingFavorite}
+                  onFavorite={handleFavorite}
+                  onShare={handleShare}
+                  categoryName={categoryName}
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              <div className="lg:col-span-2">
+                <MediaCarousel
+                  images={images}
+                  isFavorite={isFavorite}
+                  isTogglingFavorite={isTogglingFavorite}
+                  onFavorite={handleFavorite}
+                  onShare={handleShare}
+                  categoryName={categoryName}
+                />
+              </div>
+
+              <div className="lg:col-span-1">
+                <SummaryCard
+                  listing={listing}
+                  onContactSeller={handleContactSeller}
+                  onMakeOffer={handleMakeOffer}
+                  isStartingChat={isStartingChat}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Description Section */}
           <div className="mb-6">
@@ -3279,7 +3631,7 @@ console.log("detasdetail", listing)
       </div>
   );
 
-  return embedded ? (
+  return isAdminView ? (
     <div className="bg-background">{content}</div>
   ) : (
     <div className="min-h-screen bg-background">

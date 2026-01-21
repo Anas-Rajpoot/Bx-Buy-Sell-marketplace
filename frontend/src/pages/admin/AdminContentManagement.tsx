@@ -59,6 +59,7 @@ import { EditPlanDialog } from "@/components/admin/content/EditPlanDialog";
 import { DeletePlanDialog } from "@/components/admin/content/DeletePlanDialog";
 
 const AdminContentManagement = () => {
+  const FINANCIALS_STORAGE_KEY = "admin_financials_table_v1";
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
@@ -154,6 +155,47 @@ const AdminContentManagement = () => {
     "Transaction Costs": { "2023": "", "2024": "", "today": "", "Forecast 2025": "" },
     "Other Expenses": { "2023": "", "2024": "", "today": "", "Forecast 2025": "" },
   });
+
+  // Load saved financials table (local persistence)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(FINANCIALS_STORAGE_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed.rowLabels)) setRowLabels(parsed.rowLabels);
+      if (Array.isArray(parsed.columnLabels)) {
+        let cols = parsed.columnLabels;
+        const hasToday = cols.some((c: any) => c.isToday || c.key === "today");
+        if (!hasToday) {
+          cols = [...cols, { key: "today", label: getTodayDate(), isToday: true }];
+        }
+        setColumnLabels(cols);
+      }
+      if (parsed.financialData && typeof parsed.financialData === "object") {
+        setFinancialData(parsed.financialData);
+      }
+    } catch (error) {
+      console.warn("Failed to load saved financials table:", error);
+    }
+  }, []);
+
+  const persistFinancialsTable = () => {
+    try {
+      localStorage.setItem(
+        FINANCIALS_STORAGE_KEY,
+        JSON.stringify({ rowLabels, columnLabels, financialData })
+      );
+    } catch (error) {
+      console.warn("Failed to save financials table:", error);
+    }
+  };
+
+  const handleToggleEdit = () => {
+    if (isEditMode) {
+      persistFinancialsTable();
+    }
+    setIsEditMode(!isEditMode);
+  };
 
   // Update today's date column label whenever component renders
   useEffect(() => {
@@ -703,7 +745,7 @@ const AdminContentManagement = () => {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sm:mb-6">
                   <h2 className="text-xl sm:text-2xl font-bold text-foreground">Financials</h2>
                   <Button
-                    onClick={() => setIsEditMode(!isEditMode)}
+                    onClick={handleToggleEdit}
                     className="bg-accent hover:bg-accent/90 text-black font-semibold rounded-lg px-6 sm:px-8 h-9 sm:h-10 text-sm sm:text-base whitespace-nowrap w-full sm:w-auto"
                   >
                     {isEditMode ? "Save Table" : "Edit Table"}

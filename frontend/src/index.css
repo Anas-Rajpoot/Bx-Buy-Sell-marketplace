@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Merriweather+Sans&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -223,9 +225,6 @@ All colors MUST be HSL.
   font-style: normal;
   font-display: swap;
 }
-
-/* Merriweather Sans Font Family - Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Merriweather+Sans&display=swap');
 
 /* ABeeZee Font Family - Local Font Files */
 @font-face {

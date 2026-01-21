@@ -12,7 +12,7 @@ export default function AdminListingDetails() {
     <div className="flex min-h-screen w-full bg-background">
       <AdminSidebar />
       <main className="flex-1">
-        <AdminHeader title="Listings" />
+        <AdminHeader title="Edit Listing" />
         <div className="p-8">
           <Button
             variant="ghost"
@@ -21,10 +21,10 @@ export default function AdminListingDetails() {
           >
             <ArrowLeft className="h-4 w-4 text-black" />
             <span className="font-outfit font-bold text-[18px] leading-[100%] text-black">
-              Back to Listings
+              All Listing
             </span>
           </Button>
-          <ListingDetail embedded />
+          <ListingDetail embedded adminLayout />
         </div>
       </main>
     </div>

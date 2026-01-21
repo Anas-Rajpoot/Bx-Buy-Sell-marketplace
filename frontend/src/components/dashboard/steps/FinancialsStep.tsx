@@ -19,6 +19,7 @@ const getTodayDate = () => {
 };
 
 export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: FinancialsStepProps) => {
+  const FINANCIALS_STORAGE_KEY = "admin_financials_table_v1";
   const [financialType, setFinancialType] = useState<"detailed" | "simple">("detailed");
 
   // Default row labels (expense categories)
@@ -33,10 +34,10 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
   ];
 
   // Default column labels (time periods)
-  const [columnLabels] = useState<Array<{ key: string; label: string }>>([
+  const [columnLabels, setColumnLabels] = useState<Array<{ key: string; label: string; isToday?: boolean }>>([
     { key: "2023", label: "2023" },
     { key: "2024", label: "2024" },
-    { key: "today", label: getTodayDate() },
+    { key: "today", label: getTodayDate(), isToday: true },
     { key: "Forecast 2025", label: "Forecast 2025" }
   ]);
 
@@ -52,13 +53,55 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
     return initialData;
   });
 
-  // Load existing data if available
+  // Load existing data (prefer admin settings from localStorage)
   useEffect(() => {
-    if (parentFormData?.financialData && parentFormData?.rowLabels) {
+    let loadedFromStorage = false;
+    try {
+      const saved = localStorage.getItem(FINANCIALS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.rowLabels)) setRowLabels(parsed.rowLabels);
+        if (Array.isArray(parsed.columnLabels)) {
+          let cols = parsed.columnLabels;
+          const hasToday = cols.some((c: any) => c.isToday || c.key === "today");
+          if (!hasToday) {
+            cols = [...cols, { key: "today", label: getTodayDate(), isToday: true }];
+          }
+          setColumnLabels(cols);
+        }
+        if (parsed.financialData && typeof parsed.financialData === "object") {
+          setFinancialData(parsed.financialData);
+        } else if (Array.isArray(parsed.rowLabels) && Array.isArray(parsed.columnLabels)) {
+          const newData: Record<string, Record<string, string>> = {};
+          parsed.rowLabels.forEach((row: string) => {
+            newData[row] = {};
+            parsed.columnLabels.forEach((col: any) => {
+              newData[row][col.key] = "";
+            });
+          });
+          setFinancialData(newData);
+        }
+        loadedFromStorage = true;
+      }
+    } catch (error) {
+      console.warn("Failed to load admin financials table:", error);
+    }
+
+    if (!loadedFromStorage && parentFormData?.financialData && parentFormData?.rowLabels) {
       setFinancialData(parentFormData.financialData);
       setRowLabels(parentFormData.rowLabels);
+      if (parentFormData.columnLabels) {
+        setColumnLabels(parentFormData.columnLabels);
+      }
     }
   }, [parentFormData]);
+
+  // Keep today's column label current
+  useEffect(() => {
+    setColumnLabels(prev => prev.map(col =>
+      col.key === "today" || col.isToday ? { ...col, label: getTodayDate(), isToday: true } : col
+    ));
+  }, []);
 
   // Handle cell value change
   const handleCellChange = (row: string, col: string, value: string) => {
@@ -334,8 +377,8 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
         <div>
           {rowLabels.map((row, index) => {
             const isGrossRevenue = row === "Gross Revenue";
-            const bgColor = isGrossRevenue ? 'rgba(255, 255, 255, 1)' : '#F3F8E8';
-            const textColor = isGrossRevenue ? 'rgba(0, 0, 0, 1)' : 'rgba(0, 0, 0, 1)';
+            const bgColor = isGrossRevenue ? 'rgba(66, 66, 66, 1)' : '#F3F8E8';
+            const textColor = isGrossRevenue ? 'rgba(255, 255, 255, 1)' : 'rgba(0, 0, 0, 1)';
                 
             return (
               <div 

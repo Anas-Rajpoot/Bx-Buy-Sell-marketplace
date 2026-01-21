@@ -169,12 +169,15 @@ export const AdminHeader = ({ title }: AdminHeaderProps) => {
             </div>
           ) : (
             <h1 
-              className={pageTitle === "Team Member Overview" ? "font-lufga font-semibold" : "text-base sm:text-lg lg:text-xl font-medium truncate"}
-              style={pageTitle === "Team Member Overview" ? {
+              className={pageTitle === "Team Member Overview" || pageTitle === "Edit Listing"
+                ? "font-lufga font-semibold"
+                : "text-base sm:text-lg lg:text-xl font-medium truncate"}
+              style={pageTitle === "Team Member Overview" || pageTitle === "Edit Listing" ? {
                 fontSize: '28px',
                 lineHeight: '100%',
                 letterSpacing: '0%',
                 color: '#000000',
+                fontWeight: 600,
               } : {}}
             >
               {pageTitle}
