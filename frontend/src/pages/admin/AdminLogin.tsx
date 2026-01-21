@@ -33,17 +33,20 @@ export default function AdminLogin() {
         return;
       }
 
-      // Check if user has admin role
-      if (result.user?.role !== "ADMIN") {
-        // Logout the user if they're not admin
+      const userRole = result.user?.role?.toUpperCase();
+      const isAdmin = userRole === "ADMIN";
+      const isModerator = userRole === "MONITER" || userRole === "MODERATOR";
+
+      if (!isAdmin && !isModerator) {
+        // Logout the user if they're not allowed in admin area
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
-        toast.error("Access denied. You must be an admin to login here.");
+        toast.error("Access denied. You must be an admin or moderator to login here.");
         return;
       }
 
-      toast.success("Welcome back, Admin!");
-      navigate("/admin/dashboard");
+      toast.success(isAdmin ? "Welcome back, Admin!" : "Welcome back!");
+      navigate(isAdmin ? "/admin/dashboard" : "/admin/team");
     } catch (error: any) {
       toast.error(error.message || "Login failed");
     } finally {

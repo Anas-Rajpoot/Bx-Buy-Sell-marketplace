@@ -83,7 +83,7 @@ const App = () => (
           <Route path="/admin/reset-password" element={<AdminResetPassword />} />
           
           {/* Admin Routes - Protected (requires admin authentication) */}
-          <Route path="/admin/dashboard" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
+          <Route path="/admin/dashboard" element={<AdminProtectedRoute allowedRoles={["ADMIN"]}><AdminDashboard /></AdminProtectedRoute>} />
           <Route path="/admin/team" element={<AdminProtectedRoute><AdminTeamMembers /></AdminProtectedRoute>} />
           <Route path="/admin/team/:id" element={<AdminProtectedRoute><AdminMemberDetails /></AdminProtectedRoute>} />
           <Route path="/admin/users" element={<AdminProtectedRoute><AdminUsers /></AdminProtectedRoute>} />

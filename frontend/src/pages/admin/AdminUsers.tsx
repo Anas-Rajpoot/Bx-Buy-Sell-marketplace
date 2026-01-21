@@ -25,14 +25,18 @@ import { useAdminUsers, type AdminUser } from "@/hooks/useAdminUsers";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminUsers() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
   const { data: users, isLoading, error } = useAdminUsers();
+  const currentRole = currentUser?.role?.toUpperCase();
+  const isModerator = currentRole === "MONITER" || currentRole === "MODERATOR";
 
   if (error) {
     console.error("Error loading users:", error);
@@ -97,6 +101,14 @@ export default function AdminUsers() {
   };
 
   const handleBlockUser = async (userId: string, userName: string) => {
+    if (isModerator) {
+      const target = users?.find((u) => u.id === userId);
+      const targetRole = target?.user_type?.toLowerCase() || "";
+      if (targetRole !== "user") {
+        toast.error("You can only block normal users.");
+        return;
+      }
+    }
     if (!confirm(`Are you sure you want to block user "${userName}"?`)) {
       return;
     }
@@ -130,6 +142,14 @@ export default function AdminUsers() {
   };
 
   const handleUnblockUser = async (userId: string, userName: string) => {
+    if (isModerator) {
+      const target = users?.find((u) => u.id === userId);
+      const targetRole = target?.user_type?.toLowerCase() || "";
+      if (targetRole !== "user") {
+        toast.error("You can only unblock normal users.");
+        return;
+      }
+    }
     if (!confirm(`Are you sure you want to unblock user "${userName}"?`)) {
       return;
     }
@@ -157,6 +177,14 @@ export default function AdminUsers() {
   };
 
   const handleDeleteUser = async (userId: string, userName: string) => {
+    if (isModerator) {
+      const target = users?.find((u) => u.id === userId);
+      const targetRole = target?.user_type?.toLowerCase() || "";
+      if (targetRole !== "user") {
+        toast.error("You can only delete normal users.");
+        return;
+      }
+    }
     if (!confirm(`Are you sure you want to delete user "${userName}"? This action cannot be undone.`)) {
       return;
     }
@@ -260,7 +288,10 @@ export default function AdminUsers() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                    {paginatedUsers.map((user, index) => (
+                    {paginatedUsers.map((user, index) => {
+                      const targetRole = (user.user_type || "").toLowerCase();
+                      const canModerateTarget = !isModerator || targetRole === "user";
+                      return (
                       <TableRow 
                         key={user.id}
                         className="border-border hover:bg-muted/5"
@@ -411,55 +442,60 @@ export default function AdminUsers() {
                                   <Eye className="h-4 w-4 text-black" />
                                 </div>
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="p-0 focus:bg-transparent"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (user.verified === false) {
-                                    handleUnblockUser(user.id, user.full_name || user.email);
-                                  } else {
-                                    handleBlockUser(user.id, user.full_name || user.email);
-                                  }
-                                }}
-                              >
-                                <div
-                                  className="flex items-center justify-center"
-                                  style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    borderRadius: '10px',
-                                    background: '#F4F4F4',
-                                    border: '1px solid #EBF0ED',
+                              {canModerateTarget && (
+                                <DropdownMenuItem
+                                  className="p-0 focus:bg-transparent"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (user.verified === false) {
+                                      handleUnblockUser(user.id, user.full_name || user.email);
+                                    } else {
+                                      handleBlockUser(user.id, user.full_name || user.email);
+                                    }
                                   }}
                                 >
-                                  <Ban className="h-4 w-4 text-black" />
-                                </div>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="p-0 focus:bg-transparent"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteUser(user.id, user.full_name || user.email);
-                                }}
-                              >
-                                <div
-                                  className="flex items-center justify-center"
-                                  style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    borderRadius: '10px',
-                                    background: '#F4F4F4',
-                                    border: '1px solid #EBF0ED',
+                                  <div
+                                    className="flex items-center justify-center"
+                                    style={{
+                                      width: '32px',
+                                      height: '32px',
+                                      borderRadius: '10px',
+                                      background: '#F4F4F4',
+                                      border: '1px solid #EBF0ED',
+                                    }}
+                                  >
+                                    <Ban className="h-4 w-4 text-black" />
+                                  </div>
+                                </DropdownMenuItem>
+                              )}
+                              {canModerateTarget && (
+                                <DropdownMenuItem
+                                  className="p-0 focus:bg-transparent"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteUser(user.id, user.full_name || user.email);
                                   }}
                                 >
-                                  <Trash2 className="h-4 w-4 text-black" />
-                                </div>
-                              </DropdownMenuItem>
+                                  <div
+                                    className="flex items-center justify-center"
+                                    style={{
+                                      width: '32px',
+                                      height: '32px',
+                                      borderRadius: '10px',
+                                      background: '#F4F4F4',
+                                      border: '1px solid #EBF0ED',
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-black" />
+                                  </div>
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    );
+                    })}
                       </TableBody>
                     </Table>
                   </div>

@@ -30,6 +30,7 @@ import { ExLogo } from "@/components/ExLogo";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { addLocalNotification } from "@/lib/localNotifications";
 import { setLocalListingAssignment } from "@/lib/adminAssignments";
+import { useAuth } from "@/hooks/useAuth";
 
 type SortField = "created_at" | "status" | "user_name";
 type SortOrder = "asc" | "desc";
@@ -37,6 +38,7 @@ type SortOrder = "asc" | "desc";
 export default function AdminListings() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
   const { data: listings, isLoading, refetch } = useAdminListings();
   const { data: teamMembers } = useTeamMembers();
   const { data: categories } = useCategories();
@@ -52,6 +54,8 @@ export default function AdminListings() {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedListingForAssign, setSelectedListingForAssign] = useState<string | null>(null);
   const itemsPerPage = 8;
+  const currentRole = currentUser?.role?.toUpperCase();
+  const isModerator = currentRole === "MONITER" || currentRole === "MODERATOR";
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -278,6 +282,14 @@ export default function AdminListings() {
   };
 
   const handleBlockUser = async (userId: string, userName: string) => {
+    if (isModerator) {
+      const targetListing = listings?.find((l: any) => (l.userId || l.user_id) === userId);
+      const targetRole = targetListing?.profile?.user_type?.toLowerCase() || "";
+      if (targetRole !== "user") {
+        toast.error("You can only block normal users.");
+        return;
+      }
+    }
     if (!confirm(`Are you sure you want to block user "${userName}"?`)) {
       return;
     }
@@ -305,6 +317,14 @@ export default function AdminListings() {
   };
 
   const handleUnblockUser = async (userId: string, userName: string) => {
+    if (isModerator) {
+      const targetListing = listings?.find((l: any) => (l.userId || l.user_id) === userId);
+      const targetRole = targetListing?.profile?.user_type?.toLowerCase() || "";
+      if (targetRole !== "user") {
+        toast.error("You can only unblock normal users.");
+        return;
+      }
+    }
     if (!confirm(`Are you sure you want to unblock user "${userName}"?`)) {
       return;
     }
@@ -704,7 +724,10 @@ export default function AdminListings() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-100">
-                      {paginatedListings.map((listing) => (
+                      {paginatedListings.map((listing) => {
+                        const ownerRole = listing.profile?.user_type?.toLowerCase() || "";
+                        const canModerateOwner = !isModerator || ownerRole === "user";
+                        return (
                         <tr 
                           key={listing.id} 
                           className="hover:bg-gray-50/50 transition-colors"
@@ -890,25 +913,27 @@ export default function AdminListings() {
                                   <MessageCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-2 text-gray-600" />
                                   <span>Chat</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                  className="cursor-pointer hover:bg-accent/20 rounded-md"
-                                  onClick={() => {
-                                    const ownerId = listing.user_id || listing.userId;
-                                    const ownerName = listing.profile?.full_name || 'Unknown User';
-                                    if (!ownerId) {
-                                      toast.error("User ID not found for this listing");
-                                      return;
-                                    }
-                                    if (listing.profile?.verified === false) {
-                                      handleUnblockUser(ownerId, ownerName);
-                                    } else {
-                                      handleBlockUser(ownerId, ownerName);
-                                    }
-                                  }}
-                                >
-                                  <XCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-2 text-gray-600" />
-                                  <span>{listing.profile?.verified === false ? "Unblock" : "Block"}</span>
-                                </DropdownMenuItem>
+                                {canModerateOwner && (
+                                  <DropdownMenuItem 
+                                    className="cursor-pointer hover:bg-accent/20 rounded-md"
+                                    onClick={() => {
+                                      const ownerId = listing.user_id || listing.userId;
+                                      const ownerName = listing.profile?.full_name || 'Unknown User';
+                                      if (!ownerId) {
+                                        toast.error("User ID not found for this listing");
+                                        return;
+                                      }
+                                      if (listing.profile?.verified === false) {
+                                        handleUnblockUser(ownerId, ownerName);
+                                      } else {
+                                        handleBlockUser(ownerId, ownerName);
+                                      }
+                                    }}
+                                  >
+                                    <XCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-2 text-gray-600" />
+                                    <span>{listing.profile?.verified === false ? "Unblock" : "Block"}</span>
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem 
                                   className="cursor-pointer text-red-600 hover:bg-red-50 rounded-md"
                                   onClick={() => handleDelete(listing.id)}
@@ -920,7 +945,8 @@ export default function AdminListings() {
                             </DropdownMenu>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

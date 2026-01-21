@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, Plus, MoreVertical, Eye, Edit, MessageSquare, RefreshCw, Trash2, Loader2 } from "lucide-react";
+import messageIcon from "@/assets/mesg.svg";
 import {
   Select,
   SelectContent,
@@ -35,10 +36,12 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { createSocketConnection } from "@/lib/socket";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminTeamMembers() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -46,6 +49,8 @@ export default function AdminTeamMembers() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
   const { data: members, isLoading, error, refetch } = useTeamMembers();
+  const userRole = user?.role?.toUpperCase();
+  const isModerator = userRole === "MONITER" || userRole === "MODERATOR";
 
   useEffect(() => {
     const socket = createSocketConnection({
@@ -125,6 +130,10 @@ export default function AdminTeamMembers() {
 
 
   const handleDelete = async (member: TeamMember) => {
+    if (isModerator) {
+      toast.error("You don't have permission to delete team members.");
+      return;
+    }
     if (!confirm(`Are you sure you want to delete team member "${member.full_name || member.email}"? This action cannot be undone.`)) {
       return;
     }
@@ -158,6 +167,10 @@ export default function AdminTeamMembers() {
   };
 
   const handleEdit = (member: TeamMember) => {
+    if (isModerator) {
+      toast.error("You don't have permission to edit team members.");
+      return;
+    }
     setSelectedMember(member);
     setIsEditDialogOpen(true);
   };
@@ -191,29 +204,31 @@ export default function AdminTeamMembers() {
                 }}
               />
             </div>
-            <Button 
-              onClick={() => setIsAddDialogOpen(true)}
-              className="font-lufga font-medium"
-              style={{
-                width: '183px',
-                height: '54px',
-                paddingTop: '16px',
-                paddingRight: '26px',
-                paddingBottom: '16px',
-                paddingLeft: '26px',
-                gap: '10px',
-                borderRadius: '60px',
-                background: '#C6FE1F',
-                color: '#000000',
-                fontSize: '16px',
-                lineHeight: '140%',
-                letterSpacing: '0%',
-                border: 'none',
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              Add Member
-            </Button>
+            {!isModerator && (
+              <Button 
+                onClick={() => setIsAddDialogOpen(true)}
+                className="font-lufga font-medium"
+                style={{
+                  width: '183px',
+                  height: '54px',
+                  paddingTop: '16px',
+                  paddingRight: '26px',
+                  paddingBottom: '16px',
+                  paddingLeft: '26px',
+                  gap: '10px',
+                  borderRadius: '60px',
+                  background: '#C6FE1F',
+                  color: '#000000',
+                  fontSize: '16px',
+                  lineHeight: '140%',
+                  letterSpacing: '0%',
+                  border: 'none',
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                Add Member
+              </Button>
+            )}
           </div>
 
           {/* Divider Line */}
@@ -543,53 +558,67 @@ export default function AdminTeamMembers() {
                           </div>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
-                                <MoreVertical className="h-3 w-3 sm:h-4 sm:w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent 
-                              align="end"
-                              className="w-36 sm:w-40 bg-accent border-accent text-xs sm:text-sm"
+                          {isModerator ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9"
+                              onClick={() => navigate(`/admin/chats?userId=${member.id}`)}
                             >
-                              <DropdownMenuItem 
-                                onClick={() => navigate(`/admin/team/${member.id}`)}
-                                className="cursor-pointer"
+                              <img src={messageIcon} alt="Message" className="h-8 w-8" />
+                            </Button>
+                          ) : (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
+                                  <MoreVertical className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent 
+                                align="end"
+                                className="w-36 sm:w-40 bg-accent border-accent text-xs sm:text-sm"
                               >
-                                <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                                View
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleEdit(member)}
-                                className="cursor-pointer"
-                              >
-                                <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="cursor-pointer">
-                                <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                                Chat
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => {
-                                  queryClient.invalidateQueries({ queryKey: ["team-members"] });
-                                  toast.success("Team members refreshed");
-                                }}
-                                className="cursor-pointer"
-                              >
-                                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                                Refresh
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleDelete(member)}
-                                className="cursor-pointer text-destructive"
-                              >
-                                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                                <DropdownMenuItem 
+                                  onClick={() => navigate(`/admin/team/${member.id}`)}
+                                  className="cursor-pointer"
+                                >
+                                  <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                                  View
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleEdit(member)}
+                                  className="cursor-pointer"
+                                >
+                                  <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="cursor-pointer"
+                                  onClick={() => navigate(`/admin/chats?userId=${member.id}`)}
+                                >
+                                  <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                                  Chat
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => {
+                                    queryClient.invalidateQueries({ queryKey: ["team-members"] });
+                                    toast.success("Team members refreshed");
+                                  }}
+                                  className="cursor-pointer"
+                                >
+                                  <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                                  Refresh
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDelete(member)}
+                                  className="cursor-pointer text-destructive"
+                                >
+                                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </TableCell>
                       </TableRow>
                       );
@@ -665,15 +694,19 @@ export default function AdminTeamMembers() {
         </div>
       </main>
 
-      <AddMemberDialog 
-        open={isAddDialogOpen} 
-        onOpenChange={setIsAddDialogOpen}
-      />
-      <EditMemberDialog 
-        open={isEditDialogOpen} 
-        onOpenChange={setIsEditDialogOpen}
-        member={selectedMember}
-      />
+      {!isModerator && (
+        <AddMemberDialog 
+          open={isAddDialogOpen} 
+          onOpenChange={setIsAddDialogOpen}
+        />
+      )}
+      {!isModerator && (
+        <EditMemberDialog 
+          open={isEditDialogOpen} 
+          onOpenChange={setIsEditDialogOpen}
+          member={selectedMember}
+        />
+      )}
     </div>
   );
 }

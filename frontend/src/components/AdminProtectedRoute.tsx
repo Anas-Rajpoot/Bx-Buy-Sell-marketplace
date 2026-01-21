@@ -3,13 +3,14 @@ import { useAuth } from "@/hooks/useAuth";
 
 interface AdminProtectedRouteProps {
   children: React.ReactNode;
+  allowedRoles?: string[];
 }
 
 /**
  * AdminProtectedRoute - Ensures user is authenticated AND has admin role
  * Shows loading state until auth check completes, then redirects if not authenticated or not admin
  */
-export const AdminProtectedRoute = ({ children }: AdminProtectedRouteProps) => {
+export const AdminProtectedRoute = ({ children, allowedRoles }: AdminProtectedRouteProps) => {
   const { user, isAuthenticated, loading } = useAuth();
 
   // Wait for auth check to complete
@@ -29,12 +30,16 @@ export const AdminProtectedRoute = ({ children }: AdminProtectedRouteProps) => {
     return <Navigate to="/admin/login" replace />;
   }
 
-  // Check if user has admin role (case-insensitive check for ADMIN, admin, etc.)
+  // Check if user has required role
   const userRole = user.role?.toUpperCase();
-  const isAdmin = userRole === "ADMIN";
+  const roleAllowlist = (allowedRoles?.length
+    ? allowedRoles
+    : ["ADMIN", "MONITER", "MODERATOR"]
+  ).map((role) => role.toUpperCase());
+  const isAllowed = userRole ? roleAllowlist.includes(userRole) : false;
 
-  // Redirect to admin login if not admin
-  if (!isAdmin) {
+  // Redirect to admin login if not authorized
+  if (!isAllowed) {
     return <Navigate to="/admin/login" replace />;
   }
 

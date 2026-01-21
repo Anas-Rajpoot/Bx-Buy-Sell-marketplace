@@ -49,16 +49,19 @@ interface Conversation {
 interface AdminConversationListProps {
   selectedConversationId: string | null;
   onSelectConversation: (id: string) => void;
+  autoSelectUserId?: string | null;
 }
 
 export const AdminConversationList = ({ 
   selectedConversationId, 
-  onSelectConversation 
+  onSelectConversation,
+  autoSelectUserId
 }: AdminConversationListProps) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const socketRef = useRef<Socket | null>(null);
+  const autoSelectedRef = useRef(false);
 
   useEffect(() => {
     fetchConversations();
@@ -132,6 +135,21 @@ export const AdminConversationList = ({
       socketRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (!autoSelectUserId || selectedConversationId || autoSelectedRef.current) {
+      return;
+    }
+
+    const match = conversations.find((conv) => {
+      return conv.user?.id === autoSelectUserId || conv.seller?.id === autoSelectUserId;
+    });
+
+    if (match) {
+      autoSelectedRef.current = true;
+      onSelectConversation(match.id);
+    }
+  }, [autoSelectUserId, conversations, onSelectConversation, selectedConversationId]);
 
   const fetchConversations = async () => {
     try {

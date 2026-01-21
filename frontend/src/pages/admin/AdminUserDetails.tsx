@@ -17,6 +17,7 @@ import { useUserFavorites } from "@/hooks/useUserFavorites";
 import { apiClient } from "@/lib/api";
 import { toast } from "sonner";
 import { getAdminUserNote, setAdminUserNote } from "@/lib/adminUserNotes";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,7 @@ import {
 export default function AdminUserDetails() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user: currentUser } = useAuth();
   const { data, isLoading, refetch } = useUserDetails(id);
   const { data: userFavorites } = useUserFavorites(id);
   const [isPrefsOpen, setIsPrefsOpen] = useState(false);
@@ -96,6 +98,10 @@ export default function AdminUserDetails() {
   const { profile, listingsCount, favoritesCount, chatsCount } = data;
   const resolvedFavoritesCount = userFavorites?.length ?? favoritesCount;
   const preferences = (profile as any)?.preferences || null;
+  const currentRole = currentUser?.role?.toUpperCase();
+  const isModerator = currentRole === "MONITER" || currentRole === "MODERATOR";
+  const targetRole = (profile as any)?.role?.toUpperCase() || "";
+  const canModerateTarget = !isModerator || targetRole === "USER";
 
   const formatRange = (range?: { min?: string | null; max?: string | null }, suffix = "") => {
     if (!range) return "-";
@@ -220,6 +226,10 @@ export default function AdminUserDetails() {
 
   const handleBlockUser = async () => {
     if (!id) return;
+    if (!canModerateTarget) {
+      toast.error("You can only block normal users.");
+      return;
+    }
     const confirmed = window.confirm("Block this user?");
     if (!confirmed) return;
     try {
@@ -236,6 +246,10 @@ export default function AdminUserDetails() {
 
   const handleDeleteUser = async () => {
     if (!id) return;
+    if (!canModerateTarget) {
+      toast.error("You can only delete normal users.");
+      return;
+    }
     const confirmed = window.confirm("Delete this user? This action cannot be undone.");
     if (!confirmed) return;
     try {
@@ -431,30 +445,36 @@ export default function AdminUserDetails() {
                 />
               </div>
 
-              <div className="flex items-center gap-3">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button className="bg-accent text-black hover:bg-accent/90 rounded-full px-6">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Settings
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="rounded-2xl border-border p-2">
-                    <DropdownMenuItem className="rounded-xl" onClick={handleMessageUser}>
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Message
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="rounded-xl" onClick={handleBlockUser}>
-                      <Ban className="h-4 w-4 mr-2" />
-                      Block
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="rounded-xl text-destructive" onClick={handleDeleteUser}>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              {!isModerator && (
+                <div className="flex items-center gap-3">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button className="bg-accent text-black hover:bg-accent/90 rounded-full px-6">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Settings
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="rounded-2xl border-border p-2">
+                      <DropdownMenuItem className="rounded-xl" onClick={handleMessageUser}>
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Message
+                      </DropdownMenuItem>
+                      {canModerateTarget && (
+                        <DropdownMenuItem className="rounded-xl" onClick={handleBlockUser}>
+                          <Ban className="h-4 w-4 mr-2" />
+                          Block
+                        </DropdownMenuItem>
+                      )}
+                      {canModerateTarget && (
+                        <DropdownMenuItem className="rounded-xl text-destructive" onClick={handleDeleteUser}>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
             </div>
 
             <div className="my-6 w-full border-t" style={{ borderColor: '#00000040' }} />

@@ -11,6 +11,11 @@ import { LogInterceptor } from 'common/interceptor/log.interceptor';
 import { ActivityLogModule } from './activity-log/activity-log.module';
 
 async function bootstrap() {
+  if (!process.env.DATABASE_URL) {
+    process.env.DATABASE_URL = 'mongodb://localhost:27017/ex-buy-sell-db';
+    console.warn('⚠️  DATABASE_URL not set. Using default local MongoDB.');
+  }
+
   const app = await NestFactory.create(AppModule);
   app.enableCors({
     origin: '*',

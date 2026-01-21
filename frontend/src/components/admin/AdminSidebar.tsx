@@ -53,8 +53,13 @@ interface AdminSidebarProps {
 const AdminSidebarContent = ({ onClose }: { onClose?: () => void }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [expandedItems, setExpandedItems] = useState<string[]>(["chat", "content"]);
+  const userRole = user?.role?.toUpperCase();
+  const isModerator = userRole === "MONITER" || userRole === "MODERATOR";
+  const filteredMenuItems = isModerator
+    ? menuItems.filter((item) => item.id !== "dashboard" && item.id !== "content")
+    : menuItems;
 
   const handleLogout = async () => {
     await logout();
@@ -124,7 +129,7 @@ const AdminSidebarContent = ({ onClose }: { onClose?: () => void }) => {
           paddingRight: '12px', // Add padding to content instead of container
         }}
       >
-        {menuItems.map((item) => {
+        {filteredMenuItems.map((item) => {
           const Icon = item.icon;
           const isActive = isPathActive(item.path, item.subItems);
           const hasActiveChild = hasActiveSubItem(item.subItems);

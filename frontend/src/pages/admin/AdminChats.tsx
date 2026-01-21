@@ -1,12 +1,60 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminConversationList } from "@/components/admin/chat/AdminConversationList";
 import { AdminChatWindow } from "@/components/admin/chat/AdminChatWindow";
 import { AdminChatDetails } from "@/components/admin/chat/AdminChatDetails";
+import { useAuth } from "@/hooks/useAuth";
+import { apiClient } from "@/lib/api";
 
 const AdminChats = () => {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const autoUserId = searchParams.get("userId");
+  const hideConversationList = Boolean(autoUserId);
+  const { user: currentUser } = useAuth();
+
+  useEffect(() => {
+    if (!autoUserId || !currentUser?.id) {
+      return;
+    }
+
+    let isActive = true;
+
+    const openDirectChat = async () => {
+      try {
+        let chatResponse: any = await apiClient.getChatRoom(currentUser.id, autoUserId);
+        let chatData = chatResponse.data?.data || chatResponse.data;
+
+        if (!chatResponse.success || !chatData?.id) {
+          const createResponse: any = await apiClient.createChatRoom(currentUser.id, autoUserId);
+          const createData = createResponse.data?.data || createResponse.data;
+          if (createResponse.success && createData?.id) {
+            chatData = createData;
+          } else {
+            chatResponse = await apiClient.getChatRoom(currentUser.id, autoUserId);
+            const retryData = chatResponse.data?.data || chatResponse.data;
+            if (chatResponse.success && retryData?.id) {
+              chatData = retryData;
+            }
+          }
+        }
+
+        if (isActive && chatData?.id) {
+          setSelectedConversationId(chatData.id);
+        }
+      } catch (error) {
+        console.error("Failed to open direct chat:", error);
+      }
+    };
+
+    openDirectChat();
+
+    return () => {
+      isActive = false;
+    };
+  }, [autoUserId, currentUser?.id]);
 
   return (
     <div className="flex bg-background" style={{ height: '100vh', maxHeight: '100vh', overflow: 'hidden' }}>
@@ -27,7 +75,7 @@ const AdminChats = () => {
           {/* First Div - Conversation List */}
           <div
             className={`
-              ${selectedConversationId ? 'hidden md:flex' : 'flex'} 
+              ${hideConversationList ? 'hidden' : (selectedConversationId ? 'hidden md:flex' : 'flex')}
               flex-col w-full md:w-[280px] lg:w-[300px] xl:w-[320px] flex-shrink-0
             `}
             style={{
@@ -42,6 +90,7 @@ const AdminChats = () => {
             <AdminConversationList 
               selectedConversationId={selectedConversationId}
               onSelectConversation={setSelectedConversationId}
+              autoSelectUserId={autoUserId}
             />
           </div>
 
