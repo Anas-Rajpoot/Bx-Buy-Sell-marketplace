@@ -52,12 +52,20 @@ export default function AdminMemberDetails() {
 
         const managedChats =
           chatCountRes?.success && chatCountRes?.data
-            ? Number(chatCountRes.data.count ?? chatCountRes.data?.data?.count ?? 0)
+            ? Number(
+                (chatCountRes.data as { count?: number; data?: { count?: number } })?.count ??
+                  (chatCountRes.data as { data?: { count?: number } })?.data?.count ??
+                  0
+              )
             : 0;
 
         const activityLog =
           activityCountRes?.success && activityCountRes?.data
-            ? Number(activityCountRes.data.log_count ?? activityCountRes.data?.data?.log_count ?? 0)
+            ? Number(
+                (activityCountRes.data as { log_count?: number; data?: { log_count?: number } })?.log_count ??
+                  (activityCountRes.data as { data?: { log_count?: number } })?.data?.log_count ??
+                  0
+              )
             : 0;
 
         if (isActive) {
@@ -103,7 +111,16 @@ export default function AdminMemberDetails() {
       setLoading(true);
       const response = await apiClient.getUserById(id!);
       if (response.success && response.data) {
-        const userData = response.data;
+        const userData = response.data as {
+          id?: string;
+          first_name?: string;
+          last_name?: string;
+          email?: string;
+          role?: string;
+          profile_pic?: string | null;
+          created_at?: string;
+          createdAt?: string;
+        };
         const memberData = {
           id: userData.id,
           first_name: userData.first_name || "",
@@ -186,6 +203,10 @@ export default function AdminMemberDetails() {
 
   const handleBlock = async () => {
     if (!id || !currentUser?.id) return;
+    if (!isSuperAdmin) {
+      toast.error("You don't have permission to block team members.");
+      return;
+    }
     
     setIsSettingsOpen(false);
     
@@ -218,6 +239,10 @@ export default function AdminMemberDetails() {
 
   const handleDelete = async () => {
     if (!id) return;
+    if (!isSuperAdmin) {
+      toast.error("You don't have permission to delete team members.");
+      return;
+    }
     
     setIsSettingsOpen(false);
     
@@ -446,47 +471,49 @@ export default function AdminMemberDetails() {
                         </span>
                       </button>
 
-                      {/* Block Button */}
-                      <button
-                        onClick={handleBlock}
-                        className="flex items-center gap-3 w-full px-3 py-2 hover:bg-gray-100 rounded-lg transition-colors"
-                        style={{
-                          background: '#F3F4F6',
-                          borderRadius: '8px',
-                        }}
-                      >
-                        <Ban className="h-5 w-5 flex-shrink-0" style={{ color: '#000000' }} />
-                        <span 
-                          className="font-outfit"
+                      {isSuperAdmin && (
+                        <button
+                          onClick={handleBlock}
+                          className="flex items-center gap-3 w-full px-3 py-2 hover:bg-gray-100 rounded-lg transition-colors"
                           style={{
-                            fontSize: '14px',
-                            color: '#000000',
+                            background: '#F3F4F6',
+                            borderRadius: '8px',
                           }}
                         >
-                          Block
-                        </span>
-                      </button>
+                          <Ban className="h-5 w-5 flex-shrink-0" style={{ color: '#000000' }} />
+                          <span 
+                            className="font-outfit"
+                            style={{
+                              fontSize: '14px',
+                              color: '#000000',
+                            }}
+                          >
+                            Block
+                          </span>
+                        </button>
+                      )}
 
-                      {/* Delete Button */}
-                      <button
-                        onClick={handleDelete}
-                        className="flex items-center gap-3 w-full px-3 py-2 hover:bg-gray-100 rounded-lg transition-colors"
-                        style={{
-                          background: '#F3F4F6',
-                          borderRadius: '8px',
-                        }}
-                      >
-                        <Trash2 className="h-5 w-5 flex-shrink-0" style={{ color: '#000000' }} />
-                        <span 
-                          className="font-outfit"
+                      {isSuperAdmin && (
+                        <button
+                          onClick={handleDelete}
+                          className="flex items-center gap-3 w-full px-3 py-2 hover:bg-gray-100 rounded-lg transition-colors"
                           style={{
-                            fontSize: '14px',
-                            color: '#000000',
+                            background: '#F3F4F6',
+                            borderRadius: '8px',
                           }}
                         >
-                          Delete
-                        </span>
-                      </button>
+                          <Trash2 className="h-5 w-5 flex-shrink-0" style={{ color: '#000000' }} />
+                          <span 
+                            className="font-outfit"
+                            style={{
+                              fontSize: '14px',
+                              color: '#000000',
+                            }}
+                          >
+                            Delete
+                          </span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}

@@ -89,10 +89,11 @@ export const useAuth = () => {
 
   const login = async (email: string, password: string) => {
     const response = await apiClient.signIn({ email, password });
+    const data = response.data as { user?: User } | undefined;
     
-    if (response.success && response.data?.user) {
-      setUser(response.data.user);
-      return { success: true, user: response.data.user };
+    if (response.success && data?.user) {
+      setUser(data.user);
+      return { success: true, user: data.user };
     }
     
     return { success: false, error: response.error };
@@ -106,10 +107,11 @@ export const useAuth = () => {
     confirm_password: string;
   }) => {
     const response = await apiClient.signUp(userData);
+    const data = response.data as { user?: User } | undefined;
     
-    if (response.success && response.data?.user) {
-      setUser(response.data.user);
-      return { success: true, user: response.data.user };
+    if (response.success && data?.user) {
+      setUser(data.user);
+      return { success: true, user: data.user };
     }
     
     return { success: false, error: response.error };
@@ -128,8 +130,9 @@ export const useAuth = () => {
     if (user?.id) {
       const response = await apiClient.getUserById(user.id);
       if (response.success && response.data) {
-        setUser(response.data);
-        localStorage.setItem('user_data', JSON.stringify(response.data));
+        const nextUser = response.data as User;
+        setUser(nextUser);
+        localStorage.setItem('user_data', JSON.stringify(nextUser));
       }
     }
   };
