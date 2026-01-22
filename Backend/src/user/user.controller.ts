@@ -181,6 +181,7 @@ export class UserController {
     
     const payload = await this.userService.updateUser(id, body);
     await this.cacheManager.del(`${this.constructor.name}`);
+    await this.cacheManager.del(`${this.constructor.name}:${id}`);
     return payload;
   }
 
@@ -220,6 +221,7 @@ export class UserController {
   ) {
     const payload = await this.userService.updateUser(id, body);
     await this.cacheManager.del(`${this.constructor.name}`);
+    await this.cacheManager.del(`${this.constructor.name}:${id}`);
     return payload;
   }
 
