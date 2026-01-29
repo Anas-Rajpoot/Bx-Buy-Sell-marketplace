@@ -24,12 +24,12 @@ export const createSocketConnection = (options?: {
   const heartbeatIntervalMs = 25_000;
   
   const socket = io(WS_URL, {
-    transports: options?.transports || ['websocket', 'polling'],
+    transports: options?.transports || ['polling', 'websocket'],
     reconnection: options?.reconnection !== undefined ? options.reconnection : true,
-    reconnectionDelay: options?.reconnectionDelay || 300, // Default 300ms (faster)
-    reconnectionDelayMax: 2000, // Reduced from 5000ms
-    reconnectionAttempts: options?.reconnectionAttempts || 3, // Default 3 attempts
-    timeout: options?.timeout || 3000, // Default 3 seconds (faster)
+    reconnectionDelay: options?.reconnectionDelay || 1000,
+    reconnectionDelayMax: 5000,
+    reconnectionAttempts: options?.reconnectionAttempts || 10,
+    timeout: options?.timeout || 10000,
     forceNew: options?.forceNew !== undefined ? options.forceNew : false,
     upgrade: options?.upgrade !== undefined ? options.upgrade : true,
     auth: {

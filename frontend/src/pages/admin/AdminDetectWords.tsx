@@ -9,6 +9,15 @@ import { ProhibitedWordsList } from "@/components/admin/words/ProhibitedWordsLis
 const AdminDetectWords = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [newWord, setNewWord] = useState("");
+  const [addWordTrigger, setAddWordTrigger] = useState(0);
+  const [wordToAdd, setWordToAdd] = useState("");
+
+  const triggerAddWord = () => {
+    const trimmedWord = newWord.trim();
+    if (!trimmedWord) return;
+    setWordToAdd(trimmedWord);
+    setAddWordTrigger((prev) => prev + 1);
+  };
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -37,13 +46,19 @@ const AdminDetectWords = () => {
               placeholder="Type a word here"
               value={newWord}
               onChange={(e) => setNewWord(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  triggerAddWord();
+                }
+              }}
               className="flex-1 border-[#D4FF00] focus-visible:ring-[#D4FF00]"
             />
             <Button 
               className="bg-[#D4FF00] hover:bg-[#D4FF00]/90 text-black font-medium gap-2"
+              disabled={!newWord.trim()}
               onClick={() => {
-                // Will be handled by ProhibitedWordsList component
-                setNewWord("");
+                triggerAddWord();
               }}
             >
               <Plus className="h-4 w-4" />
@@ -57,8 +72,12 @@ const AdminDetectWords = () => {
           <h2 className="text-sm font-semibold text-muted-foreground mb-4">Show Word</h2>
           <ProhibitedWordsList 
             searchQuery={searchQuery}
-            newWord={newWord}
-            onWordAdded={() => setNewWord("")}
+            wordToAdd={wordToAdd}
+            addWordTrigger={addWordTrigger}
+            onWordAdded={() => {
+              setNewWord("");
+              setWordToAdd("");
+            }}
           />
         </div>
       </div>

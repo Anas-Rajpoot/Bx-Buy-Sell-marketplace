@@ -100,6 +100,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
   }
 
+
   async afterInit(server: Server) {
     this.io = server;
     console.log('🚀 WebSocket Gateway initialized');
@@ -654,6 +655,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           // Don't fail message creation if notification fails
           console.error('❌ Failed to create notification:', notifError);
         }
+
       } catch (dbError) {
         console.error('❌ Error saving message to database:', dbError);
         throw new WsException('Failed to save message to database');

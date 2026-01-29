@@ -196,7 +196,7 @@ export const AdminChatDetails = ({ conversationId }: AdminChatDetailsProps) => {
 
   return (
     <>
-      <div className="w-full bg-background flex flex-col h-full overflow-y-auto p-4">
+      <div className="w-full bg-background flex flex-col h-full overflow-y-auto p-4 admin-chat-scrollbar">
         {/* Details Heading - Top Left */}
         <h3 
           style={{

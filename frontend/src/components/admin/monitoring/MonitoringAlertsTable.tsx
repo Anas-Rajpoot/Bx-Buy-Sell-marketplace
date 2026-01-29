@@ -147,6 +147,12 @@ export const MonitoringAlertsTable = ({ searchQuery }: MonitoringAlertsTableProp
     }
   };
 
+  const getChatIdFromNotes = (notes?: string | null) => {
+    if (!notes) return null;
+    const match = notes.match(/Chat ID:\s*([a-z0-9-]+)/i);
+    return match?.[1] || null;
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'unsolved':
@@ -238,6 +244,26 @@ export const MonitoringAlertsTable = ({ searchQuery }: MonitoringAlertsTableProp
                       <AvatarImage src={alert.problematic_user?.avatar_url || ''} />
                       <AvatarFallback>{alert.problematic_user?.full_name?.[0] || 'U'}</AvatarFallback>
                     </Avatar>
+                    {getChatIdFromNotes(alert.notes) ? (
+                      <a
+                        href={`/admin/chats?chatId=${encodeURIComponent(getChatIdFromNotes(alert.notes) || '')}`}
+                        className="hover:underline"
+                        title="Open chat"
+                      >
+                        <span
+                          style={{
+                            fontFamily: 'Lufga',
+                            fontWeight: 500,
+                            fontSize: '14px',
+                            lineHeight: '150%',
+                            letterSpacing: '0%',
+                            color: '#000000',
+                          }}
+                        >
+                          {alert.problematic_user?.full_name || 'Unknown'}
+                        </span>
+                      </a>
+                    ) : (
                     <span
                       style={{
                         fontFamily: 'Lufga',
@@ -250,6 +276,7 @@ export const MonitoringAlertsTable = ({ searchQuery }: MonitoringAlertsTableProp
                     >
                       {alert.problematic_user?.full_name || 'Unknown'}
                     </span>
+                    )}
                   </div>
                 </td>
                 <td className="py-4 px-4">

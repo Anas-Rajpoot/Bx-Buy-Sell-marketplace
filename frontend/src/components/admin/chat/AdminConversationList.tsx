@@ -71,7 +71,7 @@ export const AdminConversationList = ({
     console.log('🔌 [MONITOR] Connecting to Socket.IO for monitor updates:', wsUrl);
     
     const socket = createSocketConnection({
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       reconnection: true,
       auth: {
         token: localStorage.getItem('auth_token')
@@ -358,7 +358,7 @@ export const AdminConversationList = ({
       </div>
 
       {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto min-h-0" style={{ padding: '0 15px', boxSizing: 'border-box' }}>
+      <div className="flex-1 overflow-y-auto min-h-0 admin-chat-scrollbar" style={{ padding: '0 15px', boxSizing: 'border-box' }}>
         {loading ? (
           <div className="w-full bg-background flex items-center justify-center h-full">
             <div className="text-center">

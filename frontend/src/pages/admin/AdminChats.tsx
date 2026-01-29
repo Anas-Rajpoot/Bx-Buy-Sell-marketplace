@@ -12,10 +12,23 @@ const AdminChats = () => {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const autoUserId = searchParams.get("userId");
-  const hideConversationList = Boolean(autoUserId);
+  const autoChatId = searchParams.get("chatId");
+  const hideConversationList = Boolean(autoUserId || autoChatId);
   const { user: currentUser } = useAuth();
 
   useEffect(() => {
+    if (!autoChatId) {
+      return;
+    }
+
+    setSelectedConversationId(autoChatId);
+  }, [autoChatId]);
+
+  useEffect(() => {
+    if (autoChatId) {
+      return;
+    }
+
     if (!autoUserId || !currentUser?.id) {
       return;
     }
@@ -54,7 +67,7 @@ const AdminChats = () => {
     return () => {
       isActive = false;
     };
-  }, [autoUserId, currentUser?.id]);
+  }, [autoUserId, autoChatId, currentUser?.id]);
 
   return (
     <div className="flex bg-background" style={{ height: '100vh', maxHeight: '100vh', overflow: 'hidden' }}>

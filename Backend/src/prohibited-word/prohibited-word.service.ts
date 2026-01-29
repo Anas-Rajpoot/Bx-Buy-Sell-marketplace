@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -32,11 +32,18 @@ export class ProhibitedWordService {
     });
   }
 
-  delete(id: string){
+  async delete(id: string) {
+    const existing = await this.db.prohibitedWord.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Prohibited word not found');
+    }
+
     return this.db.prohibitedWord.delete({
-      where: {
-        id,
-      },
+      where: { id },
     });
   }
 }

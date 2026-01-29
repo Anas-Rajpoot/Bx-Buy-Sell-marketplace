@@ -77,6 +77,30 @@
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
+/* Admin chat columns scrollbar - very thin, light */
+.admin-chat-scrollbar::-webkit-scrollbar {
+  width: 2px;
+}
+
+.admin-chat-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-chat-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+}
+
+.admin-chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Firefox scrollbar for admin chat columns */
+.admin-chat-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}
+
 /* Fixed width for chat window on desktop */
 @media (min-width: 1280px) {
   [data-desktop-width="688px"] {

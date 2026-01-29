@@ -23,7 +23,8 @@ interface ProhibitedWord {
 
 interface ProhibitedWordsListProps {
   searchQuery: string;
-  newWord: string;
+  wordToAdd: string;
+  addWordTrigger: number;
   onWordAdded: () => void;
 }
 
@@ -41,7 +42,7 @@ const categoryColors = {
   other: "bg-gray-500/20 text-gray-700 border-gray-300"
 };
 
-export const ProhibitedWordsList = ({ searchQuery, newWord, onWordAdded }: ProhibitedWordsListProps) => {
+export const ProhibitedWordsList = ({ searchQuery, wordToAdd, addWordTrigger, onWordAdded }: ProhibitedWordsListProps) => {
   const [words, setWords] = useState<ProhibitedWord[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingWord, setEditingWord] = useState<ProhibitedWord | null>(null);
@@ -62,10 +63,10 @@ export const ProhibitedWordsList = ({ searchQuery, newWord, onWordAdded }: Prohi
   }, []);
 
   useEffect(() => {
-    if (newWord.trim()) {
-      handleAddWord(newWord.trim());
+    if (addWordTrigger > 0 && wordToAdd.trim()) {
+      handleAddWord(wordToAdd.trim());
     }
-  }, [newWord]);
+  }, [addWordTrigger, wordToAdd]);
 
   const fetchWords = async () => {
     try {

@@ -71,7 +71,7 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
     console.log('🔌 ConversationList: Connecting to Socket.IO for real-time updates:', wsUrl);
     
     const socket = createSocketConnection({
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       reconnection: true,
     });
     

@@ -10,6 +10,38 @@ export class ChatService {
     private redis: RedisAdapterService,
   ) {}
 
+  private escapeRegex(value: string) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  private async findProhibitedWords(content: string) {
+    const normalizedContent = content.toLowerCase();
+    const words = await this.db.prohibitedWord.findMany({
+      select: { word: true },
+    });
+
+    const matches: string[] = [];
+    for (const entry of words) {
+      const rawWord = (entry.word || '').trim();
+      if (!rawWord) continue;
+      const normalizedWord = rawWord.toLowerCase();
+
+      if (normalizedWord.includes(' ')) {
+        if (normalizedContent.includes(normalizedWord)) {
+          matches.push(rawWord);
+        }
+        continue;
+      }
+
+      const regex = new RegExp(`\\b${this.escapeRegex(normalizedWord)}\\b`, 'i');
+      if (regex.test(content)) {
+        matches.push(rawWord);
+      }
+    }
+
+    return matches;
+  }
+
   async getChatRoom(userId: string, sellerId: string, listingId?: string) {
     // CRITICAL: Find ALL chat rooms between these users and merge their messages
     const whereConditions = [
@@ -205,6 +237,33 @@ export class ChatService {
       senderId,
       createdAt: saved.createdAt,
     });
+
+    // Create monitoring alert if prohibited word found (exclude admin/moniter senders)
+    try {
+      if (saved.content) {
+        const sender = await this.db.user.findUnique({
+          where: { id: senderId },
+          select: { role: true },
+        });
+
+        if (sender?.role !== 'ADMIN' && sender?.role !== 'MONITER') {
+          const matches = await this.findProhibitedWords(saved.content);
+          if (matches.length > 0) {
+            await this.db.monitoringAlert.create({
+              data: {
+                problem_type: 'word',
+                status: 'unsolved',
+                notes: `Detected prohibited word(s): ${matches.join(', ')}. Chat ID: ${chatId}`,
+                reporterId: null,
+                problematicUserId: senderId,
+              },
+            });
+          }
+        }
+      }
+    } catch (alertError) {
+      console.error('❌ Failed to create monitoring alert for prohibited words:', alertError);
+    }
 
     return saved;
   }
