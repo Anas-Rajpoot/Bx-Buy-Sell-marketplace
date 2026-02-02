@@ -9,14 +9,19 @@ import { RedisAdapterService } from './redis-adapter/redis-adapter.service';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { LogInterceptor } from 'common/interceptor/log.interceptor';
 import { ActivityLogModule } from './activity-log/activity-log.module';
+import { perfStore } from './perf/perf.store';
+import { performance } from 'perf_hooks';
 
 async function bootstrap() {
+  const bootstrapStart = performance.now();
+  perfStore.timings.bootstrapStartMs = Date.now();
   if (!process.env.DATABASE_URL) {
     process.env.DATABASE_URL = 'mongodb://localhost:27017/ex-buy-sell-db';
     console.warn('⚠️  DATABASE_URL not set. Using default local MongoDB.');
   }
 
   const app = await NestFactory.create(AppModule);
+  perfStore.timings.nestCreateMs = performance.now() - bootstrapStart;
   app.enableCors({
     origin: '*',
   });
@@ -55,6 +60,7 @@ if (process.env.RABBIT_MQ) {
     const connectionUrl = `amqp://${rabbitMqUrl}`;
     console.log(`🔌 Connecting to RabbitMQ: amqp://${rabbitMqUser}:***@${process.env.RABBIT_MQ}`);
     
+    const rabbitStart = performance.now();
     const logQueue = await NestFactory.createMicroservice<MicroserviceOptions>(
       ActivityLogModule,
       {
@@ -69,6 +75,7 @@ if (process.env.RABBIT_MQ) {
       },
     );
     await logQueue.listen();
+    perfStore.timings.rabbitMqConnectMs = performance.now() - rabbitStart;
     console.log('✅ RabbitMQ microservice connected successfully');
   } catch (error) {
     console.warn('⚠️  RabbitMQ connection failed. Activity logging will be disabled.');
@@ -80,13 +87,29 @@ if (process.env.RABBIT_MQ) {
   console.log('   To enable: Set RABBIT_MQ environment variable (e.g., localhost:5672)');
 }
 
-  // //config: Redis
+  // config: Redis (measured inside RedisAdapterService)
   // const redisIoAdapter = app.get(RedisAdapterService);
   // await redisIoAdapter.connectToRedis();
   // app.useWebSocketAdapter(redisIoAdapter);
 
+  // Capture time to first HTTP response after listen
+  app.use((req, res, next) => {
+    if (!perfStore.firstResponseRecorded) {
+      res.once('finish', () => {
+        if (!perfStore.firstResponseRecorded) {
+          perfStore.timings.firstHttpResponseMs = performance.now() - bootstrapStart;
+          perfStore.firstResponseRecorded = true;
+        }
+      });
+    }
+    next();
+  });
+
   const port = process.env.PORT ?? 5000;
+  const listenStart = performance.now();
   await app.listen(port);
+  perfStore.timings.appListenMs = performance.now() - listenStart;
+  perfStore.timings.totalBootstrapMs = performance.now() - bootstrapStart;
   console.log(`🚀 Application is running on: http://localhost:${port}`);
   console.log(`📡 WebSocket Gateway is available at: ws://localhost:${port}`);
 }

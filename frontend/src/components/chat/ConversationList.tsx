@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import filterIcon from "@/assets/filter.svg";
@@ -11,7 +11,6 @@ import { formatChatTime } from "@/lib/timeFormatter";
 import { cn } from "@/lib/utils";
 import { createSocketConnection, getWebSocketUrl } from "@/lib/socket";
 import { Socket } from "socket.io-client";
-import { toast } from "sonner";
 
 interface ChatRoom {
   id: string;
@@ -61,15 +60,13 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
   const [showArchived, setShowArchived] = useState(false);
   const [loading, setLoading] = useState(true);
   const socketRef = useRef<Socket | null>(null);
+  const refreshTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     fetchConversations();
     
     // Set up WebSocket connection for real-time updates
     // NOTE: ConversationList socket does NOT join any rooms - it only listens for updates
-    const wsUrl = getWebSocketUrl();
-    console.log('🔌 ConversationList: Connecting to Socket.IO for real-time updates:', wsUrl);
-    
     const socket = createSocketConnection({
       transports: ['polling', 'websocket'],
       reconnection: true,
@@ -78,28 +75,17 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
     socketRef.current = socket;
     
     socket.on('connect', () => {
-      console.log('✅ ConversationList: Socket.IO connected for real-time updates');
-      
-      // Register user for video calls (CRITICAL: must be done for all socket connections)
-      // This ensures users receive video call notifications even when not in ChatWindow
       const authUser = JSON.parse(localStorage.getItem('user_data') || '{}');
       if (authUser?.id) {
         setTimeout(() => {
           socket.emit('video:register', { userId: authUser.id });
-          console.log('📹 ConversationList: Registered user for video calls:', authUser.id);
         }, 100);
       }
-      
-      // CRITICAL: Do NOT join any rooms here - ConversationList should not receive messages
-      // It only listens for message events to trigger conversation list refresh
     });
     
     // Also listen for incoming video calls to show notifications
     socket.removeAllListeners('video:incoming-call');
     socket.on('video:incoming-call', (data: { from: string; to: string; channelName: string; chatId: string }) => {
-      console.log('📞 ConversationList: Received incoming video call from:', data.from, 'chatId:', data.chatId);
-      
-      // Show browser notification
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Incoming Video Call', {
           body: 'You have an incoming video call',
@@ -120,36 +106,29 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
         });
       }
       
-      // Dispatch a custom event to notify Chat page to handle the incoming call
-      // This allows the ChatWindow to show the incoming call dialog
       window.dispatchEvent(new CustomEvent('video:incoming-call', { 
         detail: data 
       }));
       
-      // Also try to navigate to the chat if not already there
       if (window.location.pathname !== '/chat') {
         window.location.href = `/chat?chatId=${data.chatId}`;
       }
     });
     
-    // Listen for lightweight notifications to update conversation list in real-time
     socket.on('message:notify', (data: { chatId: string; senderId: string }) => {
-      console.log('📨 ConversationList: Received message:notify, refreshing list:', data.chatId);
-      setTimeout(() => {
-        fetchConversations();
-      }, 500);
+      scheduleFetch(400);
     });
     
-    // REMOVED: 'message:recieve' listener - backend only emits 'message' event now
-    // The 'message' listener above already handles refreshing the conversation list
-    
-    // Poll for new messages every 15 seconds as fallback
     const interval = setInterval(() => {
       fetchConversations();
     }, 15000);
 
     return () => {
       clearInterval(interval);
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
@@ -160,37 +139,30 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
   // Refresh conversations when selected conversation changes (to update unread counts after marking as read)
   useEffect(() => {
     if (refreshTrigger) {
-      console.log('🔄 Refresh trigger changed, refreshing conversations:', refreshTrigger);
-      // Multiple refreshes to ensure unread counts update properly
-      const timer1 = setTimeout(() => {
-        fetchConversations();
-      }, 800); // First refresh
-      
-      const timer2 = setTimeout(() => {
-        fetchConversations();
-      }, 2000); // Second refresh after mark-read should complete
-      
-      const timer3 = setTimeout(() => {
-        fetchConversations();
-      }, 4000); // Third refresh to catch any delayed updates
-      
-      return () => {
-        clearTimeout(timer1);
-        clearTimeout(timer2);
-        clearTimeout(timer3);
-      };
+      scheduleFetch(800);
     }
   }, [refreshTrigger, selectedConversation]);
+
+  const scheduleFetch = (delay: number) => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
+    refreshTimerRef.current = window.setTimeout(() => {
+      fetchConversations();
+    }, delay);
+  };
 
   const fetchConversations = async () => {
     if (!userId) return;
     
-    setLoading(true);
+    if (conversations.length === 0) {
+      setLoading(true);
+    }
     try {
-      // Get chat rooms where user is buyer
-      const buyerResponse = await apiClient.getChatRoomsByUserId(userId);
-      // Get chat rooms where user is seller
-      const sellerResponse = await apiClient.getChatRoomsBySellerId(userId);
+      const [buyerResponse, sellerResponse] = await Promise.all([
+        apiClient.getChatRoomsByUserId(userId),
+        apiClient.getChatRoomsBySellerId(userId),
+      ]);
 
       const buyerRooms: ChatRoom[] = buyerResponse.success && Array.isArray(buyerResponse.data) 
         ? buyerResponse.data 
@@ -216,47 +188,35 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
         const sortedIds = [room.userId, room.sellerId].sort();
         const userPair = sortedIds.join('-');
         
-        console.log(`Merging room ${room.id}: userId=${room.userId}, sellerId=${room.sellerId}, pair=${userPair}`);
-        
         // If we already have a room with this seller, keep the one with the most recent updatedAt
         const existing = roomsBySeller.get(userPair);
         if (!existing || new Date(room.updatedAt || room.createdAt || 0) > new Date(existing.updatedAt || existing.createdAt || 0)) {
           roomsBySeller.set(userPair, room);
-          console.log(`  → Selected room ${room.id} (updatedAt: ${room.updatedAt})`);
         } else {
-          console.log(`  → Skipped room ${room.id} (older than ${existing.id})`);
         }
       });
       
       const uniqueRooms = Array.from(roomsBySeller.values());
       
-      console.log(`✅ Final deduplication: ${uniqueRoomsById.length} rooms → ${uniqueRooms.length} unique conversations`);
-      
-      console.log('📊 Conversation deduplication:', {
-        total: allRooms.length,
-        afterIdDedup: uniqueRoomsById.length,
-        afterPairDedup: uniqueRooms.length,
-        duplicatesRemoved: allRooms.length - uniqueRooms.length,
-        roomsBySellerKeys: Array.from(roomsBySeller.keys()),
-        uniqueRoomsCount: uniqueRooms.length
-      });
-      
-      // DEBUG: Log which rooms are being grouped
-      uniqueRoomsById.forEach(room => {
-        const userPair = [room.userId, room.sellerId].sort().join('-');
-        console.log(`  Room ${room.id}: userId=${room.userId}, sellerId=${room.sellerId}, pair=${userPair}`);
-      });
+      const userIds = Array.from(
+        new Set(
+          uniqueRooms.map((room) => (room.userId === userId ? room.sellerId : room.userId)),
+        ),
+      );
+      const userDetails = await Promise.all(
+        userIds.map(async (id) => {
+          const res = await apiClient.getUserById(id);
+          return res.success ? res.data : null;
+        }),
+      );
+      const userMap = new Map(
+        userDetails.filter(Boolean).map((u: any) => [u.id, u]),
+      );
 
-      // Fetch details for each conversation
       const conversationsWithDetails = await Promise.all(
         uniqueRooms.map(async (room) => {
           const otherUserId = room.userId === userId ? room.sellerId : room.userId;
-          
-          // Get other user details
-          const userResponse = await apiClient.getUserById(otherUserId);
-          const otherUser = userResponse.success && userResponse.data 
-            ? userResponse.data 
-            : null;
+          const otherUser = userMap.get(otherUserId) || null;
 
           const firstName = otherUser?.first_name || '';
           const lastName = otherUser?.last_name || '';
@@ -306,16 +266,6 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
             label = null;
           }
           
-          console.log('🏷️ Label extraction:', { 
-            roomId: room.id, 
-            userId: userId,
-            chatDataLabel: chatData?.label, 
-            chatDataChatLabel: chatData?.chatLabel,
-            userSpecificLabel: chatData?.chatLabel?.find((l: any) => l.userId === userId),
-            roomLabel: (room as any).label, 
-            finalLabel: label 
-          });
-            
           if (messages.length > 0) {
             // Sort by creation date (most recent first)
             const sortedMessages = [...messages].sort((a, b) => 
@@ -327,25 +277,17 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
             lastMessage = lastMsg?.content || '';
             lastMessageAt = lastMsg?.createdAt || room.updatedAt;
             
-            // Count ALL unread messages across ALL chats with this seller
-            // CRITICAL: Always set unread to 0 if this conversation is currently selected (user is viewing it)
             const isSelected = selectedConversation === room.id || selectedConversation === chatData?.id;
             
             if (isSelected) {
-              // Force unread count to 0 for selected conversation
               unreadCount = 0;
-              console.log(`  ✅ Conversation with ${fullName} is SELECTED - forcing unread count to 0`);
             } else {
-              // Only count messages that are explicitly unread (false, null, or undefined)
               unreadCount = messages.filter(msg => 
                 msg.senderId !== userId && 
                 (msg.read === false || msg.read === null || msg.read === undefined)
               ).length;
             }
-            
-            console.log(`  Conversation with ${fullName}: ${messages.length} total messages, ${unreadCount} unread (selected: ${isSelected}, roomId: ${room.id}, selectedId: ${selectedConversation})`);
           } else {
-            console.log(`  Conversation with ${fullName}: No messages`);
             unreadCount = 0; // No messages = no unread
           }
 
@@ -379,10 +321,14 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
     }
   };
 
-  const filteredConversations = conversations.filter(convo => 
-    convo.isArchived === showArchived &&
-    (convo.otherUserName.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredConversations = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return conversations.filter(
+      (convo) =>
+        convo.isArchived === showArchived &&
+        convo.otherUserName.toLowerCase().includes(query),
+    );
+  }, [conversations, showArchived, searchQuery]);
 
   if (loading && conversations.length === 0) {
     return (

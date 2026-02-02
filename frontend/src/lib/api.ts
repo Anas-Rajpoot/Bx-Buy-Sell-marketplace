@@ -1,7 +1,7 @@
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 // Bearer token for API authorization - used when user is not logged in
-const API_BEARER_TOKEN = import.meta.env.VITE_API_BEARER_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImU1NjU4YzI1LTdiYTktNDYzYi1iMmE4LWRlNzZjM2M3MDg4MiIsImZpcnN0X25hbWUiOiJoZWxsbyIsImxhc3RfbmFtZSI6InJhbyIsImVtYWlsIjoicm1mYnVzaW5lc3MxOTIwQGdtYWlsLmNvbSIsImJ1c2luZXNzX25hbWUiOm51bGwsImNvbnRhY3RfbmFtZSI6bnVsbCwicGhvbmUiOm51bGwsImNvdW50cnlfY29kZSI6bnVsbCwiYWRkcmVzcyI6bnVsbCwiY291bnRyeSI6bnVsbCwicGVybWlzc2lvbnMiOltdLCJyb2xlIjoiQURNSU4iLCJjaXR5IjpudWxsLCJzdGF0ZSI6bnVsbCwib3RwX2NvZGUiOiI5ODk5IiwicHJvZmlsZV9waWMiOm51bGwsImlzX29ubGluZSI6dHJ1ZSwiemlwX2NvZGUiOm51bGwsImJhY2tncm91bmQiOm51bGwsImlzX2VtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc19waG9uZV92ZXJpZmllZCI6ZmFsc2UsInZlcmlmaWVkIjp0cnVlLCJjcmVhdGVkX2F0IjoiMjAyNS0wNy0xMVQwNzo1NTozMy4xODRaIiwidXBkYXRlZF9hdCI6IjIwMjUtMTItMDhUMDg6NTc6MTcuMzgyWiIsImRlbGV0ZWRfYXQiOm51bGwsImNoYXRSb29tSWQiOm51bGwsImlhdCI6MTc2NTE5MDIxMCwiZXhwIjoxNzY1MjE1NDEwfQ.DH_PaVTgZ_u81JTKDfgmR5gmZk1SHDwQxGqviU0QkIg';
+const API_BEARER_TOKEN = import.meta.env.VITE_API_BEARER_TOKEN || '';
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -58,29 +58,19 @@ class ApiClient {
     // Use user's auth token if available, otherwise use static bearer token
     const userAuthToken = this.token || storedToken;
     const finalBearerToken = userAuthToken || this.bearerToken || API_BEARER_TOKEN;
+    const isAuthEndpoint =
+      endpoint.startsWith('/auth/signin') ||
+      endpoint.startsWith('/auth/signup') ||
+      endpoint.startsWith('/auth/verify-otp') ||
+      endpoint.startsWith('/auth/reset-password') ||
+      endpoint.startsWith('/auth/update-password');
     
-    if (!finalBearerToken) {
+    if (!finalBearerToken && !isAuthEndpoint) {
       console.error('CRITICAL: No bearer token available!');
       return {
         success: false,
         error: 'Authentication error: Bearer token is missing',
       };
-    }
-    
-    // Decode token to show user info for debugging
-    let tokenUserInfo = null;
-    if (userAuthToken && userAuthToken.includes('.')) {
-      try {
-        const payload = JSON.parse(atob(userAuthToken.split('.')[1]));
-        tokenUserInfo = {
-          userId: payload.id,
-          email: payload.email,
-          role: payload.role,
-          exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : null
-        };
-      } catch (e) {
-        // Ignore decode errors
-      }
     }
     
     // Extract query params from endpoint
@@ -90,19 +80,11 @@ class ApiClient {
     
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${finalBearerToken}`,
       ...options.headers,
     };
-    
-    console.log(`🌐 API Request DIRECT to backend: ${path}`, { 
-      url: url,
-      hasUserToken: !!userAuthToken,
-      hasBearerToken: !!finalBearerToken, 
-      bearerTokenLength: finalBearerToken?.length,
-      bearerTokenPreview: finalBearerToken ? finalBearerToken.substring(0, 50) + '...' : 'MISSING',
-      usingUserToken: !!userAuthToken,
-      tokenUserInfo: tokenUserInfo
-    });
+    if (finalBearerToken) {
+      headers['Authorization'] = `Bearer ${finalBearerToken}`;
+    }
     
     try {
       const response = await fetch(url, {
@@ -111,26 +93,10 @@ class ApiClient {
         body: options.body,
       });
 
-      console.log(`📥 API Response Status: ${response.status} ${response.statusText}`);
-
       let data;
       try {
         const text = await response.text();
-        console.log('📥 API Response Raw (first 500 chars):', text.substring(0, 500));
         data = JSON.parse(text);
-        console.log('📥 API Response Parsed:', data);
-        
-        // Log authorization issues specifically
-        if (response.status === 401 || response.status === 403) {
-          console.error('❌ AUTHORIZATION ERROR:', {
-            status: response.status,
-            statusText: response.statusText,
-            responseData: data,
-            endpoint: path,
-            bearerTokenUsed: finalBearerToken ? 'YES' : 'NO',
-            bearerTokenLength: finalBearerToken?.length
-          });
-        }
       } catch (parseError) {
         console.error('Failed to parse API response:', parseError);
         return {
@@ -140,34 +106,6 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        console.error('API Error Details:', {
-          status: response.status,
-          statusText: response.statusText,
-          endpoint: path,
-          fullUrl: url,
-          method: options.method || 'GET',
-          responseData: data,
-          bearerTokenUsed: finalBearerToken ? 'Yes' : 'No',
-          bearerTokenLength: finalBearerToken?.length,
-          requestBody: options.body
-        });
-        
-        // Special handling for 404 errors
-        if (response.status === 404) {
-          console.error('❌ 404 NOT FOUND - Route does not exist:', {
-            endpoint: path,
-            fullUrl: url,
-            method: options.method || 'GET',
-            possibleCauses: [
-              'Backend server needs to be restarted',
-              'Route not registered in backend',
-              'Module not imported in app.module.ts',
-              'Controller path mismatch',
-              'Backend code not deployed/compiled'
-            ]
-          });
-        }
-        
         // Handle 401 Unauthorized specifically
         if (response.status === 401) {
           // Don't auto-logout for auth endpoints (login/signup) - 401 is expected for invalid credentials
@@ -178,64 +116,7 @@ class ApiClient {
           const lastLoginTime = localStorage.getItem('last_login_time');
           const justLoggedIn = lastLoginTime && (Date.now() - parseInt(lastLoginTime)) < 30000;
           
-          if (isAuthEndpoint) {
-            // For auth endpoints, 401 is normal for invalid credentials - don't clear session
-            console.log('401 on auth endpoint - this is expected for invalid credentials');
-          } else if (justLoggedIn) {
-            // Don't logout immediately after login - might be a timing issue
-            console.warn('401 received shortly after login - not logging out to prevent race condition');
-            console.warn('This might indicate:');
-            console.warn('1. Backend JWT_SECRET mismatch (token signed with different secret)');
-            console.warn('2. User account might be blocked/inactive');
-            console.warn('3. Token signature verification failed');
-            console.warn('4. Backend expects different token format');
-            console.warn('5. Backend needs time to sync token validation');
-            // Don't clear session yet - give it more time
-            // Return error but don't logout
-            return {
-              success: false,
-              error: 'Authentication error. The backend may need a moment to validate your session. Please try again in a few seconds.',
-            };
-          } else {
-            // For other endpoints, 401 means session expired
-            console.error('401 Unauthorized - Token may be expired or invalid');
-            console.error('Token preview:', finalBearerToken ? finalBearerToken.substring(0, 100) + '...' : 'MISSING');
-            
-            // Try to decode JWT to check expiration and get user info
-            if (finalBearerToken && finalBearerToken.includes('.')) {
-              try {
-                const payload = JSON.parse(atob(finalBearerToken.split('.')[1]));
-                const exp = payload.exp;
-                const now = Math.floor(Date.now() / 1000);
-                console.error('Token Details:', {
-                  userId: payload.id,
-                  email: payload.email,
-                  role: payload.role,
-                  exp: exp ? new Date(exp * 1000).toISOString() : 'No expiration',
-                  currentTime: new Date().toISOString(),
-                  isExpired: exp ? exp < now : false,
-                  expiredSecondsAgo: exp && exp < now ? now - exp : 0
-                });
-                
-                if (exp && exp < now) {
-                  console.error('Token is EXPIRED!', {
-                    expiredAt: new Date(exp * 1000).toISOString(),
-                    currentTime: new Date().toISOString(),
-                    expiredSecondsAgo: now - exp
-                  });
-                } else if (exp) {
-                  console.log('Token is valid until:', new Date(exp * 1000).toISOString());
-                  console.warn('Token appears valid but backend rejected it. Possible causes:');
-                  console.warn('1. JWT_SECRET mismatch between sign and verify');
-                  console.warn('2. User account might be blocked or inactive');
-                  console.warn('3. Token signature verification failed');
-                  console.warn('4. Backend expects different token format');
-                }
-              } catch (e) {
-                console.error('Could not decode token:', e);
-              }
-            }
-            
+          if (!isAuthEndpoint && !justLoggedIn) {
             // Clear token and user data on 401 (only for non-auth endpoints and not immediately after login)
             this.clearToken();
             localStorage.removeItem('user_data');
@@ -319,27 +200,17 @@ class ApiClient {
         if (Array.isArray(data)) {
           // Direct array response: [...]
           responseData = data;
-          console.log('Detected direct array response, length:', data.length);
         } else if (data.data !== undefined) {
           // Wrapped in { data: [...] } - data can be null
           responseData = data.data;
-          console.log('Detected wrapped response with data field, length:', Array.isArray(data.data) ? data.data.length : data.data === null ? 'null' : 'not array');
         } else if (data.status === 'success') {
           // Wrapped in { status: 'success', data: [...] } - data can be null
           responseData = data.data;
-          console.log('Detected success status response, length:', Array.isArray(data.data) ? data.data.length : data.data === null ? 'null' : 'not array');
         } else {
           // Return the object as-is
           responseData = data;
-          console.log('Returning object as-is');
         }
       }
-
-      console.log('Final response data:', {
-        isArray: Array.isArray(responseData),
-        length: Array.isArray(responseData) ? responseData.length : 'N/A',
-        type: typeof responseData,
-      });
 
       return {
         success: true,
@@ -358,13 +229,6 @@ class ApiClient {
           errorMessage.includes('ERR_CONNECTION_REFUSED') ||
           errorMessage.includes('ECONNREFUSED')) {
         userFriendlyError = `Backend server is not running. Please start the backend server on ${API_BASE_URL}. Run: cd ex-buy-sell-apis && npm run start:dev`;
-        console.error('❌ BACKEND SERVER NOT RUNNING:', {
-          attemptedUrl: url,
-          baseUrl: API_BASE_URL,
-          endpoint: path,
-          error: errorMessage,
-          solution: 'Start the backend server: cd ex-buy-sell-apis && npm run start:dev'
-        });
       }
       
       return {
@@ -396,8 +260,6 @@ class ApiClient {
         this.setToken(accessToken);
         // Also update bearer token to use the user's access token
         this.setBearerToken(accessToken);
-        console.log('Signup successful - Token stored and set as bearer token');
-        
         // Store timestamp to prevent immediate logout on 401
         localStorage.setItem('last_login_time', Date.now().toString());
         
@@ -412,7 +274,6 @@ class ApiClient {
   }
 
   async signIn(credentials: { email: string; password: string }) {
-    console.log('🔐 Attempting login for:', credentials.email);
     const response = await this.request('/auth/signin', {
       method: 'POST',
       body: JSON.stringify(credentials),
@@ -421,37 +282,11 @@ class ApiClient {
     // Store token if login successful
     if (response.success && response.data) {
       const data = response.data as any;
-      console.log('🔐 Login response:', {
-        success: response.success,
-        hasData: !!data,
-        hasTokens: !!data.tokens,
-        hasAccessToken: !!data.tokens?.accessToken,
-        hasUser: !!data.user,
-        error: response.error
-      });
-      
       if (data.tokens?.accessToken) {
         const accessToken = data.tokens.accessToken;
         this.setToken(accessToken);
         // Also update bearer token to use the user's access token
         this.setBearerToken(accessToken);
-        
-        // Decode token to show user info
-        try {
-          const payload = JSON.parse(atob(accessToken.split('.')[1]));
-          console.log('✅ Login successful! Token details:', {
-            userId: payload.id,
-            email: payload.email,
-            role: payload.role,
-            exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : null,
-            tokenLength: accessToken.length,
-            tokenPreview: accessToken.substring(0, 50) + '...'
-          });
-        } catch (e) {
-          console.log('✅ Login successful! Token stored (could not decode)', {
-            tokenLength: accessToken.length
-          });
-        }
         
         // Store timestamp to prevent immediate logout on 401
         localStorage.setItem('last_login_time', Date.now().toString());
@@ -459,11 +294,6 @@ class ApiClient {
         // Also store user data
         if (data.user) {
           localStorage.setItem('user_data', JSON.stringify(data.user));
-          console.log('✅ User data stored:', {
-            id: data.user.id,
-            email: data.user.email,
-            role: data.user.role
-          });
         }
       } else {
         console.error('❌ Login failed: No access token in response', response.error || 'Unknown error');
@@ -638,7 +468,6 @@ class ApiClient {
       payload.options = questionData.option; // Send as 'options' to match DTO
     }
     
-    console.log('createAdminQuestion called with:', payload);
     return this.request('/question-admin', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -651,15 +480,12 @@ class ApiClient {
     answer_for?: string;
     option?: string[];
   }) {
-    console.log('📤 updateAdminQuestion called:', { id, questionData });
-    
     // Backend DTO expects 'options' (plural), not 'option' (singular)
     const payload: any = {};
     
     if (questionData.question !== undefined) payload.question = questionData.question;
     if (questionData.answer_type !== undefined) {
       payload.answer_type = questionData.answer_type;
-      console.log('📤 Setting answer_type:', questionData.answer_type);
     }
     if (questionData.answer_for !== undefined) payload.answer_for = questionData.answer_for;
     
@@ -667,8 +493,6 @@ class ApiClient {
     if (questionData.option !== undefined) {
       payload.options = questionData.option; // Send as 'options' to match DTO
     }
-    
-    console.log('📤 Final payload:', payload);
     
     return this.request(`/question-admin/${id}`, {
       method: 'PATCH',
@@ -716,28 +540,10 @@ class ApiClient {
       payload.features = planData.features; // DTO field name
     }
 
-    console.log('📦 createPlan payload:', payload);
-    console.log('📦 createPlan validation check:', {
-      titleLength: payload.title?.length,
-      descriptionLength: payload.description?.length,
-      durationLength: payload.duration?.length,
-      typeLength: payload.type?.length,
-      priceLength: payload.price?.length,
-      featuresCount: payload.features?.length || 0,
-      allFieldsValid: payload.title?.length >= 4 && 
-                     payload.description?.length >= 4 && 
-                     payload.duration?.length >= 4 && 
-                     payload.type?.length >= 4 && 
-                     payload.price?.length >= 4
-    });
-    
     const response = await this.request('/plan', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
-    
-    console.log('📦 createPlan response:', response);
-    
     return response;
   }
 
@@ -771,17 +577,10 @@ class ApiClient {
   }
 
   async createSocialAccount(accountData: { social_account_option: string }) {
-    console.log('📤 createSocialAccount called with:', accountData);
-    console.log('📤 Endpoint: /admin-social-account');
-    console.log('📤 Method: POST');
-    console.log('📤 Body:', JSON.stringify(accountData));
-    
     const response = await this.request('/admin-social-account', {
       method: 'POST',
       body: JSON.stringify(accountData),
     });
-    
-    console.log('📥 createSocialAccount response:', response);
     return response;
   }
 
@@ -951,6 +750,15 @@ class ApiClient {
   // Chat message operations
   async markMessagesAsRead(chatId: string, userId: string) {
     return this.request(`/chat/mark-read/${chatId}/${userId}`, {
+      method: 'PUT',
+    });
+  }
+
+  async markMessagesAsReadForMonitor(chatId: string, monitorId?: string) {
+    const url = monitorId
+      ? `/chat/mark-read/monitor/${chatId}?monitorId=${monitorId}`
+      : `/chat/mark-read/monitor/${chatId}`;
+    return this.request(url, {
       method: 'PUT',
     });
   }
@@ -1154,8 +962,11 @@ class ApiClient {
   }
 
   // Monitor/Admin chat endpoint (dedicated for monitor dashboard)
-  async getAllChatsForMonitor() {
-    return this.request('/chat/monitor/all');
+  async getAllChatsForMonitor(monitorId?: string) {
+    const url = monitorId
+      ? `/chat/monitor/all?monitorId=${monitorId}`
+      : '/chat/monitor/all';
+    return this.request(url);
   }
 
   async getChatById(chatId: string) {
@@ -1205,23 +1016,9 @@ function initializeBearerToken() {
     // User is logged in - use their token
     apiClient.setToken(userToken);
     apiClient.setBearerToken(userToken);
-    console.log('✅ API Client initialized with USER login token:', {
-      hasToken: true,
-      tokenLength: userToken.length,
-      tokenPreview: userToken.substring(0, 50) + '...',
-      source: 'user_login'
-    });
   } else if (API_BEARER_TOKEN) {
     // No user logged in - use default bearer token
     apiClient.setBearerToken(API_BEARER_TOKEN);
-    console.log('✅ API Client initialized with DEFAULT bearer token:', {
-      hasToken: true,
-      tokenLength: API_BEARER_TOKEN.length,
-      tokenPreview: API_BEARER_TOKEN.substring(0, 50) + '...',
-      source: 'default_token'
-    });
-  } else {
-    console.error('❌ CRITICAL: No bearer token available! API calls will fail.');
   }
 }
 
@@ -1232,7 +1029,6 @@ initializeBearerToken();
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
     if (e.key === 'auth_token') {
-      console.log('🔄 Auth token changed in storage, reinitializing...');
       initializeBearerToken();
     }
   });

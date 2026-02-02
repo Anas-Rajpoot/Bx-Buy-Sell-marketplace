@@ -84,7 +84,6 @@ export class ChatController {
   @Get('/all')
   @Roles(['ADMIN', 'MONITER', 'STAFF'])
   getAllChats() {
-    console.log('🔵 [CHAT] getAllChats() called - /chat/all endpoint');
     return this.chatService.getAllChats();
   }
 
@@ -92,53 +91,15 @@ export class ChatController {
   // IMPORTANT: This route must be BEFORE /:id to avoid route conflicts
   @Get('monitor/all')
   @Roles(['ADMIN', 'MONITER', 'STAFF'])
-  async getAllChatsForMonitor(@Req() req: any) {
-    console.log('🔴🔴🔴 [MONITOR] ========================================');
-    console.log('🔴🔴🔴 [MONITOR] CONTROLLER METHOD CALLED - getAllChatsForMonitor');
-    console.log('🔴 [MONITOR] Request URL:', req.url);
-    console.log('🔴 [MONITOR] Request path:', req.path);
-    console.log('🔴 [MONITOR] Request method:', req.method);
-    console.log('🔴 [MONITOR] Request originalUrl:', req.originalUrl);
-    console.log('🔴 [MONITOR] User from request:', req.user ? {
-      id: req.user.id,
-      email: req.user.email,
-      role: req.user.role
-    } : 'NO USER');
-    console.log('🔴🔴🔴 [MONITOR] ========================================');
+  async getAllChatsForMonitor(
+    @Req() req: any,
+    @Query('monitorId') monitorId?: string,
+  ) {
     try {
-      console.log('📋 [MONITOR] getAllChatsForMonitor endpoint called - INSIDE TRY BLOCK');
-      console.log('📋 [MONITOR] About to call chatService.getAllChatsForMonitor()...');
-      const result = await this.chatService.getAllChatsForMonitor();
-      console.log(`✅ [MONITOR] Service returned, result type: ${Array.isArray(result) ? 'array' : typeof result}, length: ${Array.isArray(result) ? result.length : 'N/A'}`);
-      console.log(`✅ [MONITOR] getAllChatsForMonitor returning ${Array.isArray(result) ? result.length : 'non-array'} results`);
-      
-      // Log the actual result for debugging
-      if (Array.isArray(result)) {
-        console.log(`📊 [MONITOR] Result array length: ${result.length}`);
-        if (result.length > 0) {
-          console.log(`📝 [MONITOR] First chat sample:`, {
-            id: result[0].id,
-            userId: result[0].userId,
-            sellerId: result[0].sellerId,
-            hasUser: !!result[0].user,
-            hasSeller: !!result[0].seller,
-          });
-        }
-      } else {
-        console.warn(`⚠️ [MONITOR] Result is not an array:`, typeof result);
-      }
-      
+      const resolvedMonitorId = monitorId || req.user?.id;
+      const result = await this.chatService.getAllChatsForMonitor(resolvedMonitorId);
       return result;
     } catch (error: any) {
-      console.error('❌ [MONITOR] Error in getAllChatsForMonitor endpoint:', error);
-      console.error('Error stack:', error?.stack);
-      console.error('Error message:', error?.message);
-      console.error('Error details:', {
-        name: error?.name,
-        code: error?.code,
-        meta: error?.meta,
-      });
-      
       // Return empty array to prevent frontend crash
       return [];
     }
@@ -343,6 +304,19 @@ export class ChatController {
   ) {
     this.ensureSelfOrStaff(userId, req);
     return this.chatService.markMessagesAsRead(chatId, userId);
+  }
+
+  // Mark messages as read for monitor/admin (only USER/SELLER messages)
+  @Roles(['ADMIN', 'MONITER', 'STAFF'])
+  @Put('/mark-read/monitor/:chatId')
+  @ApiParam({ name: 'chatId', description: 'Chat ID', type: String })
+  async markMessagesAsReadForMonitor(
+    @Param('chatId') chatId: string,
+    @Req() req: any,
+    @Query('monitorId') monitorId?: string,
+  ) {
+    const resolvedMonitorId = monitorId || req.user?.id;
+    return this.chatService.markMessagesAsReadForMonitor(chatId, resolvedMonitorId);
   }
 
   // Assign monitor to chat - MUST be before /:id route to avoid conflicts

@@ -735,7 +735,7 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
     
     const authToken = localStorage.getItem('auth_token') || undefined;
     const newSocket = createSocketConnection({
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionAttempts: 3,
       reconnectionDelay: 300, // Reduced from 500ms to 300ms
@@ -2721,6 +2721,9 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
                               src={message.fileUrl} 
                               alt={message.content || 'Image'} 
                               className="max-w-full max-h-64 rounded-lg object-contain cursor-pointer"
+                              loading="lazy"
+                              decoding="async"
+                              sizes="(max-width: 640px) 100vw, 256px"
                               onClick={() => window.open(message.fileUrl, '_blank')}
                               onError={(e) => {
                                 const target = e.currentTarget;
@@ -2868,6 +2871,9 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
                               src={message.fileUrl} 
                               alt={message.content || 'Image'} 
                               className="max-w-full max-h-64 rounded-lg object-contain cursor-pointer"
+                              loading="lazy"
+                              decoding="async"
+                              sizes="(max-width: 640px) 100vw, 256px"
                               onClick={() => window.open(message.fileUrl, '_blank')}
                               onError={(e) => {
                                 const target = e.currentTarget;
@@ -3077,6 +3083,9 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
                               src={message.fileUrl} 
                               alt={message.content || 'Image'} 
                               className="max-w-full max-h-64 rounded-lg object-contain cursor-pointer"
+                              loading="lazy"
+                              decoding="async"
+                              sizes="(max-width: 640px) 100vw, 256px"
                               onClick={() => window.open(message.fileUrl, '_blank')}
                               onError={(e) => {
                                 const target = e.currentTarget;

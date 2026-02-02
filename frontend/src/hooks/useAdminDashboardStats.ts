@@ -12,8 +12,6 @@ export const useAdminDashboardStats = () => {
   return useQuery({
     queryKey: ["admin-dashboard-stats"],
     queryFn: async () => {
-      console.log('Fetching dashboard stats from backend...');
-      
       // Get total users count
       const usersResponse = await apiClient.getAllUsers();
       const totalUsers = usersResponse.success && Array.isArray(usersResponse.data) 
@@ -44,10 +42,6 @@ export const useAdminDashboardStats = () => {
         finalizedDeals,
       };
 
-      console.log('Dashboard stats calculated:', stats);
-      console.log('Total users fetched:', totalUsers);
-      console.log('Total listings fetched:', totalListings);
-      console.log('Blocked users count:', blockedUsers);
       return stats;
     },
   });

@@ -445,6 +445,8 @@ model Message {
   delivered Boolean     @default(false)
   read      Boolean     @default(false)
   createdAt DateTime    @default(now())
+
+  @@index([chatId, senderId, createdAt])
 }
 
 model ProhibitedWord {
@@ -463,6 +465,8 @@ model ChatMonitor {
 
   chatId String
   Chat   Chat   @relation("MoniteredChat", fields: [chatId], references: [id])
+
+  @@index([chatId, monitorId])
 }
 
 enum MessageType {
@@ -516,4 +520,6 @@ model Notification {
   chatId    String?  // Link to chat if it's a message notification
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId, read, createdAt])
 }

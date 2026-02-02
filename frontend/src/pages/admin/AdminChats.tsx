@@ -1,12 +1,23 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminConversationList } from "@/components/admin/chat/AdminConversationList";
-import { AdminChatWindow } from "@/components/admin/chat/AdminChatWindow";
-import { AdminChatDetails } from "@/components/admin/chat/AdminChatDetails";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/lib/api";
+
+const AdminChatWindow = lazy(() =>
+  import("@/components/admin/chat/AdminChatWindow").then((m) => ({ default: m.AdminChatWindow }))
+);
+const AdminChatDetails = lazy(() =>
+  import("@/components/admin/chat/AdminChatDetails").then((m) => ({ default: m.AdminChatDetails }))
+);
+
+const ChatPaneLoader = () => (
+  <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm sm:text-base p-4">
+    Loading chat...
+  </div>
+);
 
 const AdminChats = () => {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
@@ -120,7 +131,9 @@ const AdminChats = () => {
                 backgroundColor: 'rgba(255, 255, 255, 1)',
               }}
             >
-              <AdminChatWindow conversationId={selectedConversationId} />
+              <Suspense fallback={<ChatPaneLoader />}>
+                <AdminChatWindow conversationId={selectedConversationId} />
+              </Suspense>
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm sm:text-base p-4" style={{ borderRadius: '20px', border: '1px solid rgba(0, 0, 0, 0.1)', backgroundColor: 'rgba(255, 255, 255, 1)' }}>
@@ -141,7 +154,9 @@ const AdminChats = () => {
                 overflow: 'hidden',
               }}
             >
-              <AdminChatDetails conversationId={selectedConversationId} />
+              <Suspense fallback={<ChatPaneLoader />}>
+                <AdminChatDetails conversationId={selectedConversationId} />
+              </Suspense>
             </div>
           )}
         </div>

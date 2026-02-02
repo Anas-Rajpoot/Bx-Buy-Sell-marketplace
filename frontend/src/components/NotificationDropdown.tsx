@@ -31,6 +31,7 @@ interface Notification {
   type: "info" | "success" | "warning" | "error" | "message";
   read: boolean;
   link: string | null;
+  chatId?: string | null;
   createdAt?: string;
   created_at?: string;
 }
@@ -47,6 +48,7 @@ export const NotificationDropdown = ({ userId, variant = "dark", customStyle = f
   const navigate = useNavigate();
   const location = useLocation();
   const isListingDetailPage = location.pathname.startsWith('/listing/');
+  const chatIdFromUrl = new URLSearchParams(location.search).get("chatId");
 
   useEffect(() => {
     if (userId) {
@@ -58,13 +60,8 @@ export const NotificationDropdown = ({ userId, variant = "dark", customStyle = f
         reconnection: true,
       });
       
-      socket.on('connect', () => {
-        console.log('✅ NotificationDropdown: Socket connected');
-      });
-      
       // Listen for new notification events
       socket.on('new_notification', () => {
-        console.log('🔔 New notification received, refreshing...');
         loadNotifications(); // Refresh notifications when new one arrives
       });
       
@@ -79,6 +76,40 @@ export const NotificationDropdown = ({ userId, variant = "dark", customStyle = f
       };
     }
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId || !chatIdFromUrl) return;
+
+    // If notifications are not loaded yet, fetch first
+    if (notifications.length === 0) {
+      loadNotifications();
+      return;
+    }
+
+    const matchesChat = (notification: Notification) => {
+      if (notification.chatId && notification.chatId === chatIdFromUrl) return true;
+      if (notification.link && notification.link.includes(`chatId=${chatIdFromUrl}`)) return true;
+      return false;
+    };
+
+    const toMark = notifications.filter((n) => !n.read && matchesChat(n));
+    if (toMark.length === 0) return;
+
+    // Update local state immediately
+    setNotifications((prev) =>
+      prev.map((n) => (matchesChat(n) ? { ...n, read: true } : n))
+    );
+    setUnreadCount((prev) => Math.max(0, prev - toMark.length));
+
+    // Persist read state
+    toMark.forEach((n) => {
+      if (n.id.startsWith("local-")) {
+        markLocalNotificationAsRead(userId, n.id);
+      } else {
+        apiClient.markNotificationAsRead(n.id);
+      }
+    });
+  }, [chatIdFromUrl, notifications, userId]);
 
   const loadNotifications = async () => {
     try {

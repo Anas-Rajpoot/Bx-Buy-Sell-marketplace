@@ -3,6 +3,8 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { Redis } from 'ioredis';
 import { ServerOptions } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
+import { perfStore } from '../perf/perf.store';
+import { performance } from 'perf_hooks';
 
 @Injectable()
 export class RedisAdapterService extends IoAdapter {
@@ -10,6 +12,7 @@ export class RedisAdapterService extends IoAdapter {
   private subClient: Redis;
 
   async connectToRedis(): Promise<void> {
+    const start = performance.now();
     const redisHost = process.env.REDIS_HOST || 'localhost:6379';
     const redisUrl = `redis://${redisHost}`;
     
@@ -60,6 +63,7 @@ export class RedisAdapterService extends IoAdapter {
         this.pubClient.ping(),
         this.subClient.ping()
       ]);
+      perfStore.timings.redisConnectMs = performance.now() - start;
       console.log('✅ Redis adapter connected successfully');
     } catch (error) {
       console.error('❌ Failed to connect to Redis:', error instanceof Error ? error.message : error);

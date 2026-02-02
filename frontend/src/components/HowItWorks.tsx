@@ -105,6 +105,9 @@ const HowItWorks = () => {
                             src={step.image} 
                             alt={step.title}
                             className="w-full h-full object-contain"
+                            loading="lazy"
+                            decoding="async"
+                            sizes="(max-width: 768px) 100vw, 33vw"
                           />
                         </div>
                       </div>
@@ -148,6 +151,9 @@ const HowItWorks = () => {
                             src={step.image} 
                             alt={step.title}
                             className="w-full h-full object-contain"
+                            loading="lazy"
+                            decoding="async"
+                            sizes="(max-width: 768px) 100vw, 33vw"
                           />
                         </div>
                       </div>

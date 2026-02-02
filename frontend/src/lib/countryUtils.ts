@@ -71,7 +71,7 @@ export const cityToCountryMap: { [key: string]: string } = {
   'quetta': 'Pakistan',
   'sialkot': 'Pakistan',
   'gujranwala': 'Pakistan',
-  'hyderabad': 'Pakistan',
+  // 'hyderabad': 'Pakistan', // Also in India; keep single mapping below
   
   // India cities
   'mumbai': 'India',
@@ -142,7 +142,6 @@ export const cityToCountryMap: { [key: string]: string } = {
   'quebec': 'Canada',
   
   // Australia cities
-  'sydney': 'Australia',
   'melbourne': 'Australia',
   'brisbane': 'Australia',
   'perth': 'Australia',

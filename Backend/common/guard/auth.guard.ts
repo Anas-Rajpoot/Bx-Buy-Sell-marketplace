@@ -10,10 +10,13 @@ import { IS_PUBLIC_KEY } from 'common/decorator/public.decorator';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
+  private readonly jwtSecret: string;
   constructor(
     private jwtService: JwtService,
     private reflector: Reflector,
-  ) {}
+  ) {
+    this.jwtSecret = process.env.JWT_SECRET || '';
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -28,36 +31,19 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
     if (!token) {
-      console.error('❌ AuthGuard: No token found in Authorization header');
       throw new UnauthorizedException('No token provided');
     }
     
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      console.error('❌ AuthGuard: JWT_SECRET is not set in environment variables');
+    if (!this.jwtSecret) {
       throw new UnauthorizedException('Server configuration error');
     }
     
     try {
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: jwtSecret,
+        secret: this.jwtSecret,
       });
-      // 💡 We're assigning the payload to the request object here
-      // so that we can access it in our route handlers
       request['user'] = payload;
-      console.log('✅ AuthGuard: Token verified successfully', {
-        userId: payload.id,
-        email: payload.email,
-        role: payload.role
-      });
     } catch (error: any) {
-      console.error('❌ AuthGuard: Token verification failed', {
-        error: error.message,
-        errorName: error.name,
-        tokenPreview: token.substring(0, 50) + '...',
-        jwtSecretSet: !!jwtSecret,
-        jwtSecretLength: jwtSecret?.length
-      });
       throw new UnauthorizedException('Invalid or expired token');
     }
     return true;

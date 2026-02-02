@@ -159,6 +159,9 @@ const MediaCarousel = ({ images, isFavorite, isTogglingFavorite, onFavorite, onS
                   src={img}
                   alt={`Listing image ${index + 1}`}
                   className="w-full h-full object-cover"
+                  loading={index === 0 ? "eager" : "lazy"}
+                  decoding="async"
+                  sizes="100vw"
                 />
               </div>
             </CarouselItem>

@@ -1,110 +1,241 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import BuyerSignup from "./pages/BuyerSignup";
-import SellerSignup from "./pages/SellerSignup";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import MyListings from "./pages/MyListings";
-import Favourites from "./pages/Favourites";
-import Chat from "./pages/Chat";
-import VerifyAccount from "./pages/VerifyAccount";
-import ForgotPassword from "./pages/ForgotPassword";
-import PhoneVerification from "./pages/PhoneVerification";
-import VerifyOTP from "./pages/VerifyOTP";
-import Register from "./pages/Register";
-import Profile from "./pages/Profile";
-import Settings from "./pages/Settings";
-import AdminLogin from "./pages/admin/AdminLogin";
-import AdminForgotPassword from "./pages/admin/AdminForgotPassword";
-import AdminVerifyOTP from "./pages/admin/AdminVerifyOTP";
-import AdminResetPassword from "./pages/admin/AdminResetPassword";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminTeamMembers from "./pages/admin/AdminTeamMembers";
-import AdminMemberDetails from "./pages/admin/AdminMemberDetails";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminUserDetails from "./pages/admin/AdminUserDetails";
-import AdminUserListings from "./pages/admin/AdminUserListings";
-import AdminUserFavorites from "./pages/admin/AdminUserFavorites";
-import AdminUserChats from "./pages/admin/AdminUserChats";
-import AdminListings from "./pages/admin/AdminListings";
-import AdminListingDetails from "./pages/admin/AdminListingDetails";
-import AdminChats from "./pages/admin/AdminChats";
-import AdminMonitoringAlerts from "./pages/admin/AdminMonitoringAlerts";
-import AdminDetectWords from "./pages/admin/AdminDetectWords";
-import AdminChatList from "./pages/admin/AdminChatList";
-import AdminChatAnalytics from "./pages/admin/AdminChatAnalytics";
-import AdminContentManagement from "./pages/admin/AdminContentManagement";
-import AdminSettings from "./pages/admin/AdminSettings";
-import AllListings from "./pages/AllListings";
-import ListingDetail from "./pages/ListingDetail";
-import HowToBuy from "./pages/HowToBuy";
-import HowToSell from "./pages/HowToSell";
-import EditListing from "./pages/EditListing";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { AdminProtectedRoute } from "./components/AdminProtectedRoute";
 
 const queryClient = new QueryClient();
+
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
+    Loading...
+  </div>
+);
+
+const Index = lazy(() => import("./pages/Index"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const BuyerSignup = lazy(() => import("./pages/BuyerSignup"));
+const SellerSignup = lazy(() => import("./pages/SellerSignup"));
+const Login = lazy(() => import("./pages/Login"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const MyListings = lazy(() => import("./pages/MyListings"));
+const Favourites = lazy(() => import("./pages/Favourites"));
+const Chat = lazy(() => import("./pages/Chat"));
+const VerifyAccount = lazy(() => import("./pages/VerifyAccount"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const PhoneVerification = lazy(() => import("./pages/PhoneVerification"));
+const VerifyOTP = lazy(() => import("./pages/VerifyOTP"));
+const Register = lazy(() => import("./pages/Register"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Settings = lazy(() => import("./pages/Settings"));
+const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
+const AdminForgotPassword = lazy(() => import("./pages/admin/AdminForgotPassword"));
+const AdminVerifyOTP = lazy(() => import("./pages/admin/AdminVerifyOTP"));
+const AdminResetPassword = lazy(() => import("./pages/admin/AdminResetPassword"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminTeamMembers = lazy(() => import("./pages/admin/AdminTeamMembers"));
+const AdminMemberDetails = lazy(() => import("./pages/admin/AdminMemberDetails"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
+const AdminUserDetails = lazy(() => import("./pages/admin/AdminUserDetails"));
+const AdminUserListings = lazy(() => import("./pages/admin/AdminUserListings"));
+const AdminUserFavorites = lazy(() => import("./pages/admin/AdminUserFavorites"));
+const AdminUserChats = lazy(() => import("./pages/admin/AdminUserChats"));
+const AdminListings = lazy(() => import("./pages/admin/AdminListings"));
+const AdminListingDetails = lazy(() => import("./pages/admin/AdminListingDetails"));
+const AdminChats = lazy(() => import("./pages/admin/AdminChats"));
+const AdminMonitoringAlerts = lazy(() => import("./pages/admin/AdminMonitoringAlerts"));
+const AdminDetectWords = lazy(() => import("./pages/admin/AdminDetectWords"));
+const AdminChatList = lazy(() => import("./pages/admin/AdminChatList"));
+const AdminChatAnalytics = lazy(() => import("./pages/admin/AdminChatAnalytics"));
+const AdminContentManagement = lazy(() => import("./pages/admin/AdminContentManagement"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const AllListings = lazy(() => import("./pages/AllListings"));
+const ListingDetail = lazy(() => import("./pages/ListingDetail"));
+const HowToBuy = lazy(() => import("./pages/HowToBuy"));
+const HowToSell = lazy(() => import("./pages/HowToSell"));
+const EditListing = lazy(() => import("./pages/EditListing"));
+
+const router = createBrowserRouter(
+  [
+    { path: "/", element: <Index /> },
+    { path: "/all-listings", element: <AllListings /> },
+    { path: "/listing/:id", element: <ListingDetail /> },
+    { path: "/listing/:id/edit", element: <EditListing /> },
+    { path: "/how-to-buy", element: <HowToBuy /> },
+    { path: "/how-to-sell", element: <HowToSell /> },
+    { path: "/buyer-signup", element: <BuyerSignup /> },
+    { path: "/seller-signup", element: <SellerSignup /> },
+    { path: "/login", element: <Login /> },
+    { path: "/dashboard", element: <Dashboard /> },
+    { path: "/dashboard/edit/:id", element: <Dashboard /> },
+    { path: "/my-listings", element: <MyListings /> },
+    { path: "/favourites", element: <Favourites /> },
+    { path: "/chat", element: <Chat /> },
+    { path: "/verify-account", element: <VerifyAccount /> },
+    { path: "/profile", element: <Profile /> },
+    { path: "/settings", element: <Settings /> },
+    { path: "/forgot-password", element: <ForgotPassword /> },
+    { path: "/phone-verification", element: <PhoneVerification /> },
+    { path: "/verify-otp", element: <VerifyOTP /> },
+    { path: "/register", element: <Register /> },
+    { path: "/admin/login", element: <AdminLogin /> },
+    { path: "/admin/forgot-password", element: <AdminForgotPassword /> },
+    { path: "/admin/verify-otp", element: <AdminVerifyOTP /> },
+    { path: "/admin/reset-password", element: <AdminResetPassword /> },
+    {
+      path: "/admin/dashboard",
+      element: (
+        <AdminProtectedRoute allowedRoles={["ADMIN"]}>
+          <AdminDashboard />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/team",
+      element: (
+        <AdminProtectedRoute>
+          <AdminTeamMembers />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/team/:id",
+      element: (
+        <AdminProtectedRoute>
+          <AdminMemberDetails />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/users",
+      element: (
+        <AdminProtectedRoute>
+          <AdminUsers />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/users/:id",
+      element: (
+        <AdminProtectedRoute>
+          <AdminUserDetails />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/users/:id/listings",
+      element: (
+        <AdminProtectedRoute>
+          <AdminUserListings />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/users/:id/favorites",
+      element: (
+        <AdminProtectedRoute>
+          <AdminUserFavorites />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/users/:id/chats",
+      element: (
+        <AdminProtectedRoute>
+          <AdminUserChats />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/listings",
+      element: (
+        <AdminProtectedRoute>
+          <AdminListings />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/listings/:id",
+      element: (
+        <AdminProtectedRoute>
+          <AdminListingDetails />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/chats",
+      element: (
+        <AdminProtectedRoute>
+          <AdminChats />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/chat-list",
+      element: (
+        <AdminProtectedRoute>
+          <AdminChatList />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/chat-analytics",
+      element: (
+        <AdminProtectedRoute>
+          <AdminChatAnalytics />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/monitoring-alerts",
+      element: (
+        <AdminProtectedRoute>
+          <AdminMonitoringAlerts />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/detect-words",
+      element: (
+        <AdminProtectedRoute>
+          <AdminDetectWords />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/content/*",
+      element: (
+        <AdminProtectedRoute>
+          <AdminContentManagement />
+        </AdminProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin/settings",
+      element: (
+        <AdminProtectedRoute>
+          <AdminSettings />
+        </AdminProtectedRoute>
+      ),
+    },
+    { path: "*", element: <NotFound /> },
+  ],
+  {
+    future: { v7_startTransition: true, v7_relativeSplatPath: true },
+  },
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <Toaster />
     <Sonner />
-    <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/all-listings" element={<AllListings />} />
-          <Route path="/listing/:id" element={<ListingDetail />} />
-          <Route path="/listing/:id/edit" element={<EditListing />} />
-          <Route path="/how-to-buy" element={<HowToBuy />} />
-          <Route path="/how-to-sell" element={<HowToSell />} />
-          <Route path="/buyer-signup" element={<BuyerSignup />} />
-          <Route path="/seller-signup" element={<SellerSignup />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard/edit/:id" element={<Dashboard />} />
-          <Route path="/my-listings" element={<MyListings />} />
-          <Route path="/favourites" element={<Favourites />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/verify-account" element={<VerifyAccount />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/phone-verification" element={<PhoneVerification />} />
-          <Route path="/verify-otp" element={<VerifyOTP />} />
-          <Route path="/register" element={<Register />} />
-          
-          {/* Admin Routes - Public (no auth required) */}
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
-          <Route path="/admin/verify-otp" element={<AdminVerifyOTP />} />
-          <Route path="/admin/reset-password" element={<AdminResetPassword />} />
-          
-          {/* Admin Routes - Protected (requires admin authentication) */}
-          <Route path="/admin/dashboard" element={<AdminProtectedRoute allowedRoles={["ADMIN"]}><AdminDashboard /></AdminProtectedRoute>} />
-          <Route path="/admin/team" element={<AdminProtectedRoute><AdminTeamMembers /></AdminProtectedRoute>} />
-          <Route path="/admin/team/:id" element={<AdminProtectedRoute><AdminMemberDetails /></AdminProtectedRoute>} />
-          <Route path="/admin/users" element={<AdminProtectedRoute><AdminUsers /></AdminProtectedRoute>} />
-          <Route path="/admin/users/:id" element={<AdminProtectedRoute><AdminUserDetails /></AdminProtectedRoute>} />
-          <Route path="/admin/users/:id/listings" element={<AdminProtectedRoute><AdminUserListings /></AdminProtectedRoute>} />
-          <Route path="/admin/users/:id/favorites" element={<AdminProtectedRoute><AdminUserFavorites /></AdminProtectedRoute>} />
-          <Route path="/admin/users/:id/chats" element={<AdminProtectedRoute><AdminUserChats /></AdminProtectedRoute>} />
-          <Route path="/admin/listings" element={<AdminProtectedRoute><AdminListings /></AdminProtectedRoute>} />
-          <Route path="/admin/listings/:id" element={<AdminProtectedRoute><AdminListingDetails /></AdminProtectedRoute>} />
-          <Route path="/admin/chats" element={<AdminProtectedRoute><AdminChats /></AdminProtectedRoute>} />
-          <Route path="/admin/chat-list" element={<AdminProtectedRoute><AdminChatList /></AdminProtectedRoute>} />
-          <Route path="/admin/chat-analytics" element={<AdminProtectedRoute><AdminChatAnalytics /></AdminProtectedRoute>} />
-          <Route path="/admin/monitoring-alerts" element={<AdminProtectedRoute><AdminMonitoringAlerts /></AdminProtectedRoute>} />
-          <Route path="/admin/detect-words" element={<AdminProtectedRoute><AdminDetectWords /></AdminProtectedRoute>} />
-          <Route path="/admin/content/*" element={<AdminProtectedRoute><AdminContentManagement /></AdminProtectedRoute>} />
-          <Route path="/admin/settings" element={<AdminProtectedRoute><AdminSettings /></AdminProtectedRoute>} />
-          
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+    <Suspense fallback={<PageLoader />}>
+      <RouterProvider
+        router={router}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      />
+    </Suspense>
   </QueryClientProvider>
 );
 

@@ -1,14 +1,24 @@
+import { lazy, Suspense } from "react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChatAnalyticsDashboard } from "@/components/admin/chat/ChatAnalyticsDashboard";
-import { RoutingRulesDialog } from "@/components/admin/chat/RoutingRulesDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRoutingRules, useDeleteRoutingRule, useUpdateRoutingRule } from "@/hooks/useRoutingRules";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Trash2 } from "lucide-react";
+
+const ChatAnalyticsDashboard = lazy(() =>
+  import("@/components/admin/chat/ChatAnalyticsDashboard").then((m) => ({ default: m.ChatAnalyticsDashboard }))
+);
+const RoutingRulesDialog = lazy(() =>
+  import("@/components/admin/chat/RoutingRulesDialog").then((m) => ({ default: m.RoutingRulesDialog }))
+);
+
+const AnalyticsLoader = () => (
+  <div className="p-6 text-muted-foreground">Loading analytics...</div>
+);
 
 const AdminChatAnalytics = () => {
   const { data: routingRules } = useRoutingRules();
@@ -32,14 +42,18 @@ const AdminChatAnalytics = () => {
             </div>
 
             <TabsContent value="analytics" className="m-0 animate-fade-in">
-              <ChatAnalyticsDashboard />
+              <Suspense fallback={<AnalyticsLoader />}>
+                <ChatAnalyticsDashboard />
+              </Suspense>
             </TabsContent>
 
             <TabsContent value="routing" className="m-0 p-4 sm:p-6 animate-fade-in">
               <div className="space-y-3 sm:space-y-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <h2 className="text-lg sm:text-xl font-semibold">Auto-Assignment Rules</h2>
-                  <RoutingRulesDialog />
+                  <Suspense fallback={null}>
+                    <RoutingRulesDialog />
+                  </Suspense>
                 </div>
 
                 <div className="grid gap-3 sm:gap-4">

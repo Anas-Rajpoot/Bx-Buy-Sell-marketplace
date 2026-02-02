@@ -6,7 +6,6 @@ import {
   Body,
   Post,
   Delete,
-  UseGuards,
   Inject,
   Req,
   HttpException,
@@ -22,7 +21,6 @@ import {
   UserUpdateSchemaDTO,
 } from './dto/user.dto';
 import { Roles } from 'common/decorator/roles.decorator';
-import { RolesGuard } from 'common/guard/role.guard';
 import { ApiBody, ApiParam } from '@nestjs/swagger';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { CACHE_TTL } from 'common/config/cache.config';
@@ -35,7 +33,6 @@ import {
 import { LogAction } from 'common/decorator/action.decorator';
 import { logSchema } from 'common/validator/logSchema.validator';
 @Roles(['ADMIN', 'MONITER', 'STAFF'])
-@UseGuards(RolesGuard)
 @Controller('user')
 export class UserController {
   constructor(
@@ -63,7 +60,6 @@ export class UserController {
 
 
   @Roles(['ADMIN', 'MONITER', 'USER', 'STAFF'])
-  @UseGuards(RolesGuard)
   @Get('/favourite')
   @ApiParam({ name: 'id', description: 'User ID', type: String })
   async getAllFavourite(@Req() req: Request) {
@@ -71,7 +67,6 @@ export class UserController {
   }
 
   @Roles(['ADMIN', 'MONITER', 'STAFF'])
-  @UseGuards(RolesGuard)
   @Get('/favourite/user/:id')
   @ApiParam({ name: 'id', description: 'User ID', type: String })
   async getAllFavouriteByUserId(@Param('id') id: string) {
@@ -79,7 +74,6 @@ export class UserController {
   }
 
   @Roles(['ADMIN', 'MONITER', 'STAFF'])
-  @UseGuards(RolesGuard)
   @Get('/favourite/user/:id/count')
   @ApiParam({ name: 'id', description: 'User ID', type: String })
   async getFavouriteCountByUserId(@Param('id') id: string) {
@@ -88,7 +82,6 @@ export class UserController {
   }
 
   @Roles(['ADMIN', 'MONITER', 'USER', 'STAFF'])
-  @UseGuards(RolesGuard)
   @Get('/favourite/add/:listingId')
   @ApiParam({ name: 'id', description: 'User ID', type: String })
   async AddFavourite(
@@ -102,7 +95,6 @@ export class UserController {
   }
 
   @Roles(['ADMIN', 'MONITER', 'USER', 'STAFF'])
-  @UseGuards(RolesGuard)
   @Get('/favourite/remove/:listingId')
   @ApiParam({ name: 'listingId', description: 'Listing ID', type: String })
   async removeFavourite(
@@ -115,7 +107,6 @@ export class UserController {
     );
   }
   @Roles(['ADMIN', 'MONITER', 'USER', 'STAFF'])
-  @UseGuards(RolesGuard)
   @Get(':id')
   @ApiParam({ name: 'id', description: 'User ID', type: String })
   async findOne(@Param('id') id: string) {
@@ -186,7 +177,6 @@ export class UserController {
   }
 
   @Roles(['ADMIN', 'MONITER', 'STAFF'])
-  @UseGuards(RolesGuard)
   @Patch('preferences/:id')
   @ApiParam({ name: 'id', description: 'User ID', type: String })
   async updateUserPreferences(
@@ -210,7 +200,6 @@ export class UserController {
   }
 
   @Roles(['ADMIN', 'MONITER', 'USER', 'STAFF'])
-  @UseGuards(RolesGuard)
   @Patch(':id')
   @LogAction(logSchema('update', 'user'))
   @ApiBody({ type: () => UserUpdateSchemaDTO })

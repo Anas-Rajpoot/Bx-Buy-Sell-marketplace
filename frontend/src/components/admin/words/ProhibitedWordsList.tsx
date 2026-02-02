@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Edit, RefreshCw, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { EditWordDialog } from "./EditWordDialog";
+const EditWordDialog = lazy(() =>
+  import("./EditWordDialog").then((m) => ({ default: m.EditWordDialog }))
+);
 import {
   Select,
   SelectContent,
@@ -268,12 +270,14 @@ export const ProhibitedWordsList = ({ searchQuery, wordToAdd, addWordTrigger, on
         </div>
       )}
 
-      <EditWordDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        word={editingWord}
-        onWordUpdated={fetchWords}
-      />
+      <Suspense fallback={null}>
+        <EditWordDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          word={editingWord}
+          onWordUpdated={fetchWords}
+        />
+      </Suspense>
     </>
   );
 };

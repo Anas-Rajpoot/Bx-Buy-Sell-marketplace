@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
@@ -29,14 +29,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
-import { EditMemberDialog } from "@/components/admin/EditMemberDialog";
 import { useTeamMembers, TeamMember } from "@/hooks/useTeamMembers";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { createSocketConnection } from "@/lib/socket";
 import { useAuth } from "@/hooks/useAuth";
+
+const AddMemberDialog = lazy(() =>
+  import("@/components/admin/AddMemberDialog").then((m) => ({ default: m.AddMemberDialog }))
+);
+const EditMemberDialog = lazy(() =>
+  import("@/components/admin/EditMemberDialog").then((m) => ({ default: m.EditMemberDialog }))
+);
 
 export default function AdminTeamMembers() {
   const navigate = useNavigate();
@@ -694,19 +699,21 @@ export default function AdminTeamMembers() {
         </div>
       </main>
 
-      {!isModerator && (
-        <AddMemberDialog 
-          open={isAddDialogOpen} 
-          onOpenChange={setIsAddDialogOpen}
-        />
-      )}
-      {!isModerator && (
-        <EditMemberDialog 
-          open={isEditDialogOpen} 
-          onOpenChange={setIsEditDialogOpen}
-          member={selectedMember}
-        />
-      )}
+      <Suspense fallback={null}>
+        {!isModerator && (
+          <AddMemberDialog 
+            open={isAddDialogOpen} 
+            onOpenChange={setIsAddDialogOpen}
+          />
+        )}
+        {!isModerator && (
+          <EditMemberDialog 
+            open={isEditDialogOpen} 
+            onOpenChange={setIsEditDialogOpen}
+            member={selectedMember}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

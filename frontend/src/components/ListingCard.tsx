@@ -233,6 +233,9 @@ const ListingCard = ({
           src={image}
           alt={name}
           className="w-full h-full object-cover"
+          loading="lazy"
+          decoding="async"
+          sizes="(max-width: 768px) 100vw, 50vw"
           style={{ borderRadius: '20px', display: 'block' }}
         />
         <div className="absolute top-4 right-4 flex flex-col gap-2">

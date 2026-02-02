@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -6,12 +6,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { StatCard } from "@/components/admin/StatCard";
-import { VisitorsChart } from "@/components/admin/charts/VisitorsChart";
-import { NewListingsChart } from "@/components/admin/charts/NewListingsChart";
-import { RevenueChart } from "@/components/admin/charts/RevenueChart";
-import { ListingsOverviewChart } from "@/components/admin/charts/ListingsOverviewChart";
 import { useAdminDashboardStats } from "@/hooks/useAdminDashboardStats";
 import { Sheet } from "@/components/ui/sheet";
+
+const VisitorsChart = lazy(() =>
+  import("@/components/admin/charts/VisitorsChart").then((m) => ({ default: m.VisitorsChart }))
+);
+const NewListingsChart = lazy(() =>
+  import("@/components/admin/charts/NewListingsChart").then((m) => ({ default: m.NewListingsChart }))
+);
+const RevenueChart = lazy(() =>
+  import("@/components/admin/charts/RevenueChart").then((m) => ({ default: m.RevenueChart }))
+);
+const ListingsOverviewChart = lazy(() =>
+  import("@/components/admin/charts/ListingsOverviewChart").then((m) => ({ default: m.ListingsOverviewChart }))
+);
+
+const ChartLoader = () => (
+  <div className="h-64 flex items-center justify-center text-muted-foreground">
+    Loading chart...
+  </div>
+);
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -119,14 +134,20 @@ export default function AdminDashboard() {
             />
           </div>
 
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-            <VisitorsChart />
-            <NewListingsChart />
-          </div>
+          <Suspense fallback={<ChartLoader />}>
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+              <VisitorsChart />
+              <NewListingsChart />
+            </div>
+          </Suspense>
 
-          <RevenueChart />
+          <Suspense fallback={<ChartLoader />}>
+            <RevenueChart />
+          </Suspense>
           
-          <ListingsOverviewChart />
+          <Suspense fallback={<ChartLoader />}>
+            <ListingsOverviewChart />
+          </Suspense>
         </div>
       </main>
     </div>

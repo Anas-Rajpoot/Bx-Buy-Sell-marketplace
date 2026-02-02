@@ -8,6 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import { formatChatTime } from "@/lib/timeFormatter";
 import { createSocketConnection, getWebSocketUrl } from "@/lib/socket";
 import type { Socket } from "socket.io-client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Conversation {
   id: string;
@@ -62,13 +63,52 @@ export const AdminConversationList = ({
   const [loading, setLoading] = useState(true);
   const socketRef = useRef<Socket | null>(null);
   const autoSelectedRef = useRef(false);
+  const { user: currentUser } = useAuth();
+  const currentUserId =
+    currentUser?.id || JSON.parse(localStorage.getItem('user_data') || '{}')?.id;
+  const selectedConversationIdRef = useRef<string | null>(null);
+  const currentUserIdRef = useRef<string | null>(currentUserId || null);
 
   useEffect(() => {
-    fetchConversations();
+    selectedConversationIdRef.current = selectedConversationId;
+  }, [selectedConversationId]);
+
+  useEffect(() => {
+    currentUserIdRef.current = currentUserId || null;
+  }, [currentUserId]);
+
+  const getLocalUnreadKey = (chatId: string) => `admin-chat-unread:${chatId}`;
+  const getLocalUnread = (chatId: string) => {
+    const raw = localStorage.getItem(getLocalUnreadKey(chatId));
+    const parsed = raw ? Number(raw) : NaN;
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const setLocalUnread = (chatId: string, count: number) => {
+    localStorage.setItem(getLocalUnreadKey(chatId), String(Math.max(0, count)));
+  };
+
+  useEffect(() => {
+    if (!selectedConversationId) return;
+    setConversations((prev) =>
+      prev.map((conv: any) =>
+        conv.id === selectedConversationId
+          ? { ...conv, unread_count: 0 }
+          : conv
+      )
+    );
+
+    apiClient.markMessagesAsReadForMonitor(selectedConversationId, currentUserId).catch(() => {
+      // No-op: UI already cleared; backend will retry next open
+    });
+    setLocalUnread(selectedConversationId, 0);
+  }, [selectedConversationId]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    fetchConversations(true);
     
     // Set up WebSocket connection for real-time updates
     const wsUrl = getWebSocketUrl();
-    console.log('🔌 [MONITOR] Connecting to Socket.IO for monitor updates:', wsUrl);
     
     const socket = createSocketConnection({
       transports: ['polling', 'websocket'],
@@ -80,61 +120,61 @@ export const AdminConversationList = ({
     
     socketRef.current = socket;
     
-    socket.on('connect', () => {
-      console.log('✅ [MONITOR] Socket.IO connected for monitor updates');
-    });
+    socket.on('connect', () => {});
     
     // Listen for chat updates
     socket.on('monitor:chat_updated', (data: { chatRoomId: string; updatedAt: string; lastMessage: any }) => {
-      console.log('📨 [MONITOR] Chat updated:', data);
-      
       setConversations(prev => {
         const existingIndex = prev.findIndex(c => c.id === data.chatRoomId);
-        
+
         if (existingIndex >= 0) {
-          // Update existing chat - move to top and update last message
           const updated = [...prev];
           const chat = updated[existingIndex];
-          
+          const isSelected = selectedConversationIdRef.current === data.chatRoomId;
+          const senderId = data.lastMessage?.senderId;
+          const isFromCurrentUser = senderId && senderId === currentUserIdRef.current;
+
+          let nextUnread = chat.unread_count || 0;
+          if (isSelected || isFromCurrentUser) {
+            nextUnread = 0;
+          } else {
+            nextUnread = nextUnread + 1;
+          }
+
           updated[existingIndex] = {
             ...chat,
             last_message: data.lastMessage?.content || chat.last_message,
             last_message_at: data.lastMessage?.createdAt || data.updatedAt,
             updatedAt: data.updatedAt,
+            unread_count: nextUnread,
           };
-          
-          // Move to top
+
+          setLocalUnread(data.chatRoomId, nextUnread);
+
           const [moved] = updated.splice(existingIndex, 1);
           return [moved, ...updated];
-        } else {
-          // New chat - fetch full details
-          console.log('🆕 [MONITOR] New chat detected, fetching details...');
-          fetchConversations();
-          return prev;
         }
+
+        fetchConversations(false);
+        return prev;
       });
     });
     
     // Listen for new chat creation
-    socket.on('monitor:chat_created', (data: { chatRoomId: string }) => {
-      console.log('🆕 [MONITOR] New chat created:', data);
-      // Fetch conversations to get the new chat with full details
-      fetchConversations();
+    socket.on('monitor:chat_created', () => {
+      // Fetch conversations to get the new chat with full details (no spinner)
+      fetchConversations(false);
     });
     
-    socket.on('disconnect', () => {
-      console.log('❌ [MONITOR] Socket.IO disconnected');
-    });
+    socket.on('disconnect', () => {});
     
-    socket.on('connect_error', (error) => {
-      console.error('❌ [MONITOR] Socket.IO connection error:', error);
-    });
+    socket.on('connect_error', () => {});
 
     return () => {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, []);
+  }, [currentUserId]);
 
   useEffect(() => {
     if (!autoSelectUserId || selectedConversationId || autoSelectedRef.current) {
@@ -151,21 +191,13 @@ export const AdminConversationList = ({
     }
   }, [autoSelectUserId, conversations, onSelectConversation, selectedConversationId]);
 
-  const fetchConversations = async () => {
+  const fetchConversations = async (showLoading: boolean = false) => {
     try {
-      console.log('🔄 [MONITOR] Fetching all chats from monitor endpoint...');
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       
-      const response = await apiClient.getAllChatsForMonitor();
-      
-      console.log('📥 [MONITOR] getAllChatsForMonitor response:', {
-        success: response.success,
-        hasData: !!response.data,
-        dataType: Array.isArray(response.data) ? 'array' : typeof response.data,
-        dataLength: Array.isArray(response.data) ? response.data.length : 'N/A',
-        error: response.error,
-        fullResponse: response, // Log full response for debugging
-      });
+      const response = await apiClient.getAllChatsForMonitor(currentUserId);
       
       if (!response.success) {
         console.error('❌ Error fetching conversations:', response.error);
@@ -176,54 +208,23 @@ export const AdminConversationList = ({
       // Handle different response formats
       let chats: any[] = [];
       
-      console.log('🔍 [FRONTEND] Raw response:', response);
-      console.log('🔍 [FRONTEND] response.data:', response.data);
-      console.log('🔍 [FRONTEND] response.data type:', typeof response.data);
-      console.log('🔍 [FRONTEND] Is array?', Array.isArray(response.data));
-      
       // The API client should already unwrap the ResponseInterceptor format
       // So response.data should be the array directly
       if (Array.isArray(response.data)) {
         // Direct array response (already unwrapped by API client)
         chats = response.data;
-        console.log('✅ [FRONTEND] Using direct array format, length:', chats.length);
       } else if (response.data && typeof response.data === 'object') {
         // Check for nested data (in case API client didn't unwrap)
         if (Array.isArray(response.data.data)) {
           chats = response.data.data;
-          console.log('✅ [FRONTEND] Using nested data.data format, length:', chats.length);
         } else if (response.data.status === 'success' && Array.isArray(response.data.data)) {
           // ResponseInterceptor wraps as { status: 'success', data: [...] }
           chats = response.data.data;
-          console.log('✅ [FRONTEND] Using status success format, length:', chats.length);
         } else {
-          console.warn('⚠️ [FRONTEND] Unexpected response format:', {
-            data: response.data,
-            keys: Object.keys(response.data || {}),
-            dataType: typeof response.data,
-            isArray: Array.isArray(response.data),
-            hasData: 'data' in (response.data || {}),
-            dataValue: (response.data as any)?.data,
-          });
           chats = [];
         }
       } else {
-        console.warn('⚠️ [FRONTEND] Response.data is not an object or array:', {
-          data: response.data,
-          type: typeof response.data,
-        });
         chats = [];
-      }
-      
-      console.log(`✅ [FRONTEND] Processing ${chats.length} chats`);
-      
-      if (chats.length === 0) {
-        console.warn('⚠️ [FRONTEND] NO CHATS RECEIVED FROM BACKEND!');
-        console.warn('⚠️ [FRONTEND] This could mean:');
-        console.warn('   1. No chats exist in database');
-        console.warn('   2. All chats were filtered out (null user/seller)');
-        console.warn('   3. Backend error (check backend logs)');
-        console.warn('   4. Response format mismatch');
       }
       
       // Transform backend data to match component expectations
@@ -233,12 +234,32 @@ export const AdminConversationList = ({
           : null;
         
         // Count unread messages (now we get all messages from backend)
-        const unreadCount = chat.messages 
-          ? chat.messages.filter((msg: any) => !msg.read).length 
+        let unreadCount = typeof chat.unreadCount === 'number'
+          ? chat.unreadCount
           : 0;
+
+        const storedUnread = getLocalUnread(chat.id);
+        if (storedUnread !== null) {
+          unreadCount = storedUnread;
+        }
+
+        const lastViewedRaw = localStorage.getItem(`admin-chat-viewed:${chat.id}`);
+        if (lastViewedRaw && lastMessage?.createdAt) {
+          const lastViewedTime = new Date(lastViewedRaw).getTime();
+          const lastMessageTime = new Date(lastMessage.createdAt).getTime();
+          if (!Number.isNaN(lastViewedTime) && !Number.isNaN(lastMessageTime) && lastViewedTime >= lastMessageTime) {
+            unreadCount = 0;
+          }
+        }
+
+        if (selectedConversationId === chat.id) {
+          unreadCount = 0;
+        }
         
         // Check if assigned (has monitor views)
         const isAssigned = chat.monitorViews && chat.monitorViews.length > 0;
+
+        setLocalUnread(chat.id, unreadCount);
 
         return {
           id: chat.id,
@@ -260,13 +281,14 @@ export const AdminConversationList = ({
         new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
       );
 
-      console.log(`✅ Set ${transformedConversations.length} conversations`);
       setConversations(transformedConversations as any);
     } catch (error) {
       console.error('❌ Exception fetching conversations:', error);
       setConversations([]);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -405,7 +427,7 @@ export const AdminConversationList = ({
             };
             
             const lastMessage = getMessagePreview(conv.last_message);
-            const isUnread = conv.unread_count > 0;
+            const isUnread = conv.unread_count > 0 && selectedConversationId !== conv.id;
             
             return (
               <div

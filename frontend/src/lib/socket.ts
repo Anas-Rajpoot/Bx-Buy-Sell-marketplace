@@ -41,9 +41,7 @@ export const createSocketConnection = (options?: {
     autoConnect: true,
   });
 
-  // Log connection events for debugging
   socket.on('connect', () => {
-    console.log('✅ Socket.IO connected successfully! ID:', socket.id);
     if (heartbeatTimer) {
       clearInterval(heartbeatTimer);
     }
@@ -52,21 +50,18 @@ export const createSocketConnection = (options?: {
     }, heartbeatIntervalMs);
   });
 
-  socket.on('disconnect', (reason) => {
-    console.log('❌ Socket.IO disconnected:', reason);
+  socket.on('disconnect', () => {
     if (heartbeatTimer) {
       clearInterval(heartbeatTimer);
       heartbeatTimer = null;
     }
   });
 
-  socket.on('connect_error', (error) => {
-    console.error('❌ Socket.IO connection error:', error);
-    console.error('Error details:', {
-      message: error.message,
-      type: error.type,
-      description: error.description,
-    });
+  socket.on('connect_error', () => {
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
   });
 
   return socket;

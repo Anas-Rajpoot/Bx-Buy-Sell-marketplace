@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from "recharts";
+import { Area, AreaChart, XAxis, YAxis, CartesianGrid } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { TrendingUp } from "lucide-react";
 
@@ -60,58 +60,56 @@ export const RevenueChart = () => {
             }}
             className="h-[300px] sm:h-[350px] w-full min-w-[400px]"
           >
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data} margin={{ top: 10, right: 15, left: 10, bottom: 5 }}>
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#FFD700" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#FFD700" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                <XAxis 
-                  dataKey="date" 
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  interval={0}
-                />
-                <YAxis 
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  width={50}
-                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                />
-                <ChartTooltip 
-                  content={<ChartTooltipContent />}
-                  cursor={{ stroke: "hsl(var(--accent))", strokeWidth: 1, strokeDasharray: "5 5" }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="profit" 
-                  stroke="#FFD700" 
-                  strokeDasharray="4 4" 
-                  fill="url(#colorProfit)" 
-                  strokeWidth={2} 
-                  fillOpacity={0.6}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="hsl(var(--accent))" 
-                  fill="url(#colorRevenue)" 
-                  strokeWidth={2}
-                  fillOpacity={0.6}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <AreaChart data={data} margin={{ top: 10, right: 15, left: 10, bottom: 5 }}>
+              <defs>
+                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#FFD700" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#FFD700" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+              <XAxis 
+                dataKey="date" 
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                interval={0}
+              />
+              <YAxis 
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                width={50}
+                tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+              />
+              <ChartTooltip 
+                content={<ChartTooltipContent />}
+                cursor={{ stroke: "hsl(var(--accent))", strokeWidth: 1, strokeDasharray: "5 5" }}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="profit" 
+                stroke="#FFD700" 
+                strokeDasharray="4 4" 
+                fill="url(#colorProfit)" 
+                strokeWidth={2} 
+                fillOpacity={0.6}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="revenue" 
+                stroke="hsl(var(--accent))" 
+                fill="url(#colorRevenue)" 
+                strokeWidth={2}
+                fillOpacity={0.6}
+              />
+            </AreaChart>
           </ChartContainer>
         </div>
       </CardContent>

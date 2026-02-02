@@ -56,6 +56,9 @@ const Features = () => {
               <img 
                 src={group1597885285} 
                 alt="Download Mobile App" 
+                loading="lazy"
+                decoding="async"
+                sizes="(max-width: 768px) 100vw, 50vw"
                 style={{
                   maxWidth: '100%',
                   maxHeight: '100%',
@@ -80,6 +83,9 @@ const Features = () => {
               src={group112Preview} 
               alt="Reports & Insights App" 
               className="w-auto h-auto max-h-[300px] sm:max-h-[500px] md:max-h-[700px] lg:max-h-[900px] object-contain"
+              loading="lazy"
+              decoding="async"
+              sizes="(max-width: 768px) 100vw, 50vw"
             />
           </div>
         </div>

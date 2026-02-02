@@ -36,51 +36,15 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
   const [mediaFiles, setMediaFiles] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchDetails();
     if (userId && sellerId) {
-      fetchMessages();
+      fetchChatRoomData();
+    } else {
+      fetchDetails();
     }
   }, [conversationId, userId, sellerId]);
 
   const fetchDetails = async () => {
     try {
-      // Try to get listing from chat room first (more reliable)
-      if (userId && sellerId) {
-        const chatResponse = await apiClient.getChatRoom(userId, sellerId);
-        if (chatResponse.success && chatResponse.data) {
-          const chatData = (chatResponse.data as any).data || chatResponse.data;
-          
-          // Get listing from chat room
-          if (chatData?.listing) {
-            setListing(chatData.listing);
-          }
-
-          // Get participants from chat room
-          const buyer = chatData?.user;
-          const seller = chatData?.seller;
-          
-          const buyerProfile = buyer ? {
-            id: buyer.id,
-            full_name: `${buyer.first_name || ''} ${buyer.last_name || ''}`.trim(),
-            avatar_url: buyer.profile_pic,
-            email: buyer.email,
-            is_online: buyer.is_online || false,
-          } : null;
-
-          const sellerProfile = seller ? {
-            id: seller.id,
-            full_name: `${seller.first_name || ''} ${seller.last_name || ''}`.trim(),
-            avatar_url: seller.profile_pic,
-            email: seller.email,
-            is_online: seller.is_online || false,
-          } : null;
-
-          setParticipants([buyerProfile, sellerProfile].filter(Boolean));
-          return;
-        }
-      }
-
-      // Fallback: Try getChatById
       const response = await apiClient.getChatById(conversationId);
       if (response.success && response.data) {
         const chat = (response.data as any).data || response.data;
@@ -119,7 +83,7 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
     }
   };
 
-  const fetchMessages = async () => {
+  const fetchChatRoomData = async () => {
     try {
       if (!userId || !sellerId) return;
       

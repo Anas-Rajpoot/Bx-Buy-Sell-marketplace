@@ -120,6 +120,9 @@ export const ListingCardDashboard = ({
             src={image_url} 
             alt={title} 
             className="w-full h-full object-cover"
+            loading="lazy"
+            decoding="async"
+            sizes="(max-width: 768px) 100vw, 485px"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-[rgba(0,0,0,0.5)] font-['Lufga'] text-xs sm:text-sm md:text-base">

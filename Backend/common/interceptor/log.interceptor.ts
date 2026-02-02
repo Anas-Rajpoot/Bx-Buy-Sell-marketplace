@@ -31,6 +31,9 @@ export class LogInterceptor<T> implements NestInterceptor<T, any> {
     const req = ctx.getRequest<Request>();
     return next.handle().pipe(
       tap(() => {
+        if (!(req as any).user) {
+          return;
+        }
         const logEntry = {
           action: logAction.action,
           actorRole: (req as any).user.role,

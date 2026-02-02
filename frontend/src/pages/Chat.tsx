@@ -1,14 +1,25 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ListingsSidebar } from "@/components/listings/ListingsSidebar";
 import { DashboardHeader } from "@/components/listings/DashboardHeader";
 import { ConversationList } from "@/components/chat/ConversationList";
-import { ChatWindow } from "@/components/chat/ChatWindow";
-import { ChatDetails } from "@/components/chat/ChatDetails";
 import { MessageSquare, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/lib/api";
+
+const ChatWindow = lazy(() =>
+  import("@/components/chat/ChatWindow").then((m) => ({ default: m.ChatWindow }))
+);
+const ChatDetails = lazy(() =>
+  import("@/components/chat/ChatDetails").then((m) => ({ default: m.ChatDetails }))
+);
+
+const ChatPaneLoader = () => (
+  <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm sm:text-base p-4">
+    Loading chat...
+  </div>
+);
 
 const Chat = () => {
   const { user, loading: authLoading } = useAuth();
@@ -20,6 +31,19 @@ const Chat = () => {
   const [urlParamsProcessed, setUrlParamsProcessed] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
+
+  const handleSelectConversation = useCallback(
+    (id: string, userId: string, sellerId: string) => {
+      setSelectedConversation(id);
+      setChatRoomData({ userId, sellerId });
+    },
+    [],
+  );
+
+  const handleConversationDeleted = useCallback(() => {
+    setSelectedConversation(null);
+    setChatRoomData(null);
+  }, []);
 
   useEffect(() => {
     const initializeChat = async () => {
@@ -36,19 +60,12 @@ const Chat = () => {
         // No longer using listingId - merged conversations
         
         if (chatId && userId && sellerId && !urlParamsProcessed) {
-          console.log('📥 Processing URL params:', { chatId, userId, sellerId });
-          
           // Auto-select the conversation from URL params (merged conversation)
           setSelectedConversation(chatId);
           setChatRoomData({ userId, sellerId });
           setHasConversations(true);
           setUrlParamsProcessed(true);
           
-          // Trigger refresh of conversation list to update unread counts after chat loads
-          setTimeout(() => checkConversations(), 2000);
-          
-          // Clear URL params AFTER ChatWindow has mounted and processed them
-          // Use a delay to ensure ChatWindow has time to initialize
           setTimeout(() => {
             navigate('/chat', { replace: true });
           }, 1000);
@@ -71,10 +88,11 @@ const Chat = () => {
     if (!user?.id) return;
 
     try {
-      // Get chat rooms where user is buyer
-      const buyerResponse = await apiClient.getChatRoomsByUserId(user.id);
-      // Get chat rooms where user is seller
-      const sellerResponse = await apiClient.getChatRoomsBySellerId(user.id);
+      // Get chat rooms where user is buyer/seller in parallel
+      const [buyerResponse, sellerResponse] = await Promise.all([
+        apiClient.getChatRoomsByUserId(user.id),
+        apiClient.getChatRoomsBySellerId(user.id),
+      ]);
 
       const buyerRooms = buyerResponse.success && Array.isArray(buyerResponse.data) 
         ? buyerResponse.data 
@@ -99,11 +117,6 @@ const Chat = () => {
       // If no conversation is selected and we have conversations, auto-select the first (most recent) one
       if (!selectedConversation && uniqueRooms.length > 0) {
         const firstRoom = uniqueRooms[0];
-        console.log('🔄 Auto-selecting first conversation:', { 
-          id: firstRoom.id, 
-          userId: firstRoom.userId, 
-          sellerId: firstRoom.sellerId
-        });
         setSelectedConversation(firstRoom.id);
         setChatRoomData({ 
           userId: firstRoom.userId, 
@@ -111,7 +124,6 @@ const Chat = () => {
         });
       }
     } catch (error) {
-      console.error('Error checking conversations:', error);
       setHasConversations(false);
     }
   };
@@ -197,26 +209,10 @@ const Chat = () => {
           >
             <ConversationList 
               selectedConversation={selectedConversation}
-              onSelectConversation={(id, userId, sellerId) => {
-                console.log('📥 Conversation selected:', { id, userId, sellerId });
-                setSelectedConversation(id);
-                // Don't pass listingId - show merged conversation with all messages
-                setChatRoomData({ userId, sellerId });
-                // Refresh conversations multiple times to ensure unread counts update
-                checkConversations(); // Immediate refresh to update UI
-                setTimeout(() => checkConversations(), 500);
-                setTimeout(() => checkConversations(), 1500);
-                setTimeout(() => checkConversations(), 3000);
-                setTimeout(() => checkConversations(), 5000);
-              }}
+              onSelectConversation={handleSelectConversation}
               userId={user.id}
               refreshTrigger={selectedConversation} // Trigger refresh when conversation changes
-              onConversationDeleted={() => {
-                // If deleted conversation was selected, clear selection
-                setSelectedConversation(null);
-                setChatRoomData(null);
-              }}
-              key={selectedConversation} // Force re-render when conversation changes
+              onConversationDeleted={handleConversationDeleted}
             />
           </div>
         
@@ -245,13 +241,15 @@ const Chat = () => {
               </button>
 
               <div className="flex-1 flex overflow-hidden" style={{ borderRadius: '20px' }}>
-                <ChatWindow 
-                  conversationId={selectedConversation} 
-                  currentUserId={user.id}
-                  userId={chatRoomData.userId}
-                  sellerId={chatRoomData.sellerId}
-                  refreshConversations={checkConversations}
-                />
+                <Suspense fallback={<ChatPaneLoader />}>
+                  <ChatWindow 
+                    conversationId={selectedConversation} 
+                    currentUserId={user.id}
+                    userId={chatRoomData.userId}
+                    sellerId={chatRoomData.sellerId}
+                    refreshConversations={checkConversations}
+                  />
+                </Suspense>
               </div>
             </div>
           ) : (
@@ -288,12 +286,14 @@ const Chat = () => {
                 overflow: 'hidden',
               }}
             >
-              <ChatDetails 
-                conversationId={selectedConversation} 
-                userId={chatRoomData.userId}
-                sellerId={chatRoomData.sellerId}
-                onLabelUpdated={checkConversations}
-              />
+              <Suspense fallback={<ChatPaneLoader />}>
+                <ChatDetails 
+                  conversationId={selectedConversation} 
+                  userId={chatRoomData.userId}
+                  sellerId={chatRoomData.sellerId}
+                  onLabelUpdated={checkConversations}
+                />
+              </Suspense>
             </div>
           )}
         </div>

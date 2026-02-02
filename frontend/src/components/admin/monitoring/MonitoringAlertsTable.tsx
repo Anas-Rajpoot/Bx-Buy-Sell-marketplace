@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { apiClient } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { AssignResponsibleDialog } from "./AssignResponsibleDialog";
+const AssignResponsibleDialog = lazy(() =>
+  import("./AssignResponsibleDialog").then((m) => ({ default: m.AssignResponsibleDialog }))
+);
 
 interface Alert {
   id: string;
@@ -432,12 +434,14 @@ export const MonitoringAlertsTable = ({ searchQuery }: MonitoringAlertsTableProp
         )}
       </div>
 
-      <AssignResponsibleDialog
-        open={assignDialogOpen}
-        onOpenChange={setAssignDialogOpen}
-        alert={selectedAlert}
-        onAssigned={fetchAlerts}
-      />
+      <Suspense fallback={null}>
+        <AssignResponsibleDialog
+          open={assignDialogOpen}
+          onOpenChange={setAssignDialogOpen}
+          alert={selectedAlert}
+          onAssigned={fetchAlerts}
+        />
+      </Suspense>
     </>
   );
 };

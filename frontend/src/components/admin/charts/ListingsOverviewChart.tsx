@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 const data = Array.from({ length: 30 }, (_, i) => ({
@@ -35,41 +35,39 @@ export const ListingsOverviewChart = () => {
             }}
             className="h-[280px] sm:h-[320px] w-full min-w-[600px]"
           >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} margin={{ top: 10, right: 15, left: 10, bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                <XAxis 
-                  dataKey="day" 
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={false}
-                  angle={-45}
-                  textAnchor="end"
-                  height={60}
-                  interval={0}
-                />
-                <YAxis 
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  width={45}
-                  tickFormatter={(value) => `${(value / 1000).toFixed(1)}k`}
-                />
-                <ChartTooltip 
-                  content={<ChartTooltipContent />}
-                  cursor={{ fill: "hsl(var(--accent) / 0.1)" }}
-                />
-                <Bar 
-                  dataKey="listings" 
-                  fill="hsl(var(--accent))" 
-                  radius={[4, 4, 0, 0]}
-                  stroke="hsl(var(--accent))"
-                  strokeWidth={0}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            <BarChart data={data} margin={{ top: 10, right: 15, left: 10, bottom: 60 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+              <XAxis 
+                dataKey="day" 
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+                interval={0}
+              />
+              <YAxis 
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                width={45}
+                tickFormatter={(value) => `${(value / 1000).toFixed(1)}k`}
+              />
+              <ChartTooltip 
+                content={<ChartTooltipContent />}
+                cursor={{ fill: "hsl(var(--accent) / 0.1)" }}
+              />
+              <Bar 
+                dataKey="listings" 
+                fill="hsl(var(--accent))" 
+                radius={[4, 4, 0, 0]}
+                stroke="hsl(var(--accent))"
+                strokeWidth={0}
+              />
+            </BarChart>
           </ChartContainer>
         </div>
       </CardContent>

@@ -456,21 +456,12 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
       // Validate message
       if (!message.chatId || !message.senderId || !message.content) {
-        console.error('❌ Invalid message format:', message);
         throw new WsException('Invalid message format: chatId, senderId, and content are required');
       }
 
       if (!socketUserId || message.senderId !== socketUserId) {
         throw new WsException('Unauthorized sender');
       }
-
-      console.log('📨 send_message called with:', {
-        chatId: message.chatId,
-        senderId: message.senderId,
-        content: message.content?.substring(0, 50),
-        clientId: client.id,
-        messageId: message.id || 'no-id-yet'
-      });
 
       // Validate content (prevent emails/phone numbers)
       const schema = z.string().email();
@@ -487,7 +478,6 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         message.type = 'ERROR';
         message.content = "Don't use email or phone number";
         // SINGLE EMIT: Error message broadcast to room only (no client.emit or this.io.emit)
-        console.log('📤 EMIT error message (SINGLE):', message.chatId);
         this.io.to(message.chatId).emit('message', JSON.stringify(message));
         return;
       }
@@ -530,33 +520,17 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
               const userId = participantIds[0];
               const sellerId = participantIds[1];
               
-              console.log('🆕 Creating chat room from existing messages:', {
-                chatId: message.chatId,
-                userId,
-                sellerId,
-                participants: participantIds,
-              });
-
               chatRoom = await this.chatService.createChatRoom(userId, sellerId, message.listingId);
-              console.log('✅ Chat room created from messages:', chatRoom.id);
             } else {
               throw new WsException('Cannot create chat room: userId and sellerId required. Please provide them in the message payload.');
             }
           } else {
             // Create chat room with provided userId and sellerId
-            console.log('🆕 Creating chat room from message payload:', {
-              chatId: message.chatId,
-              userId: message.userId,
-              sellerId: message.sellerId,
-              senderId: message.senderId,
-            });
-
             if (message.senderId !== message.userId && message.senderId !== message.sellerId) {
               throw new WsException('Sender is not a participant in this chat');
             }
 
             chatRoom = await this.chatService.createChatRoom(message.userId, message.sellerId, message.listingId);
-            console.log('✅ Chat room created:', chatRoom.id);
           }
         } else {
           chatRoom = existingChat;
@@ -586,13 +560,37 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         message.read = savedMessage.read;
         message.fileUrl = savedMessage.fileUrl || message.fileUrl;
         
-        console.log('✅ Message saved to database, id:', savedMessage.id, {
-          messageId: savedMessage.id,
-          chatId: message.chatId,
-          senderId: message.senderId
-        });
+      } catch (dbError) {
+        console.error('❌ Error saving message to database:', dbError);
+        throw new WsException('Failed to save message to database');
+      }
 
-        // Update chat room's updatedAt timestamp
+      // CRITICAL: Broadcast ONLY to the specific room - SINGLE EMIT ONLY
+      // DO NOT use client.emit() or this.io.emit() - only use this.io.to(chatId).emit()
+      // This ensures the sender receives the message exactly once via room broadcast
+      const messageString = JSON.stringify(message);
+      
+      // SINGLE EMIT: Broadcast to all clients in the room (including sender)
+      // The sender is already in the room, so they receive it via this single room broadcast
+      // NO additional emits - this is the ONLY emit for this message
+      this.io.to(message.chatId).emit('message', messageString);
+      
+      // Emit to monitor room for admin/monitor dashboard updates
+      this.io.to('monitor-room').emit('monitor:chat_updated', {
+        chatRoomId: message.chatId,
+        updatedAt: savedMessage.createdAt.toISOString(),
+        lastMessage: {
+          id: savedMessage.id,
+          content: savedMessage.content,
+          createdAt: savedMessage.createdAt.toISOString(),
+          senderId: savedMessage.senderId,
+        },
+      });
+      
+      void this.emitMessageNotify(message.chatId, message.senderId);
+
+      // Run post-save tasks without blocking message delivery
+      void (async () => {
         const chatUpdate = await this.db.chat.update({
           where: { id: message.chatId },
           data: { updatedAt: new Date() },
@@ -600,7 +598,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           console.error('❌ Failed to update chat updatedAt:', err);
           return null;
         });
-        
+
         // Check if this is a new chat (first message) and emit monitor:chat_created
         if (chatUpdate) {
           const chat = await this.db.chat.findUnique({
@@ -612,10 +610,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
               },
             },
           });
-          
-          // If this is the first message in the chat, emit chat_created
+
           if (chat && chat.messages.length === 1) {
-            console.log('🆕 [MONITOR] New chat room created:', message.chatId);
             this.io.to('monitor-room').emit('monitor:chat_created', {
               chatRoomId: message.chatId,
             });
@@ -634,10 +630,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
           if (chat) {
             const recipientId = chat.userId === message.senderId ? chat.sellerId : chat.userId;
-            const senderName = chat.userId === message.senderId 
+            const senderName = chat.userId === message.senderId
               ? `${chat.user.first_name || ''} ${chat.user.last_name || ''}`.trim() || 'User'
               : `${chat.seller.first_name || ''} ${chat.seller.last_name || ''}`.trim() || 'User';
-            
+
             await this.db.notification.create({
               data: {
                 userId: recipientId,
@@ -649,79 +645,18 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
                 chatId: message.chatId,
               },
             });
-            console.log('✅ Notification created for user:', recipientId);
+
+            this.io.to(`user:${recipientId}`).emit('new_notification', {
+              type: 'message',
+              chatId: message.chatId,
+              messageId: message.id,
+            });
           }
         } catch (notifError) {
           // Don't fail message creation if notification fails
           console.error('❌ Failed to create notification:', notifError);
         }
-
-      } catch (dbError) {
-        console.error('❌ Error saving message to database:', dbError);
-        throw new WsException('Failed to save message to database');
-      }
-
-      // CRITICAL: Get clients in the SPECIFIC room only
-      const roomClients = await this.io.in(message.chatId).fetchSockets();
-      
-      console.log('📤 Broadcasting to room:', {
-        chatId: message.chatId,
-        clientsCount: roomClients.length,
-        messageId: message.id,
-        clientIds: roomClients.map(c => c.id)
-      });
-      
-      if (roomClients.length === 0) {
-        console.warn('⚠️ WARNING: No clients in room! Message saved but not delivered:', {
-          chatId: message.chatId,
-          messageId: message.id,
-          message: 'The message was saved to the database but no clients are currently in this room. They will see it when they join or refresh.'
-        });
-      } else {
-        // Verify sender is in the room
-        const senderInRoom = roomClients.some(c => c.id === client.id);
-        if (!senderInRoom) {
-          console.warn('⚠️ WARNING: Sender not in room!', {
-            chatId: message.chatId,
-            senderSocketId: client.id,
-            roomClients: roomClients.map(c => c.id)
-          });
-        }
-      }
-
-      // CRITICAL: Broadcast ONLY to the specific room - SINGLE EMIT ONLY
-      // DO NOT use client.emit() or this.io.emit() - only use this.io.to(chatId).emit()
-      // This ensures the sender receives the message exactly once via room broadcast
-      const messageString = JSON.stringify(message);
-      
-      // SINGLE EMIT: Broadcast to all clients in the room (including sender)
-      // The sender is already in the room, so they receive it via this single room broadcast
-      // NO additional emits - this is the ONLY emit for this message
-      console.log('📤 EMIT message (SINGLE):', message.id, 'to room:', message.chatId, 'clients:', roomClients.length);
-      this.io.to(message.chatId).emit('message', messageString);
-      
-      // Emit to monitor room for admin/monitor dashboard updates
-      this.io.to('monitor-room').emit('monitor:chat_updated', {
-        chatRoomId: message.chatId,
-        updatedAt: savedMessage.createdAt.toISOString(),
-        lastMessage: {
-          id: savedMessage.id,
-          content: savedMessage.content,
-          createdAt: savedMessage.createdAt.toISOString(),
-          senderId: savedMessage.senderId,
-        },
-      });
-      
-      // Emit notification event to recipient for real-time notification updates
-      // Notification was created above after message save
-      this.io.emit('new_notification', {
-        type: 'message',
-        chatId: message.chatId,
-        messageId: message.id,
-      });
-      console.log('🔔 Notification event emitted for new message:', message.id);
-
-      await this.emitMessageNotify(message.chatId, message.senderId);
+      })();
       
       // NOTE: Removed queueMessage call to prevent duplicate message saves
       // Message is already saved directly via createMessage() above
@@ -729,7 +664,6 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       // If queue functionality is needed later, ensure it checks for existing messages first
       // this.messageQueueService.queueMessage(message);
       
-      console.log('✅ Message broadcasted successfully to', roomClients.length, 'client(s)');
     } catch (error) {
       console.error('❌ Error in handleSendMessage:', error);
       throw new WsException(error instanceof Error ? error.message : 'Failed to send message');
@@ -748,7 +682,6 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         adminJoined: true,
         message: 'An Admin Has Joined the Chat..',
       }));
-      console.log('👮 Admin joined room:', chatId);
     } catch (error) {
       throw new WsException('Failed to join as admin');
     }
@@ -765,7 +698,6 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
       // Validate message
       if (!message.chatId || !message.senderId || !message.content) {
-        console.error('❌ Invalid admin message format:', message);
         throw new WsException('Invalid message format: chatId, senderId, and content are required');
       }
 
@@ -776,13 +708,6 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       if (!this.isStaffRole(socketUserRole)) {
         throw new WsException('Admin privileges required');
       }
-
-      console.log('📨 Admin message received:', {
-        chatId: message.chatId,
-        senderId: message.senderId,
-        content: message.content?.substring(0, 50),
-        clientId: client.id,
-      });
 
       // CRITICAL: Ensure chat room exists
       let chatRoom;
@@ -796,12 +721,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         });
 
         if (!existingChat) {
-          console.error('❌ Chat room not found for admin message:', message.chatId);
           throw new WsException('Chat room not found');
         }
         chatRoom = existingChat;
       } catch (chatError) {
-        console.error('❌ Error ensuring chat room exists:', chatError);
         throw new WsException(`Failed to ensure chat room exists: ${chatError instanceof Error ? chatError.message : 'Unknown error'}`);
       }
 
@@ -821,11 +744,9 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         });
 
         if (!adminUser) {
-          console.error('❌ Admin user not found:', message.senderId);
           throw new WsException('Admin user not found');
         }
       } catch (userError) {
-        console.error('❌ Error fetching admin user:', userError);
         throw new WsException('Failed to fetch admin user information');
       }
 
@@ -840,19 +761,6 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           fileUrl: message.fileUrl || null,
         });
         
-        console.log('✅ Admin message saved to database, id:', savedMessage.id, {
-          messageId: savedMessage.id,
-          chatId: message.chatId,
-          senderId: message.senderId
-        });
-
-        // Update chat room's updatedAt timestamp
-        await this.db.chat.update({
-          where: { id: message.chatId },
-          data: { updatedAt: new Date() },
-        }).catch(err => {
-          console.error('❌ Failed to update chat updatedAt:', err);
-        });
       } catch (dbError) {
         console.error('❌ Error saving admin message to database:', dbError);
         throw new WsException('Failed to save admin message to database');
@@ -878,36 +786,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         },
       };
 
-      // CRITICAL: Get clients in the room before broadcasting
-      const roomClients = await this.io.in(message.chatId).fetchSockets();
-      
-      console.log('📤 Broadcasting admin message to room:', {
-        chatId: message.chatId,
-        clientsCount: roomClients.length,
-        messageId: savedMessage.id,
-        clientIds: roomClients.map(c => c.id),
-        senderId: message.senderId,
-        senderSocketId: client.id
-      });
-      
-      if (roomClients.length === 0) {
-        console.warn('⚠️ WARNING: No clients in room for admin message!', {
-          chatId: message.chatId,
-          messageId: savedMessage.id
-        });
-        
-        // Log all active rooms for debugging
-        const allRooms = Array.from(this.io.sockets.adapter.rooms.keys());
-        console.log('📊 All active rooms:', allRooms.filter(r => r !== client.id && !r.startsWith('user:')));
-      } else {
-        // Log who will receive the message
-        console.log('📨 Admin message will be delivered to:', roomClients.length, 'client(s):', 
-          roomClients.map(c => `${c.id}${(c as any).userId ? ` (user: ${(c as any).userId})` : ''}`));
-      }
-
       // CRITICAL: Broadcast ONLY to the specific room - SINGLE EMIT ONLY
       const messageString = JSON.stringify(messagePayload);
-      console.log('📤 EMIT admin message (SINGLE):', savedMessage.id, 'to room:', message.chatId, 'clients:', roomClients.length);
       this.io.to(message.chatId).emit('message', messageString);
       
       // Emit to monitor room for admin/monitor dashboard updates
@@ -922,31 +802,45 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         },
       });
 
-      // Create notification for recipients (not the admin)
-      try {
-        const recipientId = chatRoom.userId === message.senderId ? chatRoom.sellerId : chatRoom.userId;
-        const adminName = `${adminUser.first_name || ''} ${adminUser.last_name || ''}`.trim() || 'Admin';
-        
-        await this.db.notification.create({
-          data: {
-            userId: recipientId,
-            title: 'Admin Message',
-            message: `${adminName}: ${message.content.substring(0, 100)}${message.content.length > 100 ? '...' : ''}`,
-            type: 'message',
-            read: false,
-            link: `/chat?chatId=${message.chatId}&userId=${chatRoom.userId}&sellerId=${chatRoom.sellerId}`,
-            chatId: message.chatId,
-          },
+      void this.emitMessageNotify(message.chatId, message.senderId);
+
+      // Run post-save tasks without blocking message delivery
+      void (async () => {
+        // Update chat room's updatedAt timestamp
+        await this.db.chat.update({
+          where: { id: message.chatId },
+          data: { updatedAt: new Date() },
+        }).catch(err => {
+          console.error('❌ Failed to update chat updatedAt:', err);
         });
-        console.log('✅ Notification created for user:', recipientId);
-      } catch (notifError) {
-        // Don't fail message creation if notification fails
-        console.error('❌ Failed to create notification:', notifError);
-      }
 
-      console.log('✅ Admin message broadcasted successfully');
+        // Create notification for recipients (not the admin)
+        try {
+          const recipientId = chatRoom.userId === message.senderId ? chatRoom.sellerId : chatRoom.userId;
+          const adminName = `${adminUser.first_name || ''} ${adminUser.last_name || ''}`.trim() || 'Admin';
 
-      await this.emitMessageNotify(message.chatId, message.senderId);
+          await this.db.notification.create({
+            data: {
+              userId: recipientId,
+              title: 'Admin Message',
+              message: `${adminName}: ${message.content.substring(0, 100)}${message.content.length > 100 ? '...' : ''}`,
+              type: 'message',
+              read: false,
+              link: `/chat?chatId=${message.chatId}&userId=${chatRoom.userId}&sellerId=${chatRoom.sellerId}`,
+              chatId: message.chatId,
+            },
+          });
+
+          this.io.to(`user:${recipientId}`).emit('new_notification', {
+            type: 'message',
+            chatId: message.chatId,
+            messageId: savedMessage.id,
+          });
+        } catch (notifError) {
+          // Don't fail message creation if notification fails
+          console.error('❌ Failed to create notification:', notifError);
+        }
+      })();
     } catch (error) {
       console.error('❌ Error in handleSendAdminMessage:', error);
       throw new WsException(error instanceof Error ? error.message : 'Failed to send admin message');

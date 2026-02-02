@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
@@ -13,50 +13,117 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AddCategoryDialog } from "@/components/admin/content/AddCategoryDialog";
-import { EditCategoryDialog } from "@/components/admin/content/EditCategoryDialog";
-import { DeleteCategoryDialog } from "@/components/admin/content/DeleteCategoryDialog";
-import { AddBrandQuestionDialog } from "@/components/admin/content/AddBrandQuestionDialog";
-import { EditBrandQuestionDialog } from "@/components/admin/content/EditBrandQuestionDialog";
-import { DeleteBrandQuestionDialog } from "@/components/admin/content/DeleteBrandQuestionDialog";
-import { AddStatisticQuestionDialog } from "@/components/admin/content/AddStatisticQuestionDialog";
-import { EditStatisticQuestionDialog } from "@/components/admin/content/EditStatisticQuestionDialog";
-import { DeleteStatisticQuestionDialog } from "@/components/admin/content/DeleteStatisticQuestionDialog";
-import { AddProductQuestionDialog } from "@/components/admin/content/AddProductQuestionDialog";
-import { EditProductQuestionDialog } from "@/components/admin/content/EditProductQuestionDialog";
-import { DeleteProductQuestionDialog } from "@/components/admin/content/DeleteProductQuestionDialog";
 import { useManagementQuestions } from "@/hooks/useManagementQuestions";
-import { AddManagementQuestionDialog } from "@/components/admin/content/AddManagementQuestionDialog";
-import { EditManagementQuestionDialog } from "@/components/admin/content/EditManagementQuestionDialog";
-import { DeleteManagementQuestionDialog } from "@/components/admin/content/DeleteManagementQuestionDialog";
-import { AddToolDialog } from "@/components/admin/content/AddToolDialog";
-import { EditToolDialog } from "@/components/admin/content/EditToolDialog";
-import { DeleteToolDialog } from "@/components/admin/content/DeleteToolDialog";
-import { AddAccountDialog } from "@/components/admin/content/AddAccountDialog";
-import { EditAccountDialog } from "@/components/admin/content/EditAccountDialog";
-import { DeleteAccountDialog } from "@/components/admin/content/DeleteAccountDialog";
-import { AddAccountQuestionDialog } from "@/components/admin/content/AddAccountQuestionDialog";
-import { EditAccountQuestionDialog } from "@/components/admin/content/EditAccountQuestionDialog";
-import { DeleteAccountQuestionDialog } from "@/components/admin/content/DeleteAccountQuestionDialog";
 import { useCategories } from "@/hooks/useCategories";
 import { useBrandQuestions } from "@/hooks/useBrandQuestions";
 import { useStatisticQuestions } from "@/hooks/useStatisticQuestions";
 import { useProductQuestions } from "@/hooks/useProductQuestions";
 import { useAdInformationQuestions } from "@/hooks/useAdInformationQuestions";
 import { useHandoverQuestions } from "@/hooks/useHandoverQuestions";
-import { AddAdInformationQuestionDialog } from "@/components/admin/content/AddAdInformationQuestionDialog";
-import { EditAdInformationQuestionDialog } from "@/components/admin/content/EditAdInformationQuestionDialog";
-import { DeleteAdInformationQuestionDialog } from "@/components/admin/content/DeleteAdInformationQuestionDialog";
-import { AddHandoverQuestionDialog } from "@/components/admin/content/AddHandoverQuestionDialog";
-import { EditHandoverQuestionDialog } from "@/components/admin/content/EditHandoverQuestionDialog";
-import { DeleteHandoverQuestionDialog } from "@/components/admin/content/DeleteHandoverQuestionDialog";
 import { useTools } from "@/hooks/useTools";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useAccountQuestions } from "@/hooks/useAccountQuestions";
 import { usePlans } from "@/hooks/usePlans";
-import { AddPlanDialog } from "@/components/admin/content/AddPlanDialog";
-import { EditPlanDialog } from "@/components/admin/content/EditPlanDialog";
-import { DeletePlanDialog } from "@/components/admin/content/DeletePlanDialog";
+
+const AddCategoryDialog = lazy(() =>
+  import("@/components/admin/content/AddCategoryDialog").then((m) => ({ default: m.AddCategoryDialog }))
+);
+const EditCategoryDialog = lazy(() =>
+  import("@/components/admin/content/EditCategoryDialog").then((m) => ({ default: m.EditCategoryDialog }))
+);
+const DeleteCategoryDialog = lazy(() =>
+  import("@/components/admin/content/DeleteCategoryDialog").then((m) => ({ default: m.DeleteCategoryDialog }))
+);
+const AddBrandQuestionDialog = lazy(() =>
+  import("@/components/admin/content/AddBrandQuestionDialog").then((m) => ({ default: m.AddBrandQuestionDialog }))
+);
+const EditBrandQuestionDialog = lazy(() =>
+  import("@/components/admin/content/EditBrandQuestionDialog").then((m) => ({ default: m.EditBrandQuestionDialog }))
+);
+const DeleteBrandQuestionDialog = lazy(() =>
+  import("@/components/admin/content/DeleteBrandQuestionDialog").then((m) => ({ default: m.DeleteBrandQuestionDialog }))
+);
+const AddStatisticQuestionDialog = lazy(() =>
+  import("@/components/admin/content/AddStatisticQuestionDialog").then((m) => ({ default: m.AddStatisticQuestionDialog }))
+);
+const EditStatisticQuestionDialog = lazy(() =>
+  import("@/components/admin/content/EditStatisticQuestionDialog").then((m) => ({ default: m.EditStatisticQuestionDialog }))
+);
+const DeleteStatisticQuestionDialog = lazy(() =>
+  import("@/components/admin/content/DeleteStatisticQuestionDialog").then((m) => ({ default: m.DeleteStatisticQuestionDialog }))
+);
+const AddProductQuestionDialog = lazy(() =>
+  import("@/components/admin/content/AddProductQuestionDialog").then((m) => ({ default: m.AddProductQuestionDialog }))
+);
+const EditProductQuestionDialog = lazy(() =>
+  import("@/components/admin/content/EditProductQuestionDialog").then((m) => ({ default: m.EditProductQuestionDialog }))
+);
+const DeleteProductQuestionDialog = lazy(() =>
+  import("@/components/admin/content/DeleteProductQuestionDialog").then((m) => ({ default: m.DeleteProductQuestionDialog }))
+);
+const AddManagementQuestionDialog = lazy(() =>
+  import("@/components/admin/content/AddManagementQuestionDialog").then((m) => ({ default: m.AddManagementQuestionDialog }))
+);
+const EditManagementQuestionDialog = lazy(() =>
+  import("@/components/admin/content/EditManagementQuestionDialog").then((m) => ({ default: m.EditManagementQuestionDialog }))
+);
+const DeleteManagementQuestionDialog = lazy(() =>
+  import("@/components/admin/content/DeleteManagementQuestionDialog").then((m) => ({ default: m.DeleteManagementQuestionDialog }))
+);
+const AddToolDialog = lazy(() =>
+  import("@/components/admin/content/AddToolDialog").then((m) => ({ default: m.AddToolDialog }))
+);
+const EditToolDialog = lazy(() =>
+  import("@/components/admin/content/EditToolDialog").then((m) => ({ default: m.EditToolDialog }))
+);
+const DeleteToolDialog = lazy(() =>
+  import("@/components/admin/content/DeleteToolDialog").then((m) => ({ default: m.DeleteToolDialog }))
+);
+const AddAccountDialog = lazy(() =>
+  import("@/components/admin/content/AddAccountDialog").then((m) => ({ default: m.AddAccountDialog }))
+);
+const EditAccountDialog = lazy(() =>
+  import("@/components/admin/content/EditAccountDialog").then((m) => ({ default: m.EditAccountDialog }))
+);
+const DeleteAccountDialog = lazy(() =>
+  import("@/components/admin/content/DeleteAccountDialog").then((m) => ({ default: m.DeleteAccountDialog }))
+);
+const AddAccountQuestionDialog = lazy(() =>
+  import("@/components/admin/content/AddAccountQuestionDialog").then((m) => ({ default: m.AddAccountQuestionDialog }))
+);
+const EditAccountQuestionDialog = lazy(() =>
+  import("@/components/admin/content/EditAccountQuestionDialog").then((m) => ({ default: m.EditAccountQuestionDialog }))
+);
+const DeleteAccountQuestionDialog = lazy(() =>
+  import("@/components/admin/content/DeleteAccountQuestionDialog").then((m) => ({ default: m.DeleteAccountQuestionDialog }))
+);
+const AddAdInformationQuestionDialog = lazy(() =>
+  import("@/components/admin/content/AddAdInformationQuestionDialog").then((m) => ({ default: m.AddAdInformationQuestionDialog }))
+);
+const EditAdInformationQuestionDialog = lazy(() =>
+  import("@/components/admin/content/EditAdInformationQuestionDialog").then((m) => ({ default: m.EditAdInformationQuestionDialog }))
+);
+const DeleteAdInformationQuestionDialog = lazy(() =>
+  import("@/components/admin/content/DeleteAdInformationQuestionDialog").then((m) => ({ default: m.DeleteAdInformationQuestionDialog }))
+);
+const AddHandoverQuestionDialog = lazy(() =>
+  import("@/components/admin/content/AddHandoverQuestionDialog").then((m) => ({ default: m.AddHandoverQuestionDialog }))
+);
+const EditHandoverQuestionDialog = lazy(() =>
+  import("@/components/admin/content/EditHandoverQuestionDialog").then((m) => ({ default: m.EditHandoverQuestionDialog }))
+);
+const DeleteHandoverQuestionDialog = lazy(() =>
+  import("@/components/admin/content/DeleteHandoverQuestionDialog").then((m) => ({ default: m.DeleteHandoverQuestionDialog }))
+);
+const AddPlanDialog = lazy(() =>
+  import("@/components/admin/content/AddPlanDialog").then((m) => ({ default: m.AddPlanDialog }))
+);
+const EditPlanDialog = lazy(() =>
+  import("@/components/admin/content/EditPlanDialog").then((m) => ({ default: m.EditPlanDialog }))
+);
+const DeletePlanDialog = lazy(() =>
+  import("@/components/admin/content/DeletePlanDialog").then((m) => ({ default: m.DeletePlanDialog }))
+);
 
 const AdminContentManagement = () => {
   const FINANCIALS_STORAGE_KEY = "admin_financials_table_v1";
@@ -1020,15 +1087,14 @@ const AdminContentManagement = () => {
                                     {isEditMode ? (
                                       <Input
                                         type="number"
-                                    value={financialData[row]?.[col.key] || ""}
-                                    onChange={(e) => handleCellChange(row, col.key, e.target.value)}
-                                    className={`w-11/12 text-center border-2 ${isGrossRevenue ? 'border-white/30 bg-transparent text-white' : 'border-black/30 bg-transparent text-black'}`}
-                                    className="px-1 text-xs sm:text-base"
-                                    style={{
-                                      fontSize: isMobile ? '11px' : isTablet ? '14px' : '24.85px',
-                                      fontFamily: 'Lufga',
-                                      fontWeight: 500,
-                                    }}
+                                        value={financialData[row]?.[col.key] || ""}
+                                        onChange={(e) => handleCellChange(row, col.key, e.target.value)}
+                                        className={`w-11/12 text-center border-2 px-1 text-xs sm:text-base ${isGrossRevenue ? 'border-white/30 bg-transparent text-white' : 'border-black/30 bg-transparent text-black'}`}
+                                        style={{
+                                          fontSize: isMobile ? '11px' : isTablet ? '14px' : '24.85px',
+                                          fontFamily: 'Lufga',
+                                          fontWeight: 500,
+                                        }}
                                       />
                                     ) : (
                                   <span 
@@ -1886,138 +1952,140 @@ const AdminContentManagement = () => {
         </div>
       </main>
 
-      <AddCategoryDialog open={addCategoryOpen} onOpenChange={setAddCategoryOpen} />
-      <EditCategoryDialog
-        open={editCategoryOpen}
-        onOpenChange={setEditCategoryOpen}
-        category={selectedCategory}
-      />
-      <DeleteCategoryDialog
-        open={deleteCategoryOpen}
-        onOpenChange={setDeleteCategoryOpen}
-        categoryId={selectedCategory?.id || null}
-        categoryName={selectedCategory?.name || ""}
-      />
-      <AddBrandQuestionDialog open={addQuestionOpen} onOpenChange={setAddQuestionOpen} />
-      <EditBrandQuestionDialog
-        open={editQuestionOpen}
-        onOpenChange={setEditQuestionOpen}
-        question={selectedQuestion}
-      />
-      <DeleteBrandQuestionDialog
-        open={deleteQuestionOpen}
-        onOpenChange={setDeleteQuestionOpen}
-        questionId={selectedQuestion?.id || null}
-        questionText={selectedQuestion?.question || ""}
-      />
-      <AddToolDialog open={addToolOpen} onOpenChange={setAddToolOpen} />
-      <EditToolDialog
-        open={editToolOpen}
-        onOpenChange={setEditToolOpen}
-        tool={selectedTool}
-      />
-      <DeleteToolDialog
-        open={deleteToolOpen}
-        onOpenChange={setDeleteToolOpen}
-        toolId={selectedTool?.id || null}
-        toolName={selectedTool?.name || ""}
-      />
-      <AddStatisticQuestionDialog open={addStatisticQuestionOpen} onOpenChange={setAddStatisticQuestionOpen} />
-      <EditStatisticQuestionDialog
-        open={editStatisticQuestionOpen}
-        onOpenChange={setEditStatisticQuestionOpen}
-        question={selectedStatisticQuestion}
-      />
-      <DeleteStatisticQuestionDialog
-        open={deleteStatisticQuestionOpen}
-        onOpenChange={setDeleteStatisticQuestionOpen}
-        questionId={selectedStatisticQuestion?.id || null}
-        questionText={selectedStatisticQuestion?.question || ""}
-      />
-      <AddProductQuestionDialog open={addProductQuestionOpen} onOpenChange={setAddProductQuestionOpen} />
-      <EditProductQuestionDialog
-        open={editProductQuestionOpen}
-        onOpenChange={setEditProductQuestionOpen}
-        question={selectedProductQuestion}
-      />
-      <DeleteProductQuestionDialog
-        open={deleteProductQuestionOpen}
-        onOpenChange={setDeleteProductQuestionOpen}
-        questionId={selectedProductQuestion?.id || null}
-        questionText={selectedProductQuestion?.question || ""}
-      />
-      <AddManagementQuestionDialog open={addManagementQuestionOpen} onOpenChange={setAddManagementQuestionOpen} />
-      <EditManagementQuestionDialog
-        open={editManagementQuestionOpen}
-        onOpenChange={setEditManagementQuestionOpen}
-        question={selectedManagementQuestion}
-      />
-      <DeleteManagementQuestionDialog
-        open={deleteManagementQuestionOpen}
-        onOpenChange={setDeleteManagementQuestionOpen}
-        questionId={selectedManagementQuestion?.id || null}
-        questionText={selectedManagementQuestion?.question || ""}
-      />
-      <AddAccountDialog open={addAccountOpen} onOpenChange={setAddAccountOpen} />
-      <EditAccountDialog
-        open={editAccountOpen}
-        onOpenChange={setEditAccountOpen}
-        account={selectedAccount}
-      />
-      <DeleteAccountDialog
-        open={deleteAccountOpen}
-        onOpenChange={setDeleteAccountOpen}
-        accountId={selectedAccount?.id || null}
-        accountPlatform={selectedAccount?.platform || ""}
-      />
-      <AddAccountQuestionDialog open={addAccountQuestionOpen} onOpenChange={setAddAccountQuestionOpen} />
-      <EditAccountQuestionDialog
-        open={editAccountQuestionOpen}
-        onOpenChange={setEditAccountQuestionOpen}
-        question={selectedAccountQuestion}
-      />
-      <DeleteAccountQuestionDialog
-        open={deleteAccountQuestionOpen}
-        onOpenChange={setDeleteAccountQuestionOpen}
-        questionId={selectedAccountQuestion?.id || null}
-        questionText={selectedAccountQuestion?.question || ""}
-      />
-      <AddAdInformationQuestionDialog open={addAdInformationQuestionOpen} onOpenChange={setAddAdInformationQuestionOpen} />
-      <EditAdInformationQuestionDialog
-        open={editAdInformationQuestionOpen}
-        onOpenChange={setEditAdInformationQuestionOpen}
-        question={selectedAdInformationQuestion}
-      />
-      <DeleteAdInformationQuestionDialog
-        open={deleteAdInformationQuestionOpen}
-        onOpenChange={setDeleteAdInformationQuestionOpen}
-        questionId={selectedAdInformationQuestion?.id || null}
-        questionText={selectedAdInformationQuestion?.question || ""}
-      />
-      <AddHandoverQuestionDialog open={addHandoverQuestionOpen} onOpenChange={setAddHandoverQuestionOpen} />
-      <EditHandoverQuestionDialog
-        open={editHandoverQuestionOpen}
-        onOpenChange={setEditHandoverQuestionOpen}
-        question={selectedHandoverQuestion}
-      />
-      <DeleteHandoverQuestionDialog
-        open={deleteHandoverQuestionOpen}
-        onOpenChange={setDeleteHandoverQuestionOpen}
-        questionId={selectedHandoverQuestion?.id || null}
-        questionText={selectedHandoverQuestion?.question || ""}
-      />
-      <AddPlanDialog open={addPlanOpen} onOpenChange={setAddPlanOpen} />
-      <EditPlanDialog
-        open={editPlanOpen}
-        onOpenChange={setEditPlanOpen}
-        plan={selectedPlan}
-      />
-      <DeletePlanDialog
-        open={deletePlanOpen}
-        onOpenChange={setDeletePlanOpen}
-        planId={selectedPlan?.id || null}
-        planTitle={selectedPlan?.title || ""}
-      />
+      <Suspense fallback={null}>
+        <AddCategoryDialog open={addCategoryOpen} onOpenChange={setAddCategoryOpen} />
+        <EditCategoryDialog
+          open={editCategoryOpen}
+          onOpenChange={setEditCategoryOpen}
+          category={selectedCategory}
+        />
+        <DeleteCategoryDialog
+          open={deleteCategoryOpen}
+          onOpenChange={setDeleteCategoryOpen}
+          categoryId={selectedCategory?.id || null}
+          categoryName={selectedCategory?.name || ""}
+        />
+        <AddBrandQuestionDialog open={addQuestionOpen} onOpenChange={setAddQuestionOpen} />
+        <EditBrandQuestionDialog
+          open={editQuestionOpen}
+          onOpenChange={setEditQuestionOpen}
+          question={selectedQuestion}
+        />
+        <DeleteBrandQuestionDialog
+          open={deleteQuestionOpen}
+          onOpenChange={setDeleteQuestionOpen}
+          questionId={selectedQuestion?.id || null}
+          questionText={selectedQuestion?.question || ""}
+        />
+        <AddToolDialog open={addToolOpen} onOpenChange={setAddToolOpen} />
+        <EditToolDialog
+          open={editToolOpen}
+          onOpenChange={setEditToolOpen}
+          tool={selectedTool}
+        />
+        <DeleteToolDialog
+          open={deleteToolOpen}
+          onOpenChange={setDeleteToolOpen}
+          toolId={selectedTool?.id || null}
+          toolName={selectedTool?.name || ""}
+        />
+        <AddStatisticQuestionDialog open={addStatisticQuestionOpen} onOpenChange={setAddStatisticQuestionOpen} />
+        <EditStatisticQuestionDialog
+          open={editStatisticQuestionOpen}
+          onOpenChange={setEditStatisticQuestionOpen}
+          question={selectedStatisticQuestion}
+        />
+        <DeleteStatisticQuestionDialog
+          open={deleteStatisticQuestionOpen}
+          onOpenChange={setDeleteStatisticQuestionOpen}
+          questionId={selectedStatisticQuestion?.id || null}
+          questionText={selectedStatisticQuestion?.question || ""}
+        />
+        <AddProductQuestionDialog open={addProductQuestionOpen} onOpenChange={setAddProductQuestionOpen} />
+        <EditProductQuestionDialog
+          open={editProductQuestionOpen}
+          onOpenChange={setEditProductQuestionOpen}
+          question={selectedProductQuestion}
+        />
+        <DeleteProductQuestionDialog
+          open={deleteProductQuestionOpen}
+          onOpenChange={setDeleteProductQuestionOpen}
+          questionId={selectedProductQuestion?.id || null}
+          questionText={selectedProductQuestion?.question || ""}
+        />
+        <AddManagementQuestionDialog open={addManagementQuestionOpen} onOpenChange={setAddManagementQuestionOpen} />
+        <EditManagementQuestionDialog
+          open={editManagementQuestionOpen}
+          onOpenChange={setEditManagementQuestionOpen}
+          question={selectedManagementQuestion}
+        />
+        <DeleteManagementQuestionDialog
+          open={deleteManagementQuestionOpen}
+          onOpenChange={setDeleteManagementQuestionOpen}
+          questionId={selectedManagementQuestion?.id || null}
+          questionText={selectedManagementQuestion?.question || ""}
+        />
+        <AddAccountDialog open={addAccountOpen} onOpenChange={setAddAccountOpen} />
+        <EditAccountDialog
+          open={editAccountOpen}
+          onOpenChange={setEditAccountOpen}
+          account={selectedAccount}
+        />
+        <DeleteAccountDialog
+          open={deleteAccountOpen}
+          onOpenChange={setDeleteAccountOpen}
+          accountId={selectedAccount?.id || null}
+          accountPlatform={selectedAccount?.platform || ""}
+        />
+        <AddAccountQuestionDialog open={addAccountQuestionOpen} onOpenChange={setAddAccountQuestionOpen} />
+        <EditAccountQuestionDialog
+          open={editAccountQuestionOpen}
+          onOpenChange={setEditAccountQuestionOpen}
+          question={selectedAccountQuestion}
+        />
+        <DeleteAccountQuestionDialog
+          open={deleteAccountQuestionOpen}
+          onOpenChange={setDeleteAccountQuestionOpen}
+          questionId={selectedAccountQuestion?.id || null}
+          questionText={selectedAccountQuestion?.question || ""}
+        />
+        <AddAdInformationQuestionDialog open={addAdInformationQuestionOpen} onOpenChange={setAddAdInformationQuestionOpen} />
+        <EditAdInformationQuestionDialog
+          open={editAdInformationQuestionOpen}
+          onOpenChange={setEditAdInformationQuestionOpen}
+          question={selectedAdInformationQuestion}
+        />
+        <DeleteAdInformationQuestionDialog
+          open={deleteAdInformationQuestionOpen}
+          onOpenChange={setDeleteAdInformationQuestionOpen}
+          questionId={selectedAdInformationQuestion?.id || null}
+          questionText={selectedAdInformationQuestion?.question || ""}
+        />
+        <AddHandoverQuestionDialog open={addHandoverQuestionOpen} onOpenChange={setAddHandoverQuestionOpen} />
+        <EditHandoverQuestionDialog
+          open={editHandoverQuestionOpen}
+          onOpenChange={setEditHandoverQuestionOpen}
+          question={selectedHandoverQuestion}
+        />
+        <DeleteHandoverQuestionDialog
+          open={deleteHandoverQuestionOpen}
+          onOpenChange={setDeleteHandoverQuestionOpen}
+          questionId={selectedHandoverQuestion?.id || null}
+          questionText={selectedHandoverQuestion?.question || ""}
+        />
+        <AddPlanDialog open={addPlanOpen} onOpenChange={setAddPlanOpen} />
+        <EditPlanDialog
+          open={editPlanOpen}
+          onOpenChange={setEditPlanOpen}
+          plan={selectedPlan}
+        />
+        <DeletePlanDialog
+          open={deletePlanOpen}
+          onOpenChange={setDeletePlanOpen}
+          planId={selectedPlan?.id || null}
+          planTitle={selectedPlan?.title || ""}
+        />
+      </Suspense>
     </div>
   );
 };

@@ -50,7 +50,6 @@ export class ListingController {
     if (nocache !== 'true') {
       const value = await this.cacheManager.get(cacheKey);
       if (value) {
-        console.log(`📦 Returning cached listings for key: ${cacheKey}, count: ${Array.isArray(value) ? value.length : 'N/A'}`);
         return value;
       }
     }
@@ -63,9 +62,7 @@ export class ListingController {
       limit: limit ? parseInt(limit, 10) : undefined,
     };
     
-    console.log(`🔍 Fetching listings from database with filters:`, filters);
     const data = await this.listingService.findAll(filters);
-    console.log(`✅ Found ${Array.isArray(data) ? data.length : 0} listings`);
     
     // Only cache if we got results (don't cache empty arrays for too long)
     if (Array.isArray(data) && data.length > 0) {
@@ -88,25 +85,14 @@ export class ListingController {
     if (nocache !== 'true') {
       const value = await this.cacheManager.get(`${this.constructor.name}:${id}`);
       if (value) {
-        console.log(`📦 Returning cached listing for ID: ${id}`);
         return value;
       }
     } else {
       // Clear cache if nocache is true
       await this.cacheManager.del(`${this.constructor.name}:${id}`);
-      console.log(`🗑️ Cache cleared for listing ID: ${id}`);
     }
     
-    console.log(`🔍 Fetching listing ${id} from database`);
     const data = await this.listingService.findOne(id);
-    console.log(`✅ Listing data retrieved:`, {
-      id: data?.id,
-      hasBrand: !!data?.brand?.length,
-      hasAdvertisement: !!data?.advertisement?.length,
-      hasStatistics: !!data?.statistics?.length,
-      brandCount: data?.brand?.length || 0,
-      advertisementCount: data?.advertisement?.length || 0,
-    });
     
     // Only cache if we got data
     if (data) {
@@ -128,38 +114,18 @@ export class ListingController {
     try {
       const user = (req as any).user;
       if (!user || !user.id) {
-        console.error('❌ Listing creation failed: User not authenticated');
         throw new Error('User not authenticated');
       }
 
-      // Security: Verify user exists and is verified
-      const userService = this.listingService['db']?.user?.findUnique || null;
-      if (!userService) {
-        // If we can't verify, log warning but proceed
-        console.warn('⚠️ Could not verify user existence, proceeding with listing creation');
-      }
-
-      console.log('📝 Creating listing for authenticated user:', {
-        userId: user.id,
-        email: user.email,
-        role: user.role
-      });
-      console.log('📦 Listing data keys:', Object.keys(body));
-      console.log('📦 Listing status:', body.status);
+      this.listingService['db']?.user?.findUnique || null;
       
       // CRITICAL: Use the authenticated user's ID from the JWT token
       // This ensures listings are always created under the correct user
       const data = await this.listingService.create(user.id, body);
       await this.cacheManager.del(`${this.constructor.name}`);
       
-      console.log('✅ Listing created successfully:', {
-        listingId: data.id,
-        userId: user.id,
-        status: data.status
-      });
       return data;
     } catch (error) {
-      console.error('❌ Error creating listing:', error);
       throw error;
     }
   }
@@ -186,10 +152,7 @@ export class ListingController {
     // This will force fresh fetches on next request
     await this.cacheManager.del(`${this.constructor.name}`);
     
-    // Type assertion needed because Prisma include types don't always include all fields
     const listingData = data as any;
-    console.log(`🗑️ Cache invalidated for listing ${id} and all listing queries`);
-    console.log(`✅ Updated listing data includes managed_by_ex: ${listingData?.managed_by_ex}`);
     
     return data;
   }

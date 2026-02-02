@@ -120,6 +120,8 @@ const Hero = ({ searchQuery, setSearchQuery }: HeroProps) => {
               src={heroCard1} 
               alt="Dashboard" 
               className="w-full z-10"
+              decoding="async"
+              sizes="(max-width: 768px) 100vw, 1200px"
             />
             
             {/* Small image - top left corner of big image - hidden on mobile, visible on tablet+ */}
@@ -127,6 +129,8 @@ const Hero = ({ searchQuery, setSearchQuery }: HeroProps) => {
               src={heroCard3} 
               alt="Archived Chats" 
               className="hidden sm:block absolute left-4 sm:left-2 md:left-4 top-0 w-48 sm:w-56 md:w-72 hover:scale-105 transition-transform z-20"
+              decoding="async"
+              sizes="(max-width: 1024px) 40vw, 320px"
             />
             
             {/* Small image - top right corner of big image - hidden on mobile, visible on tablet+ */}
@@ -134,6 +138,8 @@ const Hero = ({ searchQuery, setSearchQuery }: HeroProps) => {
               src={heroCard2} 
               alt="Chat Details" 
               className="hidden sm:block absolute right-0 sm:-right-2 md:right-0 -top-4 w-52 sm:w-64 md:w-80 hover:scale-105 transition-transform z-20"
+              decoding="async"
+              sizes="(max-width: 1024px) 45vw, 360px"
             />
           </div>
         </div>

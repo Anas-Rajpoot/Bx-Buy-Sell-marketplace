@@ -45,9 +45,34 @@ export const AdminChatWindow = ({ conversationId }: AdminChatWindowProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
+  const markAllMessagesAsRead = async (chatId: string) => {
+    if (!chatId) return;
+    try {
+      const monitorId =
+        user?.id || JSON.parse(localStorage.getItem('user_data') || '{}')?.id;
+      await apiClient.markMessagesAsReadForMonitor(chatId, monitorId);
+      // Update local state immediately
+      setMessages((prev) =>
+        prev.map((msg) =>
+          user?.id && msg.senderId === user.id ? msg : { ...msg, read: true }
+        )
+      );
+    } catch (error) {
+      // Even if backend fails, update local state to avoid stuck unread badges
+      setMessages((prev) =>
+        prev.map((msg) =>
+          user?.id && msg.senderId === user.id ? msg : { ...msg, read: true }
+        )
+      );
+    }
+  };
+
   useEffect(() => {
     fetchConversationDetails();
     connectSocket();
+    if (conversationId) {
+      localStorage.setItem(`admin-chat-viewed:${conversationId}`, new Date().toISOString());
+    }
 
     return () => {
       if (socket) {
@@ -55,6 +80,12 @@ export const AdminChatWindow = ({ conversationId }: AdminChatWindowProps) => {
       }
     };
   }, [conversationId]);
+
+  useEffect(() => {
+    if (conversationId && user?.id) {
+      markAllMessagesAsRead(conversationId);
+    }
+  }, [conversationId, user?.id]);
 
   useEffect(() => {
     scrollToBottom();
@@ -255,6 +286,9 @@ export const AdminChatWindow = ({ conversationId }: AdminChatWindowProps) => {
           type: msg.type,
           sender: msg.sender
         })));
+      }
+      if (user?.id) {
+        await markAllMessagesAsRead(conversationId);
       }
     } catch (error) {
       console.error('Error fetching conversation details:', error);

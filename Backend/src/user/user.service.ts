@@ -46,6 +46,16 @@ export class UserService {
     });
   }
 
+  async findRoleByID(id: string) {
+    return this.db.user.findUnique({
+      where: { id: id },
+      select: {
+        id: true,
+        role: true,
+      },
+    });
+  }
+
   async createUser(body) {
     return await this.db.user.create({ data: body });
   }

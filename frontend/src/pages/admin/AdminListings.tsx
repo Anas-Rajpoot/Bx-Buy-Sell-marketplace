@@ -1,5 +1,5 @@
 // Admin Listings Management Page
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { Button } from "@/components/ui/button";
@@ -25,12 +25,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { AssignResponsibleDialog } from "@/components/admin/AssignResponsibleDialog";
 import { ExLogo } from "@/components/ExLogo";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { addLocalNotification } from "@/lib/localNotifications";
 import { setLocalListingAssignment } from "@/lib/adminAssignments";
 import { useAuth } from "@/hooks/useAuth";
+
+const AssignResponsibleDialog = lazy(() =>
+  import("@/components/admin/AssignResponsibleDialog").then((m) => ({ default: m.AssignResponsibleDialog }))
+);
 
 type SortField = "created_at" | "status" | "user_name";
 type SortOrder = "asc" | "desc";
@@ -953,15 +956,17 @@ export default function AdminListings() {
               </div>
 
               {/* Assign Responsible Dialog */}
-              {selectedListingForAssign && (
-                <AssignResponsibleDialog
-                  open={assignDialogOpen}
-                  onOpenChange={setAssignDialogOpen}
-                  listingId={selectedListingForAssign}
-                  currentResponsibleId={listings?.find(l => l.id === selectedListingForAssign)?.responsible_user_id || null}
-                  onAssign={handleAssignResponsible}
-                />
-              )}
+              <Suspense fallback={null}>
+                {selectedListingForAssign && (
+                  <AssignResponsibleDialog
+                    open={assignDialogOpen}
+                    onOpenChange={setAssignDialogOpen}
+                    listingId={selectedListingForAssign}
+                    currentResponsibleId={listings?.find(l => l.id === selectedListingForAssign)?.responsible_user_id || null}
+                    onAssign={handleAssignResponsible}
+                  />
+                )}
+              </Suspense>
 
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 mt-4 sm:mt-6">
                 <div className="text-xs sm:text-sm text-muted-foreground">

@@ -78,6 +78,8 @@ export const AuthLayout = ({ children, currentStep = 1, totalSteps = 4, variant 
             <img
               src="https://res.cloudinary.com/dtfwkgpcc/image/upload/v1767775635/8bfafd13cb6e8075ef2f3316b0dcea740276cc5f_1_1_1_1_1_1_cgpzyx.webp"
               alt="Background"
+              decoding="async"
+              sizes="(max-width: 1024px) 100vw, 50vw"
               style={{
                 width: '100%',
                 height: '100%',
@@ -100,6 +102,8 @@ export const AuthLayout = ({ children, currentStep = 1, totalSteps = 4, variant 
               src={logo} 
               alt="EX Logo" 
               className="h-16 w-16 object-contain"
+              decoding="async"
+              sizes="64px"
             />
           </Link>
 
@@ -139,6 +143,8 @@ export const AuthLayout = ({ children, currentStep = 1, totalSteps = 4, variant 
             src={logo} 
             alt="EX Logo" 
             className="h-16 w-16 object-contain"
+            decoding="async"
+            sizes="64px"
           />
         </Link>
 
