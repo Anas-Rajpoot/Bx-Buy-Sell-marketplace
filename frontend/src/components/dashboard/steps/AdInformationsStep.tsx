@@ -298,7 +298,6 @@ export const AdInformationsStep = ({ formData: parentFormData, onNext, onBack }:
                                 <Upload className="w-12 h-12 text-muted-foreground mb-3 mx-auto" />
                                 <p className="text-sm text-muted-foreground mb-1">Upload attachments</p>
                                 <p className="text-xs text-muted-foreground mb-2">PDF, DOC, etc. up to 10MB</p>
-                                <Button type="button" variant="outline" size="sm">Select File</Button>
                               </>
                             )}
                           </label>

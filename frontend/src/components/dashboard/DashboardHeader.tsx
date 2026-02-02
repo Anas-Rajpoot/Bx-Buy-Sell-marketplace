@@ -1,4 +1,4 @@
-import { Search, ChevronDown, User, LogOut, Settings } from "lucide-react";
+import { ChevronDown, User, LogOut, Settings } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
 import type { User } from "@/hooks/useAuth";
-import logo from "@/assets/_App Icon 1 (2).png";
+import searchIcon from "@/assets/seach icon.svg";
 
 interface DashboardHeaderProps {
   user: User;
@@ -75,22 +75,23 @@ export const DashboardHeader = ({ user }: DashboardHeaderProps) => {
 
   return (
     <header className="h-14 sm:h-16 border-b border-border bg-background flex items-center justify-between px-4 sm:px-6 md:px-8 sticky top-0 z-40">
-      <div className="flex items-center gap-2 sm:gap-4">
-        <Link to="/" className="flex items-center">
-          <img 
-            src={logo} 
-            alt="EX Logo" 
-            className="h-8 w-8 sm:h-10 sm:w-10 object-contain"
-          />
-        </Link>
-      </div>
-      <div className="hidden sm:flex items-center gap-4 flex-1 max-w-md mx-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search..."
-            className="w-full pl-10 pr-4 py-2 bg-muted/50 border-0 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+      <div />
+      <div className="hidden sm:flex items-center gap-3 flex-1 max-w-md mx-4 justify-end">
+        <div
+          style={{
+            width: "36px",
+            height: "36px",
+            borderRadius: "8px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "transparent",
+          }}
+        >
+          <img
+            src={searchIcon}
+            alt="Search"
+            style={{ width: "20px", height: "20px", opacity: 1 }}
           />
         </div>
       </div>

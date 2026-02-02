@@ -7,23 +7,33 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/_App Icon 1 (2).png";
+import dashboardIcon from "@/assets/Dashboard icon.svg";
+import teamIcon from "@/assets/Team icon.svg";
+import userIcon from "@/assets/User icon.svg";
+import listIcon from "@/assets/List icon.svg";
+import chatIcon from "@/assets/chat svg.svg";
+import allChatsIcon from "@/assets/All Chats.svg";
+import monitorAlertIcon from "@/assets/Monitor alert.svg";
+import detectWordIcon from "@/assets/Detect word.svg";
+import logoutIcon from "@/assets/logout.svg";
 
 const menuItems = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/admin/dashboard" },
-  { id: "team", label: "Team Members", icon: UserCog, path: "/admin/team" },
-  { id: "users", label: "Users", icon: Users, path: "/admin/users" },
-  { id: "listings", label: "Listings", icon: List, path: "/admin/listings" },
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, iconSrc: dashboardIcon, path: "/admin/dashboard" },
+  { id: "team", label: "Team Members", icon: UserCog, iconSrc: teamIcon, path: "/admin/team" },
+  { id: "users", label: "Users", icon: Users, iconSrc: userIcon, path: "/admin/users" },
+  { id: "listings", label: "Listings", icon: List, iconSrc: listIcon, path: "/admin/listings" },
   { 
     id: "chat", 
     label: "Chat", 
     icon: MessageSquare, 
+    iconSrc: chatIcon,
     path: "/admin/chats",
     subItems: [
-      { id: "chat-list", label: "Chat List", icon: MessageSquare, path: "/admin/chat-list" },
-      { id: "all-chats", label: "All Chats", icon: MessageSquare, path: "/admin/chats" },
+      { id: "chat-list", label: "Chat List", icon: MessageSquare, iconSrc: allChatsIcon, path: "/admin/chat-list" },
+      { id: "all-chats", label: "All Chats", icon: MessageSquare, iconSrc: allChatsIcon, path: "/admin/chats" },
       { id: "analytics", label: "Analytics & Routing", icon: LayoutDashboard, path: "/admin/chat-analytics" },
-      { id: "monitoring", label: "Monitoring Alerts", icon: Bell, path: "/admin/monitoring-alerts" },
-      { id: "detect-words", label: "Detect Words", icon: FileSearch, path: "/admin/detect-words" },
+      { id: "monitoring", label: "Monitoring Alerts", icon: Bell, iconSrc: monitorAlertIcon, path: "/admin/monitoring-alerts" },
+      { id: "detect-words", label: "Detect Words", icon: FileSearch, iconSrc: detectWordIcon, path: "/admin/detect-words" },
     ]
   },
   { 
@@ -167,15 +177,32 @@ const AdminSidebarContent = ({ onClose }: { onClose?: () => void }) => {
                 } : {}}
               >
                 <div className="flex items-center" style={isActive && !hasSubItems ? { gap: '8px' } : { gap: '8px' }}>
-                  <Icon 
-                    className="flex-shrink-0" 
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      color: (isParentActive && !hasSubItems) || (hasSubItems && hasActiveChild) ? 'rgba(0, 0, 0, 1)' : 'rgba(255, 255, 255, 0.6)',
-                      opacity: 1,
-                    }}
-                  />
+                  {item.iconSrc ? (
+                    <img
+                      src={item.iconSrc}
+                      alt={`${item.label} icon`}
+                      style={{
+                        width: '20px',
+                        height: '20px',
+                        flexShrink: 0,
+                        opacity: 1,
+                        filter:
+                          (isParentActive && !hasSubItems) || (hasSubItems && hasActiveChild)
+                            ? 'brightness(0)'
+                            : 'brightness(0) invert(1)',
+                      }}
+                    />
+                  ) : (
+                    <Icon 
+                      className="flex-shrink-0" 
+                      style={{
+                        width: '20px',
+                        height: '20px',
+                        color: (isParentActive && !hasSubItems) || (hasSubItems && hasActiveChild) ? 'rgba(0, 0, 0, 1)' : 'rgba(255, 255, 255, 0.6)',
+                        opacity: 1,
+                      }}
+                    />
+                  )}
                   <span 
                     className="font-lufga font-medium text-sm lg:text-base"
                     style={{
@@ -227,13 +254,25 @@ const AdminSidebarContent = ({ onClose }: { onClose?: () => void }) => {
                             : "hover:bg-white/5"
                         }`}
                       >
-                        <SubIcon 
-                          className="flex-shrink-0 w-4 h-4 lg:w-7 lg:h-7" 
-                          style={{
-                            color: 'rgba(255, 255, 255, 0.6)',
-                            opacity: 1,
-                          }}
-                        />
+                        {subItem.iconSrc ? (
+                          <img
+                            src={subItem.iconSrc}
+                            alt={`${subItem.label} icon`}
+                            className="flex-shrink-0 w-4 h-4 lg:w-7 lg:h-7"
+                            style={{
+                              opacity: 1,
+                              filter: isSubActive ? 'brightness(0)' : 'brightness(0) invert(1)',
+                            }}
+                          />
+                        ) : (
+                          <SubIcon 
+                            className="flex-shrink-0 w-4 h-4 lg:w-7 lg:h-7" 
+                            style={{
+                              color: 'rgba(255, 255, 255, 0.6)',
+                              opacity: 1,
+                            }}
+                          />
+                        )}
                         <span
                           className="font-lufga text-sm lg:text-base"
                           style={{
@@ -305,11 +344,13 @@ const AdminSidebarContent = ({ onClose }: { onClose?: () => void }) => {
           className="w-full flex items-center justify-between transition-all hover:bg-white/5 rounded-lg px-3 py-2"
         >
           <div className="flex items-center" style={{ gap: '8px' }}>
-            <LogOut 
-              className="flex-shrink-0 w-5 h-5 lg:w-7 lg:h-7" 
+            <img
+              src={logoutIcon}
+              alt="Logout icon"
+              className="flex-shrink-0 w-5 h-5 lg:w-7 lg:h-7"
               style={{
-                color: 'rgba(255, 255, 255, 0.6)',
                 opacity: 1,
+                filter: 'brightness(0) invert(1)',
               }}
             />
             <span 

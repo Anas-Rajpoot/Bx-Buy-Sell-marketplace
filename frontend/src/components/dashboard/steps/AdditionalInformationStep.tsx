@@ -37,6 +37,78 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
   const [uploadingFiles, setUploadingFiles] = useState<Record<string, boolean>>({});
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
+  const isSplitQuestion = (questionText: string) => {
+    const text = (questionText || "").toLowerCase();
+    return (
+      text.includes("sales channels") ||
+      text.includes("sales countries") ||
+      text.includes("advertising channels")
+    );
+  };
+
+  const isInventoryQuestion = (questionText: string) => {
+    const text = (questionText || "").toLowerCase();
+    return text.includes("do you have inventory");
+  };
+
+  const isInventoryDependentQuestion = (questionText: string) => {
+    const text = (questionText || "").toLowerCase();
+    return text.includes("how much") || text.includes("included in the price");
+  };
+
+  const getInventoryAnswer = (questions: any[]) => {
+    const inventoryQuestion = questions.find((q: any) => isInventoryQuestion(q?.question));
+    if (!inventoryQuestion) return null;
+    return formData[inventoryQuestion.id];
+  };
+
+  const isInventoryYes = (value: any) => {
+    return value === "yes" || value === "true" || value === true;
+  };
+
+  const getSplitValue = (questionId: string) => {
+    const raw = formData[questionId];
+    if (Array.isArray(raw)) {
+      return raw;
+    }
+    if (typeof raw === "string" && raw.trim().startsWith("[")) {
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
+  const normalizeSplitValue = (questionId: string) => {
+    const rows = getSplitValue(questionId);
+    if (rows.length > 0) return rows;
+    return [
+      { percent: "", name: "" },
+      { percent: "", name: "" },
+    ];
+  };
+
+  const getNumberAffix = (questionText: string) => {
+    const text = (questionText || "").toLowerCase();
+    if (text.includes("average order value") || text.includes("order value") || text.includes("price")) {
+      return { prefix: "$", suffix: undefined };
+    }
+    if (
+      text.includes("rate") ||
+      text.includes("conversion") ||
+      text.includes("refund") ||
+      text.includes("returning") ||
+      text.includes("percent") ||
+      text.includes("%")
+    ) {
+      return { prefix: "%", suffix: undefined };
+    }
+    return { prefix: undefined, suffix: undefined };
+  };
+
   useEffect(() => {
     if (parentFormData) {
       setFormData(parentFormData);
@@ -59,6 +131,31 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
     // Check if all questions have answers
     questionsToValidate.forEach((question: any) => {
       const value = formData[question.id];
+
+      if (isSplitQuestion(question.question)) {
+        const rows = getSplitValue(question.id);
+        const hasAny = rows.some((row: any) => row?.percent || row?.name);
+        if (!hasAny) {
+          errors.push(`${question.question} is required`);
+          return;
+        }
+        let total = 0;
+        rows.forEach((row: any) => {
+          const percent = row?.percent;
+          const name = row?.name;
+          if ((percent && !name) || (!percent && name)) {
+            errors.push(`${question.question} requires both % and name`);
+          }
+          const numeric = Number(percent);
+          if (Number.isFinite(numeric)) {
+            total += numeric;
+          }
+        });
+        if (total > 100) {
+          errors.push(`${question.question} total must be 100% or less`);
+        }
+        return;
+      }
       
       // Required fields validation
       if (!value || (typeof value === 'string' && value.trim() === '') || 
@@ -151,6 +248,156 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
 
   const renderField = (question: any) => {
     const value = formData[question.id] || "";
+
+    if (isSplitQuestion(question.question)) {
+      const rows = normalizeSplitValue(question.id);
+      const total = rows.reduce((sum: number, row: any) => sum + (Number(row?.percent) || 0), 0);
+
+      return (
+        <div
+          style={{
+            width: "100%",
+            borderRadius: "12px",
+            padding: "12px",
+            background: "rgba(250, 250, 250, 1)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <span
+              style={{
+                fontFamily: "Lufga",
+                fontWeight: 500,
+                fontSize: "20px",
+                lineHeight: "140%",
+                letterSpacing: "0%",
+                color: "rgba(0, 0, 0, 1)",
+              }}
+            >
+              {question.question}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                const next = [...rows, { percent: "", name: "" }];
+                setFormData({ ...formData, [question.id]: next });
+              }}
+              style={{
+                height: "26px",
+                borderRadius: "4px",
+                paddingTop: "3px",
+                paddingRight: "12px",
+                paddingBottom: "3px",
+                paddingLeft: "12px",
+                gap: "4px",
+                background: "rgba(241, 241, 241, 1)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "Lufga",
+                  fontWeight: 500,
+                  fontSize: "14px",
+                  lineHeight: "140%",
+                  letterSpacing: "0%",
+                  color: "rgba(0, 0, 0, 1)",
+                }}
+              >
+                Add
+              </span>
+            </button>
+          </div>
+          <div className="space-y-3">
+            {rows.map((row: any, index: number) => (
+              <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div
+                  style={{
+                    height: "69px",
+                    borderRadius: "12px",
+                    paddingTop: "22px",
+                    paddingRight: "20px",
+                    paddingBottom: "22px",
+                    paddingLeft: "20px",
+                    background: "rgba(255, 255, 255, 1)",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <Input
+                    type="number"
+                    value={row?.percent || ""}
+                    onChange={(e) => {
+                      const next = [...rows];
+                      next[index] = { ...next[index], percent: e.target.value };
+                      const nextTotal = next.reduce((sum: number, r: any) => sum + (Number(r?.percent) || 0), 0);
+                      if (nextTotal > 100) {
+                        toast.error("Total must be 100% or less");
+                        return;
+                      }
+                      setFormData({ ...formData, [question.id]: next });
+                    }}
+                    placeholder="0%"
+                    className="border-none bg-transparent h-full p-0 focus:ring-0 focus:border-transparent hover:border-transparent focus-visible:ring-0 focus-visible:outline-none placeholder:text-black/50"
+                    style={{
+                      fontFamily: "Lufga",
+                      fontWeight: 400,
+                      fontSize: "18px",
+                      lineHeight: "140%",
+                      letterSpacing: "0%",
+                      color: "rgba(0, 0, 0, 1)",
+                      outline: "none",
+                      boxShadow: "none",
+                      appearance: "textfield",
+                    }}
+                  />
+                </div>
+                <div
+                  style={{
+                    height: "69px",
+                    borderRadius: "12px",
+                    paddingTop: "22px",
+                    paddingRight: "20px",
+                    paddingBottom: "22px",
+                    paddingLeft: "20px",
+                    background: "rgba(255, 255, 255, 1)",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <Input
+                    value={row?.name || ""}
+                    onChange={(e) => {
+                      const next = [...rows];
+                      next[index] = { ...next[index], name: e.target.value };
+                      setFormData({ ...formData, [question.id]: next });
+                    }}
+                    placeholder="Name"
+                    className="border-none bg-transparent h-full p-0 focus:ring-0 focus:border-transparent hover:border-transparent focus-visible:ring-0 focus-visible:outline-none"
+                    style={{
+                      fontFamily: "Lufga",
+                      fontWeight: 400,
+                      fontSize: "18px",
+                      lineHeight: "140%",
+                      letterSpacing: "0%",
+                      color: "rgba(0, 0, 0, 1)",
+                      outline: "none",
+                      boxShadow: "none",
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
     
     switch (question.answer_type) {
       case "TEXT":
@@ -159,19 +406,52 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
             value={value}
             onChange={(e) => setFormData({ ...formData, [question.id]: e.target.value })}
             placeholder="Enter your answer"
-            className="bg-background border-border h-11 sm:h-12 focus:ring-2 focus:ring-accent focus:border-accent"
+            className="bg-background h-11 sm:h-12 border-none focus:ring-0 focus:border-transparent hover:border-transparent focus-visible:ring-0 focus-visible:outline-none"
+            style={{
+              outline: "none",
+              boxShadow: "none",
+            }}
           />
         );
       
       case "NUMBER":
+        const affix = getNumberAffix(question.question);
         return (
-          <Input
-            type="number"
-            value={value}
-            onChange={(e) => setFormData({ ...formData, [question.id]: e.target.value })}
-            placeholder="Enter a number"
-            className="bg-background border-border h-11 sm:h-12 focus:ring-2 focus:ring-accent focus:border-accent"
-          />
+          <div className="relative">
+            {affix.prefix && (
+              <span
+                style={{
+                  position: "absolute",
+                  left: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: "rgba(0,0,0,0.5)",
+                  fontSize: "18px",
+                  fontFamily: "Lufga",
+                  fontWeight: 400,
+                  lineHeight: "140%",
+                }}
+              >
+                {affix.prefix}
+              </span>
+            )}
+            <Input
+              type="number"
+              value={value}
+              onChange={(e) => setFormData({ ...formData, [question.id]: e.target.value })}
+              placeholder="Enter a number"
+              className="h-11 sm:h-12 border-none focus:ring-0 focus:border-transparent hover:border-transparent focus-visible:ring-0 focus-visible:outline-none"
+              style={{
+                background: "rgba(250, 250, 250, 1)",
+                borderRadius: "12px",
+                paddingLeft: affix.prefix ? "36px" : undefined,
+                paddingRight: affix.suffix ? "28px" : undefined,
+                outline: "none",
+                boxShadow: "none",
+                appearance: "textfield",
+              }}
+            />
+          </div>
         );
       
       case "TEXTAREA":
@@ -180,7 +460,11 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
             value={value}
             onChange={(e) => setFormData({ ...formData, [question.id]: e.target.value })}
             placeholder="Enter your answer"
-            className="bg-background border-border min-h-[120px] focus:ring-2 focus:ring-accent focus:border-accent resize-y"
+            className="bg-background min-h-[120px] border-none focus:ring-0 focus:border-transparent hover:border-transparent focus-visible:ring-0 focus-visible:outline-none resize-y"
+            style={{
+              outline: "none",
+              boxShadow: "none",
+            }}
           />
         );
       
@@ -190,7 +474,11 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
             type="date"
             value={value}
             onChange={(e) => setFormData({ ...formData, [question.id]: e.target.value })}
-            className="bg-background border-border h-11 sm:h-12 focus:ring-2 focus:ring-accent focus:border-accent"
+            className="bg-background h-11 sm:h-12 border-none focus:ring-0 focus:border-transparent hover:border-transparent focus-visible:ring-0 focus-visible:outline-none"
+            style={{
+              outline: "none",
+              boxShadow: "none",
+            }}
           />
         );
       
@@ -228,7 +516,7 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
       case "SELECT":
         return (
           <Select value={value} onValueChange={(val) => setFormData({ ...formData, [question.id]: val })}>
-            <SelectTrigger className="bg-background border-border h-11 sm:h-12 focus:ring-2 focus:ring-accent focus:border-accent">
+            <SelectTrigger className="bg-background h-11 sm:h-12 border-none focus:ring-0 focus:border-transparent hover:border-transparent focus-visible:ring-0 focus-visible:outline-none">
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
             <SelectContent>
@@ -384,48 +672,6 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
     <div className="max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
       <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">Additional Information</h1>
 
-      <div className="flex gap-1.5 sm:gap-2 md:gap-3 mb-6 bg-muted/30 p-1 sm:p-1.5 md:p-2 rounded-xl w-full max-w-fit border border-border/50 overflow-hidden">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => setActiveTab("statistics")}
-          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-6 h-9 sm:h-10 md:h-11 rounded-lg transition-all font-medium flex-shrink-0 ${
-            activeTab === "statistics"
-              ? "bg-accent text-accent-foreground hover:bg-accent/90 shadow-md"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-          }`}
-        >
-          <TrendingUp className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 flex-shrink-0" />
-          <span className="text-xs sm:text-sm md:text-base whitespace-nowrap">Statistics</span>
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => setActiveTab("products")}
-          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-6 h-9 sm:h-10 md:h-11 rounded-lg transition-all font-medium flex-shrink-0 ${
-            activeTab === "products"
-              ? "bg-accent text-accent-foreground hover:bg-accent/90 shadow-md"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-          }`}
-        >
-          <Package className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 flex-shrink-0" />
-          <span className="text-xs sm:text-sm md:text-base whitespace-nowrap">Products</span>
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => setActiveTab("management")}
-          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-6 h-9 sm:h-10 md:h-11 rounded-lg transition-all font-medium flex-shrink-0 ${
-            activeTab === "management"
-              ? "bg-accent text-accent-foreground hover:bg-accent/90 shadow-md"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-          }`}
-        >
-          <Target className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 flex-shrink-0" />
-          <span className="text-xs sm:text-sm md:text-base whitespace-nowrap">Management</span>
-        </Button>
-      </div>
-
       {activeTab === "statistics" && (
         <div className="space-y-6 bg-card rounded-2xl p-6 sm:p-8 border border-border shadow-lg">
           {statisticsLoading ? (
@@ -435,12 +681,23 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
               No statistic questions available. Please contact the administrator.
             </div>
           ) : (
-            statisticQuestions.map((question: any) => (
-              <div key={question.id} className="space-y-3">
-                <Label className="text-base sm:text-lg font-semibold text-foreground">{question.question}</Label>
-                {renderField(question)}
-              </div>
-            ))
+            statisticQuestions.map((question: any) => {
+              const inventoryAnswer = getInventoryAnswer(statisticQuestions);
+              if (isInventoryDependentQuestion(question.question) && !isInventoryYes(inventoryAnswer)) {
+                return null;
+              }
+
+              return (
+                <div key={question.id} className="space-y-3">
+                  {!isSplitQuestion(question.question) && (
+                    <Label className="text-base sm:text-lg font-semibold text-foreground">
+                      {question.question}
+                    </Label>
+                  )}
+                  {renderField(question)}
+                </div>
+              );
+            })
           )}
         </div>
       )}
@@ -454,12 +711,23 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
               No product questions available. Please contact the administrator.
             </div>
           ) : (
-            productQuestions.map((question: any) => (
-              <div key={question.id} className="space-y-3">
-                <Label className="text-base sm:text-lg font-semibold text-foreground">{question.question}</Label>
-                {renderField(question)}
-              </div>
-            ))
+            productQuestions.map((question: any) => {
+              const inventoryAnswer = getInventoryAnswer(productQuestions);
+              if (isInventoryDependentQuestion(question.question) && !isInventoryYes(inventoryAnswer)) {
+                return null;
+              }
+
+              return (
+                <div key={question.id} className="space-y-3">
+                  {!isSplitQuestion(question.question) && (
+                    <Label className="text-base sm:text-lg font-semibold text-foreground">
+                      {question.question}
+                    </Label>
+                  )}
+                  {renderField(question)}
+                </div>
+              );
+            })
           )}
         </div>
       )}
@@ -473,12 +741,23 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
               No management questions available. Please contact the administrator.
             </div>
           ) : (
-            managementQuestions.map((question: any) => (
-              <div key={question.id} className="space-y-3">
-                <Label className="text-base sm:text-lg font-semibold text-foreground">{question.question}</Label>
-                {renderField(question)}
-              </div>
-            ))
+            managementQuestions.map((question: any) => {
+              const inventoryAnswer = getInventoryAnswer(managementQuestions);
+              if (isInventoryDependentQuestion(question.question) && !isInventoryYes(inventoryAnswer)) {
+                return null;
+              }
+
+              return (
+                <div key={question.id} className="space-y-3">
+                  {!isSplitQuestion(question.question) && (
+                    <Label className="text-base sm:text-lg font-semibold text-foreground">
+                      {question.question}
+                    </Label>
+                  )}
+                  {renderField(question)}
+                </div>
+              );
+            })
           )}
         </div>
       )}

@@ -45,7 +45,7 @@ const SidebarContent = ({ activeStep, onStepChange, onLinkClick }: { activeStep:
   return (
     <>
       <div className="p-4 sm:p-6">
-        <Link to="/" className="flex items-center justify-center" onClick={onLinkClick}>
+        <Link to="/" className="flex items-center justify-start" onClick={onLinkClick}>
           <img 
             src={logo} 
             alt="EX Logo" 
@@ -54,7 +54,17 @@ const SidebarContent = ({ activeStep, onStepChange, onLinkClick }: { activeStep:
         </Link>
       </div>
       
-      <nav className="flex-1 px-3 sm:px-4 space-y-1 overflow-y-auto">
+      <nav
+        className="flex-1 overflow-y-auto"
+        style={{
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px",
+          paddingRight: "12px",
+          paddingLeft: "12px",
+        }}
+      >
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = item.id === "additional-information" ? isAdditionalInfoActive : activeStep === item.id;
@@ -70,18 +80,67 @@ const SidebarContent = ({ activeStep, onStepChange, onLinkClick }: { activeStep:
                       handleStepChange("additional-information");
                     }
                   }}
-                  className={`w-full flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg transition-all ${
-                    isActive
-                      ? "bg-accent text-[hsl(0_0%_0%)]" 
-                      : "text-white/70 hover:text-white hover:bg-white/5"
+                  className={`w-full flex items-center justify-between transition-all ${
+                    isActive ? "" : "hover:bg-white/5 rounded-lg px-3 sm:px-4 py-2.5 sm:py-3"
                   }`}
+                  style={
+                    isActive
+                      ? {
+                          width: "100%",
+                          minHeight: "48px",
+                          borderRadius: "12px",
+                          paddingTop: "12px",
+                          paddingRight: "16px",
+                          paddingBottom: "12px",
+                          paddingLeft: "16px",
+                          gap: "8px",
+                          backgroundColor: "rgba(174, 243, 31, 1)",
+                        }
+                      : { gap: "8px" }
+                  }
                 >
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <Icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                    <span className="text-xs sm:text-sm font-medium">{item.label}</span>
+                  <div className="flex items-center" style={{ gap: "6px" }}>
+                    <Icon
+                      className="flex-shrink-0"
+                      style={{
+                        width: "20px",
+                        height: "20px",
+                        color: isActive ? "rgba(0, 0, 0, 1)" : "rgba(255, 255, 255, 1)",
+                        opacity: 1,
+                      }}
+                    />
+                    <span
+                      className="font-medium"
+                      style={{
+                        fontFamily: "Lufga",
+                        fontWeight: 500,
+                        fontSize: "14px",
+                        lineHeight: "150%",
+                        letterSpacing: "0%",
+                        color: isActive ? "rgba(0, 0, 0, 1)" : "rgba(255, 255, 255, 1)",
+                      }}
+                    >
+                      {item.label}
+                    </span>
                   </div>
                   {hasSubItems && (
-                    isAdditionalInfoExpanded ? <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" /> : <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                    isAdditionalInfoExpanded ? (
+                  <ChevronDown
+                        className="flex-shrink-0 w-4 h-4 lg:w-7 lg:h-7"
+                        style={{
+                          color: isActive ? "rgba(0, 0, 0, 1)" : "rgba(255, 255, 255, 1)",
+                          opacity: 1,
+                        }}
+                      />
+                    ) : (
+                  <ChevronRight
+                        className="flex-shrink-0 w-4 h-4 lg:w-7 lg:h-7"
+                        style={{
+                          color: isActive ? "rgba(0, 0, 0, 1)" : "rgba(255, 255, 255, 1)",
+                          opacity: 1,
+                        }}
+                      />
+                    )
                   )}
                 </button>
                 
@@ -95,14 +154,30 @@ const SidebarContent = ({ activeStep, onStepChange, onLinkClick }: { activeStep:
                         <button
                           key={subItem.id}
                           onClick={() => handleStepChange(subItem.id)}
-                          className={`w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-all text-xs sm:text-sm ${
-                            isSubActive
-                              ? "bg-white/10 text-white" 
-                              : "text-white/60 hover:text-white hover:bg-white/5"
+                          className={`w-full flex items-center px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-all ${
+                            isSubActive ? "bg-white/10" : "hover:bg-white/5"
                           }`}
+                          style={{ gap: "6px" }}
                         >
-                          <SubIcon className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                          <span>{subItem.label}</span>
+                          <SubIcon
+                            className="flex-shrink-0 w-4 h-4 lg:w-7 lg:h-7"
+                            style={{
+                              color: "rgba(255, 255, 255, 1)",
+                              opacity: 1,
+                            }}
+                          />
+                          <span
+                            style={{
+                              fontFamily: "Lufga",
+                              fontWeight: 500,
+                              fontSize: "14px",
+                              lineHeight: "150%",
+                              letterSpacing: "0%",
+                              color: "rgba(255, 255, 255, 1)",
+                            }}
+                          >
+                            {subItem.label}
+                          </span>
                         </button>
                       );
                     })}
@@ -116,14 +191,47 @@ const SidebarContent = ({ activeStep, onStepChange, onLinkClick }: { activeStep:
             <button
               key={item.id}
               onClick={() => handleStepChange(item.id)}
-              className={`w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg transition-all ${
-                isActive 
-                  ? "bg-accent text-[hsl(0_0%_0%)]" 
-                  : "text-white/70 hover:text-white hover:bg-white/5"
+              className={`w-full flex items-center transition-all ${
+                isActive ? "" : "hover:bg-white/5 rounded-lg px-3 sm:px-4 py-2.5 sm:py-3"
               }`}
+              style={
+                isActive
+                  ? {
+                      width: "100%",
+                      minHeight: "48px",
+                      borderRadius: "12px",
+                      paddingTop: "12px",
+                      paddingRight: "16px",
+                      paddingBottom: "12px",
+                      paddingLeft: "16px",
+                      gap: "6px",
+                      backgroundColor: "rgba(174, 243, 31, 1)",
+                    }
+                  : { gap: "6px" }
+              }
             >
-              <Icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-              <span className="text-xs sm:text-sm font-medium">{item.label}</span>
+              <Icon
+                className="flex-shrink-0"
+                style={{
+                  width: "20px",
+                  height: "20px",
+                  color: isActive ? "rgba(0, 0, 0, 1)" : "rgba(255, 255, 255, 1)",
+                  opacity: 1,
+                }}
+              />
+              <span
+                className="font-medium"
+                style={{
+                  fontFamily: "Lufga",
+                  fontWeight: 500,
+                  fontSize: "14px",
+                  lineHeight: "150%",
+                  letterSpacing: "0%",
+                  color: isActive ? "rgba(0, 0, 0, 1)" : "rgba(255, 255, 255, 1)",
+                }}
+              >
+                {item.label}
+              </span>
             </button>
           );
         })}

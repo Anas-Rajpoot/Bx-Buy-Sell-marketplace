@@ -127,21 +127,29 @@ export const BrandInformationStep = ({ formData: parentFormData, onNext, onBack 
       case "DATE":
         return (
           <Input
-            type="date"
+            type="month"
             value={value}
             onChange={(e) => setFormData({ ...formData, [question.id]: e.target.value })}
-            className="bg-muted/50"
+            className="bg-muted/50 border-none focus:ring-0 focus:border-transparent hover:border-transparent focus-visible:ring-0 focus-visible:outline-none"
+            style={{
+              outline: "none",
+              boxShadow: "none",
+            }}
           />
         );
       
       case "URL":
         return (
           <Input
-            type="url"
+            type="text"
             value={value}
             onChange={(e) => setFormData({ ...formData, [question.id]: e.target.value })}
-            placeholder="https://example.com"
-            className="bg-muted/50"
+            placeholder="Enter link here"
+            className="bg-muted/50 border-none focus:ring-0 focus:border-transparent hover:border-transparent focus-visible:ring-0 focus-visible:outline-none"
+            style={{
+              outline: "none",
+              boxShadow: "none",
+            }}
           />
         );
       
@@ -207,7 +215,9 @@ export const BrandInformationStep = ({ formData: parentFormData, onNext, onBack 
         ) : (
           questions.map((question: any) => (
             <div key={question.id} className="space-y-2 sm:space-y-3">
-              <Label className="text-sm sm:text-base font-semibold">{question.question}</Label>
+              <Label className="text-sm sm:text-base font-semibold">
+                {question.question === "Domains" ? "Domain" : question.question}
+              </Label>
               {renderField(question)}
             </div>
           ))

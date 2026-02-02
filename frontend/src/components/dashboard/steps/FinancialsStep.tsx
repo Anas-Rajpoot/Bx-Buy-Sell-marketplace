@@ -375,7 +375,9 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
 
         {/* Data Rows */}
         <div>
-          {rowLabels.map((row, index) => {
+          {rowLabels
+            .filter((row) => financialType !== "simple" || row === "Gross Revenue" || row === "Overall Costs")
+            .map((row, index) => {
             const isGrossRevenue = row === "Gross Revenue";
             const bgColor = isGrossRevenue ? 'rgba(66, 66, 66, 1)' : '#F3F8E8';
             const textColor = isGrossRevenue ? 'rgba(255, 255, 255, 1)' : 'rgba(0, 0, 0, 1)';
