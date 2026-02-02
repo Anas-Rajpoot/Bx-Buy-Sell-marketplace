@@ -509,8 +509,12 @@ export class ChatService {
             : [],
         ]);
 
-      const userMap = new Map(users.map((u) => [u.id, u]));
-      const listingMap = new Map(listings.map((l) => [l.id, l]));
+      const userMap = new Map<string, (typeof users)[number]>(
+        users.map((u) => [u.id, u] as const),
+      );
+      const listingMap = new Map<string, (typeof listings)[number]>(
+        listings.map((l) => [l.id, l] as const),
+      );
       const latestMessageMap = new Map<string, (typeof latestMessages)[0]>();
       for (const msg of latestMessages) {
         if (!latestMessageMap.has(msg.chatId)) {
