@@ -61,6 +61,15 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
   const [loading, setLoading] = useState(true);
   const socketRef = useRef<Socket | null>(null);
   const refreshTimerRef = useRef<number | null>(null);
+  const readPinnedChatIds = () => {
+    try {
+      const rawPinned = localStorage.getItem("pinned_chat_ids");
+      return rawPinned ? (JSON.parse(rawPinned) as string[]) : [];
+    } catch (error) {
+      console.error("Error reading pinned chats:", error);
+      return [];
+    }
+  };
 
   useEffect(() => {
     fetchConversations();
@@ -123,6 +132,13 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
       fetchConversations();
     }, 15000);
 
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "pinned_chat_ids") {
+        scheduleFetch(0);
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+
     return () => {
       clearInterval(interval);
       if (refreshTimerRef.current) {
@@ -133,6 +149,7 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
         socketRef.current.disconnect();
         socketRef.current = null;
       }
+      window.removeEventListener("storage", handleStorage);
     };
   }, [userId]);
 
@@ -158,6 +175,7 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
     if (conversations.length === 0) {
       setLoading(true);
     }
+    const pinnedChatIds = readPinnedChatIds();
     try {
       const [buyerResponse, sellerResponse] = await Promise.all([
         apiClient.getChatRoomsByUserId(userId),
@@ -313,14 +331,17 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
             unreadCount,
             label: label && (label === 'GOOD' || label === 'MEDIUM' || label === 'BAD') ? label : null,
             isArchived: room.status === 'ARCHIVED',
+            isPinned: pinnedChatIds.includes(room.id),
           };
         })
       );
 
-      // Sort by last message time
-      conversationsWithDetails.sort((a, b) => 
-        new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
-      );
+      // Sort pinned chats first, then by last message time
+      conversationsWithDetails.sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
+      });
 
       setConversations(conversationsWithDetails);
     } catch (error) {

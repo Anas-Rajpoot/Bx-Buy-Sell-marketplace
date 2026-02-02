@@ -11,6 +11,7 @@ import docIcon from "@/assets/doc.svg";
 import labelIcon from "@/assets/label.svg";
 import reportIcon from "@/assets/report.svg";
 import handshakeIcon from "@/assets/fi_3585639.svg";
+import ListingCard from "@/components/ListingCard";
 
 interface ChatDetailsProps {
   conversationId: string;
@@ -35,6 +36,30 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
   const [reportReason, setReportReason] = useState("");
   const [mediaFiles, setMediaFiles] = useState<any[]>([]);
 
+  const hydrateListing = async (listingId?: string, currentListing?: any) => {
+    if (!listingId) return;
+    const hasDetails =
+      currentListing?.title ||
+      currentListing?.business_name ||
+      currentListing?.images?.length ||
+      currentListing?.image ||
+      currentListing?.price ||
+      currentListing?.asking_price;
+    if (hasDetails) return;
+
+    try {
+      const listingResponse = await apiClient.getListingById(listingId);
+      if (listingResponse.success && listingResponse.data) {
+        const listingData = (listingResponse.data as any).data || listingResponse.data;
+        if (listingData) {
+          setListing(listingData);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching listing by id:", error);
+    }
+  };
+
   useEffect(() => {
     if (userId && sellerId) {
       fetchChatRoomData();
@@ -54,6 +79,8 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
           if (chat.listing) {
             setListing(chat.listing);
           }
+          const listingId = chat.listing?.id || chat.listingId;
+          await hydrateListing(listingId, chat.listing);
 
           // Get participants from chat (user and seller)
           const buyer = chat.user;
@@ -97,6 +124,8 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
         if (chatData?.listing && !listing) {
           setListing(chatData.listing);
         }
+        const listingId = chatData?.listing?.id || chatData?.listingId;
+        await hydrateListing(listingId, chatData?.listing);
 
         // Get chat label if available
         const labelEntries = Array.isArray(chatData?.chatLabel)
@@ -257,6 +286,95 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
         <p className="text-muted-foreground text-sm">Loading...</p>
       </div>
     );
+  }
+
+  const getAnswerByQuestion = (answers: any[], keys: string[]) => {
+    if (!Array.isArray(answers) || answers.length === 0) return undefined;
+    const lowerKeys = keys.map((k) => k.toLowerCase());
+    const found = answers.find((a: any) => {
+      const question = (a?.question || a?.question_text || "").toLowerCase();
+      return lowerKeys.some((k) => question.includes(k));
+    });
+    return found?.answer || found?.value;
+  };
+
+  const adQuestions = Array.isArray(listing?.advertisement) ? listing.advertisement : [];
+  const brandQuestions = Array.isArray(listing?.brand) ? listing.brand : [];
+
+  const listingImages = adQuestions
+    .filter((a: any) => a?.answer_type === 'PHOTO' && a?.answer)
+    .map((a: any) => a.answer);
+
+  if (listingImages.length === 0) {
+    const photo = adQuestions.find(
+      (a: any) =>
+        a?.question?.toLowerCase?.().includes('photo') || a?.answer_type === 'PHOTO'
+    )?.answer || listing?.image_url;
+    if (photo) listingImages.push(photo);
+  }
+
+  const listingImage =
+    listingImages[0] ||
+    listing?.images?.[0]?.url ||
+    listing?.images?.[0] ||
+    listing?.image ||
+    "";
+  const categoryName =
+    listing?.category?.[0]?.name ||
+    (Array.isArray(listing?.category) && listing?.category?.length > 0
+      ? listing?.category?.[0]?.name
+      : listing?.category?.name) ||
+    listing?.category ||
+    "Other";
+  const listingName =
+    listing?.business_name ||
+    listing?.title ||
+    "Listing";
+  const listingDescription =
+    listing?.ad_description ||
+    listing?.business_description ||
+    listing?.description ||
+    "";
+  const location =
+    listing?.location ||
+    listing?.city ||
+    listing?.country ||
+    "Location not available";
+  const askingPrice =
+    getAnswerByQuestion(adQuestions, ['listing price', 'price']) ||
+    getAnswerByQuestion(brandQuestions, ['asking price', 'price', 'selling price']) ||
+    listing?.price ||
+    listing?.asking_price ||
+    listing?.askingPrice ||
+    listing?.price_amount ||
+    0;
+  const avgNetProfit =
+    listing?.avg_net_profit ||
+    listing?.avgNetProfit ||
+    listing?.average_net_profit ||
+    0;
+  const avgRevenue =
+    listing?.avg_revenue ||
+    listing?.avgRevenue ||
+    listing?.average_revenue ||
+    0;
+
+  let profitMultiple = "Multiple 1.5x Profit";
+  if (askingPrice && avgNetProfit > 0) {
+    const annualProfit = avgNetProfit * 12;
+    const multiple = Number(askingPrice) / annualProfit;
+    if (Number.isFinite(multiple)) {
+      profitMultiple = `Multiple ${multiple.toFixed(1)}x Profit`;
+    }
+  }
+
+  let revenueMultiple = "0.5x Revenue";
+  if (askingPrice && avgRevenue > 0) {
+    const annualRevenue = avgRevenue * 12;
+    const multiple = Number(askingPrice) / annualRevenue;
+    if (Number.isFinite(multiple)) {
+      revenueMultiple = `${multiple.toFixed(1)}x Revenue`;
+    }
   }
 
   return (
@@ -588,6 +706,53 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
           Make Offer
           </span>
         </button>
+
+        <div
+          style={{
+            width: '343px',
+            height: '1px',
+            backgroundColor: 'rgba(0, 0, 0, 0.1)',
+            marginTop: '16px',
+            marginBottom: '16px',
+          }}
+        />
+
+        <h5
+          style={{
+            width: '343px',
+            fontFamily: 'Lufga',
+            fontWeight: 600,
+            fontSize: '16px',
+            lineHeight: '100%',
+            letterSpacing: '0%',
+            color: 'rgba(0, 0, 0, 1)',
+            margin: 0,
+            marginBottom: '12px',
+            textAlign: 'left',
+          }}
+        >
+          Listing information
+        </h5>
+
+        <div style={{ width: '343px' }}>
+          <ListingCard
+            image={listingImage}
+            category={categoryName}
+            name={listingName}
+            description={listingDescription}
+            price={askingPrice ? `$${Number(askingPrice).toLocaleString()}` : "Price not available"}
+            profitMultiple={profitMultiple}
+            revenueMultiple={revenueMultiple}
+            location={location}
+            locationFlag={location}
+            businessAge={listing?.business_age || listing?.businessAge || undefined}
+            netProfit={avgNetProfit > 0 ? `$${Math.round(avgNetProfit).toLocaleString()}` : undefined}
+            revenue={avgRevenue > 0 ? `$${Math.round(avgRevenue).toLocaleString()}` : undefined}
+            managedByEx={listing?.managed_by_ex === true || listing?.managed_by_ex === 1 || listing?.managed_by_ex === 'true' || listing?.managed_by_ex === '1'}
+            listingId={listing?.id}
+            sellerId={listing?.userId || listing?.user_id}
+          />
+        </div>
       </div>
 
       {/* Media Dialog */}
