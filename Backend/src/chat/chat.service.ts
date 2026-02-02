@@ -106,6 +106,13 @@ export class ChatService {
             status: true,
           },
         },
+        chatLabels: {
+          select: {
+            chatId: true,
+            userId: true,
+            label: true,
+          },
+        },
       },
       orderBy: {
         updatedAt: 'desc',
@@ -127,6 +134,8 @@ export class ChatService {
       }))
     );
 
+    const allChatLabels = allChatRooms.flatMap((room) => room.chatLabels || []);
+
     // Sort all messages by creation date
     allMessages.sort((a, b) => 
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
@@ -136,6 +145,7 @@ export class ChatService {
     const mergedChatRoom = {
       ...primaryChatRoom,
       messages: allMessages,
+      chatLabel: allChatLabels,
       // Update updatedAt to the most recent message time
       updatedAt: allMessages.length > 0 
         ? new Date(allMessages[allMessages.length - 1].createdAt)
