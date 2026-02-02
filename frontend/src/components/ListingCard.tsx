@@ -282,7 +282,7 @@ const ListingCard = ({
           </button>
         </div>
         <div className="absolute bottom-4 left-4 flex gap-2">
-          {managedByEx ? (
+          {managedByEx && (
             <Link to="/managed-by-ex">
               <Badge
                 variant="accent"
@@ -326,42 +326,41 @@ const ListingCard = ({
                 </span>
               </Badge>
             </Link>
-          ) : (
-            <Link to={`/category/${category.toLowerCase().replace(/\s+/g, '-')}`}>
-              <Badge
-                variant="dark"
-                className="border-0 shadow-lg cursor-pointer hover:opacity-90 transition-opacity flex items-center justify-center"
+          )}
+          <Link to={`/category/${category.toLowerCase().replace(/\s+/g, '-')}`}>
+            <Badge
+              variant="dark"
+              className="border-0 shadow-lg cursor-pointer hover:opacity-90 transition-opacity flex items-center justify-center"
+              style={{
+                width: "auto",
+                minWidth: "126px",
+                height: "36px",
+                borderRadius: "60px",
+                paddingTop: "7px",
+                paddingRight: "17px",
+                paddingBottom: "7px",
+                paddingLeft: "17px",
+                gap: "10px",
+                background: "rgba(0, 0, 0, 0.25)",
+                backdropFilter: "blur(44px)",
+              }}
+            >
+              <span
+                className="font-lufga"
                 style={{
-                  width: "auto",
-                  minWidth: "126px",
-                  height: "36px",
-                  borderRadius: "60px",
-                  paddingTop: "7px",
-                  paddingRight: "17px",
-                  paddingBottom: "7px",
-                  paddingLeft: "17px",
-                  gap: "10px",
-                  background: "rgba(0, 0, 0, 0.25)",
-                  backdropFilter: "blur(44px)",
+                  fontWeight: 500,
+                  fontSize: "16px",
+                  lineHeight: "140%",
+                  letterSpacing: "0%",
+                  textAlign: "center",
+                  color: "rgba(255, 255, 255, 1)",
+                  whiteSpace: "nowrap",
                 }}
               >
-                <span
-                  className="font-lufga"
-                  style={{
-                    fontWeight: 500,
-                    fontSize: "16px",
-                    lineHeight: "140%",
-                    letterSpacing: "0%",
-                    textAlign: "center",
-                    color: "rgba(255, 255, 255, 1)",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {category}
-                </span>
-              </Badge>
-            </Link>
-          )}
+                {category}
+              </span>
+            </Badge>
+          </Link>
         </div>
       </div>
       
