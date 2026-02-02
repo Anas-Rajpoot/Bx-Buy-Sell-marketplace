@@ -403,11 +403,6 @@ export class ChatService {
         const isValid = chat.user !== null && chat.seller !== null;
         return isValid;
       });
-          hasMessages: validChats[0].messages?.length > 0,
-          messageCount: validChats[0].messages?.length || 0,
-          hasMonitorViews: validChats[0].monitorViews?.length > 0,
-        });
-      }
 
       return validChats;
     } catch (error: any) {
