@@ -84,6 +84,8 @@ const Chat = () => {
 
 
   
+  const [listRefreshToken, setListRefreshToken] = useState(0);
+
   const checkConversations = async () => {
     if (!user?.id) return;
 
@@ -207,11 +209,11 @@ const Chat = () => {
               overflow: 'hidden',
             }}
           >
-            <ConversationList 
+              <ConversationList 
               selectedConversation={selectedConversation}
               onSelectConversation={handleSelectConversation}
               userId={user.id}
-              refreshTrigger={selectedConversation} // Trigger refresh when conversation changes
+                refreshTrigger={`${selectedConversation || ""}-${listRefreshToken}`} // Trigger refresh when conversation changes or label updates
               onConversationDeleted={handleConversationDeleted}
             />
           </div>
@@ -291,7 +293,10 @@ const Chat = () => {
                   conversationId={selectedConversation} 
                   userId={chatRoomData.userId}
                   sellerId={chatRoomData.sellerId}
-                  onLabelUpdated={checkConversations}
+                  onLabelUpdated={() => {
+                    setListRefreshToken((prev) => prev + 1);
+                    checkConversations();
+                  }}
                 />
               </Suspense>
             </div>

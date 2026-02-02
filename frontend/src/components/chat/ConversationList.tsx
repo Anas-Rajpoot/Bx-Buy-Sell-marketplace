@@ -253,6 +253,15 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
               // Fallback to first label if no user-specific label found
               label = chatData.chatLabel[0].label;
             }
+          }
+          // Check chatLabels array (alternate casing from backend)
+          else if (chatData?.chatLabels && Array.isArray(chatData.chatLabels) && chatData.chatLabels.length > 0) {
+            const userLabel = chatData.chatLabels.find((l: any) => l.userId === userId);
+            if (userLabel && userLabel.label) {
+              label = userLabel.label;
+            } else if (chatData.chatLabels.length > 0 && chatData.chatLabels[0].label) {
+              label = chatData.chatLabels[0].label;
+            }
           } 
           // Check room label as fallback
           else if ((room as any).label) {

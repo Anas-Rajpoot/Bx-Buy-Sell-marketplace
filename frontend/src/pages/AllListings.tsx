@@ -200,6 +200,8 @@ const AllListings = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [favoritesCount, setFavoritesCount] = useState(0);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const authPromptKey = "all_listings_auth_prompt_shown";
 
   // Load favorites count
   useEffect(() => {
@@ -207,6 +209,41 @@ const AllListings = () => {
       loadFavoritesCount();
     }
   }, [isAuthenticated, user]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const schedulePrompt = () => {
+      if (isAuthenticated) return;
+      if (localStorage.getItem(authPromptKey) === "true") return;
+      if (timer) return;
+      timer = setTimeout(() => {
+        setShowAuthPrompt(true);
+        localStorage.setItem(authPromptKey, "true");
+      }, 12000);
+    };
+
+    const handleAuthPrompt = () => {
+      schedulePrompt();
+    };
+
+    // Schedule once on page load for logged-out users
+    schedulePrompt();
+
+    window.addEventListener('auth:prompt', handleAuthPrompt);
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+      window.removeEventListener('auth:prompt', handleAuthPrompt);
+    };
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setShowAuthPrompt(false);
+    }
+  }, [isAuthenticated]);
 
   const loadFavoritesCount = async () => {
     if (!user) return;
@@ -803,6 +840,39 @@ const AllListings = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {showAuthPrompt && !isAuthenticated && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg relative">
+            <button
+              type="button"
+              onClick={() => setShowAuthPrompt(false)}
+              className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <h3 className="text-lg font-semibold text-black mb-2">Login required</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              You can browse listings, but some features need an account.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                className="flex-1 bg-black text-white hover:bg-black"
+                onClick={() => navigate("/login")}
+              >
+                Login
+              </Button>
+              <Button
+                className="flex-1"
+                variant="outline"
+                onClick={() => navigate("/register")}
+              >
+                Sign up
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Main Container - White on mobile, Black on desktop */}
       <div className="bg-white md:bg-black pb-20">
         {/* Mobile Menu Overlay */}

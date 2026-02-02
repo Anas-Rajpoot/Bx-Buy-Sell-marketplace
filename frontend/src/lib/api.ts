@@ -64,8 +64,13 @@ class ApiClient {
       endpoint.startsWith('/auth/verify-otp') ||
       endpoint.startsWith('/auth/reset-password') ||
       endpoint.startsWith('/auth/update-password');
+    const isPublicEndpoint =
+      endpoint.startsWith('/listing') ||
+      endpoint.startsWith('/category') ||
+      endpoint.startsWith('/health') ||
+      endpoint.startsWith('/plan');
     
-    if (!finalBearerToken && !isAuthEndpoint) {
+    if (!finalBearerToken && !isAuthEndpoint && !isPublicEndpoint) {
       console.error('CRITICAL: No bearer token available!');
       return {
         success: false,
@@ -110,6 +115,13 @@ class ApiClient {
         if (response.status === 401) {
           // Don't auto-logout for auth endpoints (login/signup) - 401 is expected for invalid credentials
           const isAuthEndpoint = path.startsWith('/auth/signin') || path.startsWith('/auth/signup') || path.startsWith('/auth/verify-otp');
+          const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+          const isPublicPage =
+            currentPath === '/' ||
+            currentPath.startsWith('/all-listings') ||
+            currentPath.startsWith('/listing/') ||
+            currentPath.startsWith('/how-to-buy') ||
+            currentPath.startsWith('/how-to-sell');
           
           // Don't auto-logout if we just logged in (within last 30 seconds)
           // This gives more time for the backend to sync/validate the token
@@ -125,11 +137,14 @@ class ApiClient {
             // Dispatch event to notify auth hook
             window.dispatchEvent(new CustomEvent('auth:logout', { detail: { reason: 'unauthorized' } }));
             
-            // Redirect to login if not already there
-            if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
+            // Redirect to login if not already there and not on a public page
+            if (!isPublicPage && window.location.pathname !== '/login') {
               setTimeout(() => {
                 window.location.href = '/login';
               }, 1000);
+            } else {
+              // On public pages, show a dismissible login prompt instead
+              window.dispatchEvent(new CustomEvent('auth:prompt', { detail: { reason: 'unauthorized' } }));
             }
           }
         }

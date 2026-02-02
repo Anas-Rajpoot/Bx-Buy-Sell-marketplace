@@ -8,6 +8,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
+import ExIcon from "@/assets/Ex icon.svg";
 
 interface ListingCardProps {
   image: string;
@@ -226,18 +227,39 @@ const ListingCard = ({
     }
   };
 
+  const listingLink = listingId ? `/listing/${listingId}` : null;
+
   return (
     <div className="group bg-white relative w-full rounded-lg shadow-sm" style={{ minHeight: '590.84px', height: 'auto' }}>
       <div className="relative overflow-hidden bg-muted w-full" style={{ height: '285px', borderRadius: '20px' }}>
-        <img
-          src={image}
-          alt={name}
-          className="w-full h-full object-cover"
-          loading="lazy"
-          decoding="async"
-          sizes="(max-width: 768px) 100vw, 50vw"
-          style={{ borderRadius: '20px', display: 'block' }}
-        />
+        {listingLink ? (
+          <Link
+            to={listingLink}
+            aria-label={`View ${name} listing`}
+            className="block w-full h-full"
+            style={{ borderRadius: '20px' }}
+          >
+            <img
+              src={image}
+              alt={name}
+              className="w-full h-full object-cover"
+              loading="lazy"
+              decoding="async"
+              sizes="(max-width: 768px) 100vw, 50vw"
+              style={{ borderRadius: '20px', display: 'block' }}
+            />
+          </Link>
+        ) : (
+          <img
+            src={image}
+            alt={name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            decoding="async"
+            sizes="(max-width: 768px) 100vw, 50vw"
+            style={{ borderRadius: '20px', display: 'block' }}
+          />
+        )}
         <div className="absolute top-4 right-4 flex flex-col gap-2">
           <button 
             onClick={handleFavorite}
@@ -262,17 +284,81 @@ const ListingCard = ({
         <div className="absolute bottom-4 left-4 flex gap-2">
           {managedByEx ? (
             <Link to="/managed-by-ex">
-              <Badge variant="accent" className="font-semibold border-0 shadow-lg px-3 py-1.5 text-xs cursor-pointer hover:opacity-90 transition-opacity">
-                <div className="w-3.5 h-3.5 border-2 border-accent-foreground rounded-full mr-1.5 flex items-center justify-center text-[8px] font-bold">
-                  EX
-                </div>
-                Managed by EX
+              <Badge
+                variant="accent"
+                className="border-0 shadow-lg cursor-pointer hover:opacity-90 transition-opacity flex items-center"
+                style={{
+                  width: "176px",
+                  height: "36px",
+                  borderRadius: "60px",
+                  paddingTop: "7px",
+                  paddingRight: "17px",
+                  paddingBottom: "7px",
+                  paddingLeft: "10px",
+                  gap: "8px",
+                  background: "rgba(197, 253, 31, 1)",
+                  backdropFilter: "blur(44px)",
+                }}
+              >
+                <img
+                  src={ExIcon}
+                  alt="EX"
+                  style={{
+                    width: "20px",
+                    height: "20px",
+                    borderRadius: "12px",
+                    border: "1px solid rgba(0, 0, 0, 1)",
+                    opacity: 1,
+                  }}
+                />
+                <span
+                  className="font-lufga"
+                  style={{
+                    fontWeight: 500,
+                    fontSize: "16px",
+                    lineHeight: "140%",
+                    letterSpacing: "0%",
+                    textAlign: "center",
+                    color: "rgba(0, 0, 0, 1)",
+                  }}
+                >
+                  Managed by EX
+                </span>
               </Badge>
             </Link>
           ) : (
             <Link to={`/category/${category.toLowerCase().replace(/\s+/g, '-')}`}>
-              <Badge variant="dark" className="border-0 shadow-lg px-3 py-1.5 text-xs cursor-pointer hover:opacity-90 transition-opacity">
-                {category}
+              <Badge
+                variant="dark"
+                className="border-0 shadow-lg cursor-pointer hover:opacity-90 transition-opacity flex items-center justify-center"
+                style={{
+                  width: "auto",
+                  minWidth: "126px",
+                  height: "36px",
+                  borderRadius: "60px",
+                  paddingTop: "7px",
+                  paddingRight: "17px",
+                  paddingBottom: "7px",
+                  paddingLeft: "17px",
+                  gap: "10px",
+                  background: "rgba(0, 0, 0, 0.25)",
+                  backdropFilter: "blur(44px)",
+                }}
+              >
+                <span
+                  className="font-lufga"
+                  style={{
+                    fontWeight: 500,
+                    fontSize: "16px",
+                    lineHeight: "140%",
+                    letterSpacing: "0%",
+                    textAlign: "center",
+                    color: "rgba(255, 255, 255, 1)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {category}
+                </span>
               </Badge>
             </Link>
           )}

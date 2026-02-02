@@ -6,8 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Plus, MoreVertical, Eye, Edit, MessageSquare, RefreshCw, Trash2, Loader2 } from "lucide-react";
+import { Search, Plus, MoreVertical, Loader2 } from "lucide-react";
 import messageIcon from "@/assets/mesg.svg";
+import viewIcon from "@/assets/view icon.svg";
+import editIcon from "@/assets/edit icon.svg";
+import messageMenuIcon from "@/assets/message icon.svg";
+import blockIcon from "@/assets/Block icon.svg";
+import deleteIcon from "@/assets/Del icon.svg";
 import {
   Select,
   SelectContent,
@@ -579,47 +584,116 @@ export default function AdminTeamMembers() {
                                   <MoreVertical className="h-3 w-3 sm:h-4 sm:w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent 
+                              <DropdownMenuContent
                                 align="end"
-                                className="w-36 sm:w-40 bg-accent border-accent text-xs sm:text-sm"
+                                className="min-w-0 shadow-[0px_3px_33px_0px_rgba(0,0,0,0.05)]"
+                                style={{
+                                  width: "56px",
+                                  height: "231px",
+                                  borderRadius: "12px",
+                                  border: "1px solid rgba(198, 254, 31, 1)",
+                                  background: "rgba(255, 255, 255, 1)",
+                                  paddingTop: "15px",
+                                  paddingRight: "12px",
+                                  paddingBottom: "15px",
+                                  paddingLeft: "12px",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "10px",
+                                }}
                               >
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   onClick={() => navigate(`/admin/team/${member.id}`)}
-                                  className="cursor-pointer"
+                                  className="p-0 focus:bg-transparent"
                                 >
-                                  <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                                  View
+                                  <div
+                                    className="flex items-center justify-center"
+                                    style={{
+                                      width: "32px",
+                                      height: "32px",
+                                      borderRadius: "10px",
+                                      background: "rgba(244, 244, 244, 1)",
+                                      border: "1px solid rgba(235, 240, 237, 1)",
+                                    }}
+                                  >
+                                    <img src={viewIcon} alt="View" className="h-4 w-4" />
+                                  </div>
+                                  <span className="sr-only">View</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   onClick={() => handleEdit(member)}
-                                  className="cursor-pointer"
+                                  className="p-0 focus:bg-transparent"
                                 >
-                                  <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                                  Edit
+                                  <div
+                                    className="flex items-center justify-center"
+                                    style={{
+                                      width: "32px",
+                                      height: "32px",
+                                      borderRadius: "10px",
+                                      background: "rgba(244, 244, 244, 1)",
+                                      border: "1px solid rgba(235, 240, 237, 1)",
+                                    }}
+                                  >
+                                    <img src={editIcon} alt="Edit" className="h-4 w-4" />
+                                  </div>
+                                  <span className="sr-only">Edit</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                  className="cursor-pointer"
+                                <DropdownMenuItem
                                   onClick={() => navigate(`/admin/chats?userId=${member.id}`)}
+                                  className="p-0 focus:bg-transparent"
                                 >
-                                  <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                                  Chat
+                                  <div
+                                    className="flex items-center justify-center"
+                                    style={{
+                                      width: "32px",
+                                      height: "32px",
+                                      borderRadius: "10px",
+                                      background: "rgba(244, 244, 244, 1)",
+                                      border: "1px solid rgba(235, 240, 237, 1)",
+                                    }}
+                                  >
+                                    <img src={messageMenuIcon} alt="Chat" className="h-4 w-4" />
+                                  </div>
+                                  <span className="sr-only">Chat</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   onClick={() => {
                                     queryClient.invalidateQueries({ queryKey: ["team-members"] });
                                     toast.success("Team members refreshed");
                                   }}
-                                  className="cursor-pointer"
+                                  className="p-0 focus:bg-transparent"
                                 >
-                                  <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                                  Refresh
+                                  <div
+                                    className="flex items-center justify-center"
+                                    style={{
+                                      width: "32px",
+                                      height: "32px",
+                                      borderRadius: "10px",
+                                      background: "rgba(244, 244, 244, 1)",
+                                      border: "1px solid rgba(235, 240, 237, 1)",
+                                    }}
+                                  >
+                                    <img src={blockIcon} alt="Refresh" className="h-4 w-4" />
+                                  </div>
+                                  <span className="sr-only">Refresh</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   onClick={() => handleDelete(member)}
-                                  className="cursor-pointer text-destructive"
+                                  className="p-0 focus:bg-transparent"
                                 >
-                                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                                  Delete
+                                  <div
+                                    className="flex items-center justify-center"
+                                    style={{
+                                      width: "32px",
+                                      height: "32px",
+                                      borderRadius: "10px",
+                                      background: "rgba(244, 244, 244, 1)",
+                                      border: "1px solid rgba(235, 240, 237, 1)",
+                                    }}
+                                  >
+                                    <img src={deleteIcon} alt="Delete" className="h-4 w-4" />
+                                  </div>
+                                  <span className="sr-only">Delete</span>
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>

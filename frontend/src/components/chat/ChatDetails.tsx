@@ -99,8 +99,14 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
         }
 
         // Get chat label if available
-        if (chatData?.chatLabel && chatData.chatLabel.length > 0) {
-          const label = chatData.chatLabel[0].label;
+        const labelEntries = Array.isArray(chatData?.chatLabel)
+          ? chatData.chatLabel
+          : Array.isArray(chatData?.chatLabels)
+          ? chatData.chatLabels
+          : [];
+        if (labelEntries.length > 0) {
+          const userLabel = labelEntries.find((l: any) => l.userId === userId);
+          const label = (userLabel?.label || labelEntries[0]?.label) as 'GOOD' | 'MEDIUM' | 'BAD' | undefined;
           if (label === 'GOOD' || label === 'MEDIUM' || label === 'BAD') {
             setChatLabel(label);
           }

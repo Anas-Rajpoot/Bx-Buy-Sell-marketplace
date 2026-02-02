@@ -111,7 +111,7 @@ export function EditMemberDialog({ open, onOpenChange, member }: EditMemberDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] bg-background border-border">
+      <DialogContent className="sm:max-w-[600px] bg-background border-border" showClose={false}>
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-semibold">Edit Team Member</DialogTitle>

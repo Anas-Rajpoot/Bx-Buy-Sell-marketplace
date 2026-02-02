@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Send, Search, Video, MoreVertical, X, UserX, Trash2, User, PhoneOff, Archive, MessageSquare, Paperclip, Edit2, Check, XCircle } from "lucide-react";
+import { Send, Search, Video, MoreVertical, X, UserX, Trash2, User, PhoneOff, Archive, MessageSquare, Paperclip, Edit2, Check, XCircle, Pin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,7 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
   const [isLoadingChatRoom, setIsLoadingChatRoom] = useState(true);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
+  const [isChatPinned, setIsChatPinned] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -2067,6 +2068,23 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
     }
   }, [isVideoCallDialogOpen]);
 
+  useEffect(() => {
+    const chatIdToUse = chatRoom?.id || conversationId;
+    if (!chatIdToUse) {
+      setIsChatPinned(false);
+      return;
+    }
+
+    try {
+      const rawPinned = localStorage.getItem("pinned_chat_ids");
+      const parsedPinned = rawPinned ? (JSON.parse(rawPinned) as string[]) : [];
+      setIsChatPinned(parsedPinned.includes(chatIdToUse));
+    } catch (error) {
+      console.error("Error reading pinned chats:", error);
+      setIsChatPinned(false);
+    }
+  }, [chatRoom?.id, conversationId]);
+
   const handleDeleteChat = async () => {
     const chatIdToUse = chatRoom?.id || conversationId;
     if (!chatIdToUse || !currentUserId) {
@@ -2127,6 +2145,37 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
     } catch (error) {
       console.error("Error archiving chat:", error);
       toast.error("Failed to archive chat");
+    }
+  };
+
+  const handlePinChat = () => {
+    const chatIdToUse = chatRoom?.id || conversationId;
+    if (!chatIdToUse) {
+      toast.error("Chat room not loaded");
+      return;
+    }
+
+    try {
+      const rawPinned = localStorage.getItem("pinned_chat_ids");
+      const parsedPinned = rawPinned ? (JSON.parse(rawPinned) as string[]) : [];
+      const isPinned = parsedPinned.includes(chatIdToUse);
+      const nextPinned = isPinned
+        ? parsedPinned.filter((id) => id !== chatIdToUse)
+        : [...parsedPinned, chatIdToUse];
+
+      localStorage.setItem("pinned_chat_ids", JSON.stringify(nextPinned));
+      setIsChatPinned(!isPinned);
+      toast.success(isPinned ? "Chat unpinned" : "Chat pinned");
+
+      if (chatRoom) {
+        setChatRoom({ ...chatRoom, isPinned: !isPinned });
+      }
+      if (refreshConversations) {
+        refreshConversations();
+      }
+    } catch (error: any) {
+      console.error("Error pinning chat:", error);
+      toast.error(error?.message || "Failed to update pin");
     }
   };
 
@@ -2400,6 +2449,9 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={handleArchiveChat}>
                 <Archive className="mr-2 h-4 w-4" /> Archive Chat
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handlePinChat}>
+                <Pin className="mr-2 h-4 w-4" /> {isChatPinned ? "Unpin Chat" : "Pin Chat"}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleBlockUser}>
                 <UserX className="mr-2 h-4 w-4" /> Block User

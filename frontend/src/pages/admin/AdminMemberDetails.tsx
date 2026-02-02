@@ -5,7 +5,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Loader2, CheckCircle, Check, Star, MessageSquare, Ban, Trash2, Edit, Save, X } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle, Check, Star, MessageSquare, Ban, Trash2, Edit, Save, X, Eye, EyeOff } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,6 +24,8 @@ export default function AdminMemberDetails() {
   const [isEditing, setIsEditing] = useState(false);
   const [editedMember, setEditedMember] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [stats, setStats] = useState({
     managedChats: 0,
     activityLog: 0,
@@ -152,6 +154,10 @@ export default function AdminMemberDetails() {
     if (!editedMember || !id) return;
     
     try {
+      if (newPassword && newPassword.trim().length > 0 && newPassword.trim().length < 8) {
+        toast.error("Password must be at least 8 characters");
+        return;
+      }
       setSaving(true);
       const updateData: any = {};
       
@@ -167,12 +173,17 @@ export default function AdminMemberDetails() {
       if (editedMember.role !== member.role) {
         updateData.role = editedMember.role;
       }
+      
+      if (newPassword && newPassword.trim().length > 0) {
+        updateData.password_hash = newPassword.trim();
+      }
 
       const response = await apiClient.updateUserByAdmin(id, updateData);
       
       if (response.success) {
         toast.success("Member updated successfully");
         setIsEditing(false);
+        setNewPassword("");
         await loadMemberData();
       } else {
         toast.error(response.error || "Failed to update member");
@@ -187,6 +198,7 @@ export default function AdminMemberDetails() {
 
   const handleCancel = () => {
     setEditedMember(member);
+    setNewPassword("");
     setIsEditing(false);
   };
 
@@ -588,11 +600,11 @@ export default function AdminMemberDetails() {
                       Username
                     </label>
                     {isEditing && isSuperAdmin ? (
-                      <div className="flex gap-2 items-center">
+                      <div className="flex gap-2 items-center justify-end">
                         <Input
                           value={editedMember?.first_name || ""}
                           onChange={(e) => setEditedMember({ ...editedMember, first_name: e.target.value })}
-                          className="w-32"
+                          className="w-32 text-right"
                           style={{
                             fontFamily: 'Lufga',
                             fontWeight: 500,
@@ -606,7 +618,7 @@ export default function AdminMemberDetails() {
                         <Input
                           value={editedMember?.last_name || ""}
                           onChange={(e) => setEditedMember({ ...editedMember, last_name: e.target.value })}
-                          className="w-32"
+                          className="w-32 text-right"
                           style={{
                             fontFamily: 'Lufga',
                             fontWeight: 500,
@@ -635,6 +647,7 @@ export default function AdminMemberDetails() {
                           lineHeight: '140%',
                           letterSpacing: '0%',
                           color: '#000000',
+                          textAlign: 'right',
                         }}
                       >
                         {member.full_name || "N/A"}
@@ -668,7 +681,7 @@ export default function AdminMemberDetails() {
                       <Input
                         value={editedMember?.email || ""}
                         onChange={(e) => setEditedMember({ ...editedMember, email: e.target.value })}
-                        className="w-64"
+                        className="w-64 text-right"
                         style={{
                           fontFamily: 'Lufga',
                           fontWeight: 500,
@@ -688,6 +701,7 @@ export default function AdminMemberDetails() {
                           lineHeight: '140%',
                           letterSpacing: '0%',
                           color: '#000000',
+                          textAlign: 'right',
                         }}
                       >
                         {member.email || "N/A"}
@@ -717,6 +731,34 @@ export default function AdminMemberDetails() {
                     >
                       Password
                     </label>
+                  {isEditing && isSuperAdmin ? (
+                    <div className="relative w-64">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="New password"
+                        className="w-64 pr-10 text-right"
+                        style={{
+                          fontFamily: 'Lufga',
+                          fontWeight: 500,
+                          fontSize: '18px',
+                          lineHeight: '140%',
+                          letterSpacing: '0%',
+                          color: '#000000',
+                          height: '25px',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  ) : (
                     <span 
                       className="font-lufga"
                       style={{
@@ -725,10 +767,12 @@ export default function AdminMemberDetails() {
                         lineHeight: '140%',
                         letterSpacing: '0%',
                         color: '#000000',
+                        textAlign: 'right',
                       }}
                     >
                       ••••••••••
                     </span>
+                  )}
                   </div>
 
                   {/* User ID Row */}
@@ -761,6 +805,7 @@ export default function AdminMemberDetails() {
                         lineHeight: '140%',
                         letterSpacing: '0%',
                         color: '#000000',
+                        textAlign: 'right',
                       }}
                     >
                       {member.id || "N/A"}
@@ -793,7 +838,7 @@ export default function AdminMemberDetails() {
                       <select
                         value={editedMember?.role || ""}
                         onChange={(e) => setEditedMember({ ...editedMember, role: e.target.value })}
-                        className="px-3 border border-gray-300 rounded-md"
+                        className="px-3 border border-gray-300 rounded-md text-right"
                         style={{
                           fontFamily: 'Lufga',
                           fontWeight: 500,
@@ -802,6 +847,7 @@ export default function AdminMemberDetails() {
                           letterSpacing: '0%',
                           color: '#000000',
                           height: '25px',
+                          textAlign: 'right',
                         }}
                       >
                         <option value="USER">USER</option>
@@ -817,6 +863,7 @@ export default function AdminMemberDetails() {
                           lineHeight: '140%',
                           letterSpacing: '0%',
                           color: '#000000',
+                          textAlign: 'right',
                         }}
                       >
                         {member.role || "N/A"}
