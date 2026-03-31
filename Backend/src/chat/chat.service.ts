@@ -179,6 +179,7 @@ export class ChatService {
     content: string;
     type?: string;
     fileUrl?: string | null;
+    metadata?: Prisma.InputJsonValue;
   }) {
     const { chatId, senderId, content } = data;
 
@@ -212,6 +213,7 @@ export class ChatService {
         content,
         type: (data.type as MessageType) ?? MessageType.TEXT,
         fileUrl: data.fileUrl ?? null,
+        metadata: data.metadata,
         read: false,
       },
     });
@@ -244,6 +246,21 @@ export class ChatService {
     }
 
     return saved;
+  }
+
+  async createSystemTimelineMessage(
+    chatId: string,
+    senderId: string,
+    content: string,
+    metadata?: Prisma.InputJsonValue,
+  ) {
+    return this.createMessage({
+      chatId,
+      senderId,
+      content,
+      type: MessageType.ADMIN,
+      metadata,
+    });
   }
 
   async updateMessage(messageId: string, userId: string, content: string) {

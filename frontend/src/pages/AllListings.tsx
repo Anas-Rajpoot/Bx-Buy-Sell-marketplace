@@ -292,7 +292,7 @@ const AllListings = () => {
 
   useEffect(() => {
     fetchListings();
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     // Update URL when filters change
@@ -312,7 +312,9 @@ const AllListings = () => {
     try {
       console.log('🔍 Fetching ALL listings (will filter to PUBLISH client-side)');
       
-      let response = await apiClient.getListings({ nocache: 'true' });
+      const response = isAuthenticated
+        ? await apiClient.getSecureListings()
+        : await apiClient.getListings({ nocache: 'true' });
       console.log('📦 API Response (ALL):', response);
       
       if (response.success) {
@@ -2026,6 +2028,7 @@ const AllListings = () => {
                           managedByEx={listing.managed_by_ex === true || listing.managed_by_ex === 1 || listing.managed_by_ex === 'true' || listing.managed_by_ex === '1'}
                           listingId={listing.id}
                           sellerId={listing.userId || listing.user_id}
+                          lockRedirectTo={listing?.lockAction?.redirectTo || '/pricing'}
                         />
                       );
                     })}

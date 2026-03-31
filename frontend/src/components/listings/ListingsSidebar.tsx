@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import logo from "@/assets/_App Icon 1 (2).png";
 import rocketIcon from "@/assets/roccket.svg";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { apiClient } from "@/lib/api";
 
 interface ListingsSidebarProps {
   mobileOpen?: boolean;
@@ -20,6 +21,25 @@ const SidebarContent = ({ onLinkClick }: { onLinkClick?: () => void }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const [isPro, setIsPro] = useState(false);
+  const [loadingSubscription, setLoadingSubscription] = useState(true);
+
+  useEffect(() => {
+    checkSubscription();
+  }, []);
+
+  const checkSubscription = async () => {
+    try {
+      const response = await apiClient.request("/subscription/current");
+      if (response.success && response.data) {
+        setIsPro(response.data.plan?.slug === "pro" && response.data.status === "ACTIVE");
+      }
+    } catch (error) {
+      console.error("Error checking subscription:", error);
+    } finally {
+      setLoadingSubscription(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -37,6 +57,11 @@ const SidebarContent = ({ onLinkClick }: { onLinkClick?: () => void }) => {
     if (onLinkClick) {
       onLinkClick();
     }
+  };
+
+  const handleUpgrade = () => {
+    navigate("/pricing");
+    onLinkClick?.();
   };
 
   const menuItems = [
@@ -109,52 +134,55 @@ const SidebarContent = ({ onLinkClick }: { onLinkClick?: () => void }) => {
           })}
         </nav>
 
-        {/* Pro Signup Card */}
-        <div 
-          className="mx-0 mb-3 sm:mb-4 flex-shrink-0 w-full rounded-[24px] sm:rounded-[28px] md:rounded-[32px] p-3 sm:p-4 md:p-5 bg-[rgba(174,243,31,1)] flex flex-col gap-3 sm:gap-4 md:gap-5 items-center"
-          style={{
-            minHeight: '200px',
-          }}
-        >
-          {/* Logo Container */}
-          <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 p-2.5 sm:p-3 md:p-3.5 rounded-[32px] sm:rounded-[36px] md:rounded-[42px] bg-[rgba(0,0,0,0.1)] flex items-center justify-center">
-            <img 
-              src={rocketIcon} 
-              alt="Rocket" 
-              className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8"
-            />
-          </div>
-
-          {/* Text */}
-          <h3 className="text-center font-['Lufga'] font-semibold text-[10px] sm:text-xs md:text-sm lg:text-base leading-[130%] capitalize text-black m-0">
-            upgrade your
-            <br />
-            account to pro
-          </h3>
-
-          {/* Button */}
-          <Button
-            className="flex items-center justify-center gap-1.5 sm:gap-2 w-full sm:w-auto sm:min-w-[160px] md:min-w-[180px] lg:min-w-[200px] h-9 sm:h-10 md:h-11 lg:h-12 py-2 sm:py-2.5 md:py-3 lg:py-3.5 rounded-full bg-black font-['Lufga'] font-medium text-[10px] sm:text-xs md:text-sm lg:text-base leading-[130%] capitalize text-white"
+        {/* Pro Signup Card - Only show for Free users */}
+        {!loadingSubscription && !isPro && (
+          <div 
+            className="mx-0 mb-3 sm:mb-4 flex-shrink-0 w-full rounded-[24px] sm:rounded-[28px] md:rounded-[32px] p-3 sm:p-4 md:p-5 bg-[rgba(174,243,31,1)] flex flex-col gap-3 sm:gap-4 md:gap-5 items-center"
+            style={{
+              minHeight: '200px',
+            }}
           >
-            Let's Go
-            <svg 
-              width="12" 
-              height="10" 
-              viewBox="0 0 15 12.5" 
-              fill="none" 
-              xmlns="http://www.w3.org/2000/svg"
-              className="opacity-100"
-            >
-              <path 
-                d="M0 6.25L10 6.25M10 6.25L6.25 2.5M10 6.25L6.25 10" 
-                stroke="rgba(255, 255, 255, 1)" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
+            {/* Logo Container */}
+            <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 p-2.5 sm:p-3 md:p-3.5 rounded-[32px] sm:rounded-[36px] md:rounded-[42px] bg-[rgba(0,0,0,0.1)] flex items-center justify-center">
+              <img 
+                src={rocketIcon} 
+                alt="Rocket" 
+                className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8"
               />
-            </svg>
-          </Button>
-        </div>
+            </div>
+
+            {/* Text */}
+            <h3 className="text-center font-['Lufga'] font-semibold text-[10px] sm:text-xs md:text-sm lg:text-base leading-[130%] capitalize text-black m-0">
+              upgrade your
+              <br />
+              account to pro
+            </h3>
+
+            {/* Button */}
+            <Button
+              onClick={handleUpgrade}
+              className="flex items-center justify-center gap-1.5 sm:gap-2 w-full sm:w-auto sm:min-w-[160px] md:min-w-[180px] lg:min-w-[200px] h-9 sm:h-10 md:h-11 lg:h-12 py-2 sm:py-2.5 md:py-3 lg:py-3.5 rounded-full bg-black font-['Lufga'] font-medium text-[10px] sm:text-xs md:text-sm lg:text-base leading-[130%] capitalize text-white"
+            >
+              Let's Go
+              <svg 
+                width="12" 
+                height="10" 
+                viewBox="0 0 15 12.5" 
+                fill="none" 
+                xmlns="http://www.w3.org/2000/svg"
+                className="opacity-100"
+              >
+                <path 
+                  d="M0 6.25L10 6.25M10 6.25L6.25 2.5M10 6.25L6.25 10" 
+                  stroke="rgba(255, 255, 255, 1)" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Bottom Menu - Fixed */}

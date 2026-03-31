@@ -5,10 +5,14 @@ import { ZodValidationPipe } from 'common/validator/zod.validator';
 import { UpdateLabelDTO, updateLabelSchema } from './dto/update-label';
 import { ApiBody, ApiParam } from '@nestjs/swagger';
 import { Roles } from 'common/decorator/roles.decorator';
+import { ListingService } from 'src/listing/listing.service';
 @Roles(['ADMIN', 'MONITER']) // Default: Only admin/moniter, but individual endpoints override this
 @Controller('chat')
 export class ChatController {
-  constructor(private chatService: ChatService) {}
+  constructor(
+    private chatService: ChatService,
+    private listingService: ListingService,
+  ) {}
   private isStaffRole(role?: string) {
     return role === 'ADMIN' || role === 'MONITER' || role === 'STAFF';
   }
@@ -350,6 +354,95 @@ export class ChatController {
     @Param('chatId') chatId: string,
   ) {
     return this.chatService.getAssignedMonitor(chatId);
+  }
+
+  @Roles(['ADMIN', 'MONITER', 'USER', 'STAFF'])
+  @Post('/confidential/grant/:chatId')
+  @ApiParam({ name: 'chatId', description: 'Chat ID', type: String })
+  async grantConfidentialAccessFromChat(
+    @Param('chatId') chatId: string,
+    @Req() req: any,
+  ) {
+    const chat = await this.chatService.getChatById(chatId);
+    if (!chat || !chat.listingId) {
+      throw new ForbiddenException('Chat listing not found');
+    }
+
+    const currentUser = req?.user;
+    if (!currentUser || currentUser.id !== chat.sellerId) {
+      throw new ForbiddenException(
+        'Only the seller can grant confidential access from chat.',
+      );
+    }
+
+    const grantResult = await this.listingService.grantConfidentialAccess(
+      chat.listingId,
+      chat.sellerId,
+      chat.userId,
+      chatId,
+    );
+
+    await this.chatService.createSystemTimelineMessage(
+      chatId,
+      currentUser.id,
+      'Seller has granted access to confidential listing details.',
+      {
+        eventType: 'CONFIDENTIAL_ACCESS_GRANTED',
+        listingId: chat.listingId,
+        buyerId: chat.userId,
+        sellerId: chat.sellerId,
+        chatId,
+      },
+    );
+
+    return {
+      success: true,
+      grant: grantResult,
+    };
+  }
+
+  @Roles(['ADMIN', 'MONITER', 'USER', 'STAFF'])
+  @Delete('/confidential/revoke/:chatId')
+  @ApiParam({ name: 'chatId', description: 'Chat ID', type: String })
+  async revokeConfidentialAccessFromChat(
+    @Param('chatId') chatId: string,
+    @Req() req: any,
+  ) {
+    const chat = await this.chatService.getChatById(chatId);
+    if (!chat || !chat.listingId) {
+      throw new ForbiddenException('Chat listing not found');
+    }
+
+    const currentUser = req?.user;
+    if (!currentUser || currentUser.id !== chat.sellerId) {
+      throw new ForbiddenException(
+        'Only the seller can revoke confidential access from chat.',
+      );
+    }
+
+    const revokeResult = await this.listingService.revokeConfidentialAccess(
+      chat.listingId,
+      chat.sellerId,
+      chat.userId,
+    );
+
+    await this.chatService.createSystemTimelineMessage(
+      chatId,
+      currentUser.id,
+      'Seller has revoked access to confidential listing details.',
+      {
+        eventType: 'CONFIDENTIAL_ACCESS_REVOKED',
+        listingId: chat.listingId,
+        buyerId: chat.userId,
+        sellerId: chat.sellerId,
+        chatId,
+      },
+    );
+
+    return {
+      success: true,
+      revoke: revokeResult,
+    };
   }
 
   // Edit message

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
@@ -30,6 +31,7 @@ const EditListing = () => {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [rules, setRules] = useState<any>(null);
   const hasLoadedRef = useRef(false);
   const loadedIdRef = useRef<string | null>(null);
 
@@ -46,17 +48,27 @@ const EditListing = () => {
   const { data: accountQuestions = [] } = useAccountQuestions();
   const [uploadingFields, setUploadingFields] = useState<Set<string>>(new Set());
 
+  useEffect(() => {
+    const loadRules = async () => {
+      const response = await apiClient.getSubscriptionRules();
+      if (response.success) {
+        setRules(response.data);
+      }
+    };
+    loadRules();
+  }, []);
+
   // Fetch listing data
   const { data: listing, isLoading } = useQuery({
     queryKey: ["listing", id],
     queryFn: async () => {
-      const response = await apiClient.getListingById(id!);
+      const response = await apiClient.getSecureListingById(id!);
       if (!response.success) {
         throw new Error(response.error || "Failed to fetch listing");
       }
       return response.data;
     },
-    enabled: !!id,
+    enabled: !!id && isAuthenticated,
   });
 
   // Load listing data into form when it's fetched
@@ -340,6 +352,10 @@ const EditListing = () => {
     if (listing.status) {
       transformedData.listingStatus = listing.status === 'PUBLISH' ? 'PUBLISH' : 'DRAFT';
     }
+
+    transformedData.confidentialControl = Boolean(listing.confidentialControl);
+    transformedData.featuredOnCategoryPage = Boolean(listing.featuredOnCategoryPage);
+    transformedData.featuredOnStartPage = Boolean(listing.featuredOnStartPage);
 
     console.log('Transformed form data keys:', Object.keys(transformedData));
     console.log('Transformed form data:', transformedData);
@@ -925,6 +941,9 @@ const EditListing = () => {
       // Prepare listing data for API
       const listingPayload: any = {
         status: formData.listingStatus || listing?.status || 'DRAFT',
+        confidentialControl: Boolean(formData.confidentialControl),
+        featuredOnCategoryPage: Boolean(formData.featuredOnCategoryPage),
+        featuredOnStartPage: Boolean(formData.featuredOnStartPage),
         productQuestion: productQuestionArray,
         managementQuestion: managementQuestionArray,
         social_account: socialAccountArray,
@@ -986,6 +1005,10 @@ const EditListing = () => {
       </div>
     );
   }
+
+  const canToggleConfidential = Boolean(rules?.actions?.canToggleConfidentialControl);
+  const canFeatureCategory = Boolean(rules?.actions?.canFeatureOnCategoryPage);
+  const canFeatureStart = Boolean(rules?.actions?.canFeatureOnStartPage);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -1369,6 +1392,62 @@ const EditListing = () => {
           </Card>
 
           {/* Status */}
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Seller Visibility Controls</h2>
+            <div className="space-y-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="confidential-control">Confidential Control (Pro)</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Hide confidential listing details until you grant access to a buyer in chat.
+                  </p>
+                </div>
+                <Switch
+                  id="confidential-control"
+                  checked={Boolean(formData.confidentialControl)}
+                  disabled={!canToggleConfidential}
+                  onCheckedChange={(checked) => setFormData({ ...formData, confidentialControl: checked })}
+                />
+              </div>
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="featured-category">Featured on Category Page (Pro)</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Rotates equally with all featured listings in the same category.
+                  </p>
+                </div>
+                <Switch
+                  id="featured-category"
+                  checked={Boolean(formData.featuredOnCategoryPage)}
+                  disabled={!canFeatureCategory}
+                  onCheckedChange={(checked) => setFormData({ ...formData, featuredOnCategoryPage: checked })}
+                />
+              </div>
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="featured-start">Featured on Start Page (Add-on)</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Rotates equally with other start-page featured listings (separate paid add-on).
+                  </p>
+                </div>
+                <Switch
+                  id="featured-start"
+                  checked={Boolean(formData.featuredOnStartPage)}
+                  disabled={!canFeatureStart}
+                  onCheckedChange={(checked) => setFormData({ ...formData, featuredOnStartPage: checked })}
+                />
+              </div>
+
+              {(!canToggleConfidential || !canFeatureCategory || !canFeatureStart) && (
+                <p className="text-sm text-muted-foreground">
+                  Locked options require Pro plan and/or the start page featured add-on.
+                </p>
+              )}
+            </div>
+          </Card>
+
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">Status</h2>
             <div className="space-y-2">

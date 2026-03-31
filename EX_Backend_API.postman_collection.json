@@ -1,0 +1,3677 @@
+{
+  "info": {
+    "name": "EX Backend API (auto-generated)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "bearerToken",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "activity-log",
+      "item": [
+        {
+          "name": "GET /activity-log",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activity-log",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activity-log"
+              ]
+            },
+            "description": "activity-log/activity-log.controller.ts"
+          }
+        },
+        {
+          "name": "GET /activity-log/log-count/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activity-log/log-count/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activity-log",
+                "log-count",
+                ":id"
+              ]
+            },
+            "description": "activity-log/activity-log.controller.ts"
+          }
+        },
+        {
+          "name": "GET /activity-log/user/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activity-log/user/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activity-log",
+                "user",
+                ":id"
+              ]
+            },
+            "description": "activity-log/activity-log.controller.ts"
+          }
+        },
+        {
+          "name": "POST /activity-log/user/:id/dates",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activity-log/user/:id/dates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activity-log",
+                "user",
+                ":id",
+                "dates"
+              ]
+            },
+            "description": "activity-log/activity-log.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "admin-social-account",
+      "item": [
+        {
+          "name": "DELETE /admin-social-account/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin-social-account/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin-social-account",
+                ":id"
+              ]
+            },
+            "description": "admin-social-account/admin-social-account.controller.ts"
+          }
+        },
+        {
+          "name": "GET /admin-social-account",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin-social-account",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin-social-account"
+              ]
+            },
+            "description": "admin-social-account/admin-social-account.controller.ts"
+          }
+        },
+        {
+          "name": "GET /admin-social-account/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin-social-account/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin-social-account",
+                ":id"
+              ]
+            },
+            "description": "admin-social-account/admin-social-account.controller.ts"
+          }
+        },
+        {
+          "name": "PATCH /admin-social-account/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin-social-account/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin-social-account",
+                ":id"
+              ]
+            },
+            "description": "admin-social-account/admin-social-account.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /admin-social-account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin-social-account",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin-social-account"
+              ]
+            },
+            "description": "admin-social-account/admin-social-account.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "auth",
+      "item": [
+        {
+          "name": "GET /auth/get-otp/:email",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/get-otp/:email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "get-otp",
+                ":email"
+              ]
+            },
+            "description": "auth/auth.controller.ts"
+          }
+        },
+        {
+          "name": "GET /auth/logout/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout",
+                ":id"
+              ]
+            },
+            "description": "auth/auth.controller.ts"
+          }
+        },
+        {
+          "name": "PATCH /auth/refresh/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh",
+                ":id"
+              ]
+            },
+            "description": "auth/auth.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/reset-password/:email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password/:email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "reset-password",
+                ":email"
+              ]
+            },
+            "description": "auth/auth.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/signin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/signin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signin"
+              ]
+            },
+            "description": "auth/auth.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ]
+            },
+            "description": "auth/auth.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "PUT /auth/update-password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/update-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "update-password"
+              ]
+            },
+            "description": "auth/auth.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "PUT /auth/verify-otp",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "verify-otp"
+              ]
+            },
+            "description": "auth/auth.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "category",
+      "item": [
+        {
+          "name": "DELETE /category/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/category/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "category",
+                ":id"
+              ]
+            },
+            "description": "category/category.controller.ts"
+          }
+        },
+        {
+          "name": "GET /category",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "category"
+              ]
+            },
+            "description": "category/category.controller.ts"
+          }
+        },
+        {
+          "name": "GET /category/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/category/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "category",
+                ":id"
+              ]
+            },
+            "description": "category/category.controller.ts"
+          }
+        },
+        {
+          "name": "PATCH /category/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/category/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "category",
+                ":id"
+              ]
+            },
+            "description": "category/category.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "category"
+              ]
+            },
+            "description": "category/category.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "chat",
+      "item": [
+        {
+          "name": "DELETE /chat/confidential/revoke/:chatId",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/confidential/revoke/:chatId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "confidential",
+                "revoke",
+                ":chatId"
+              ]
+            },
+            "description": "chat/chat.controller.ts"
+          }
+        },
+        {
+          "name": "DELETE /chat/delete/:chatId/:userId",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/delete/:chatId/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "delete",
+                ":chatId",
+                ":userId"
+              ]
+            },
+            "description": "chat/chat.controller.ts"
+          }
+        },
+        {
+          "name": "DELETE /chat/message/:messageId/delete",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/message/:messageId/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "message",
+                ":messageId",
+                "delete"
+              ]
+            },
+            "description": "chat/chat.controller.ts"
+          }
+        },
+        {
+          "name": "DELETE /chat/unassign/:chatId",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/unassign/:chatId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "unassign",
+                ":chatId"
+              ]
+            },
+            "description": "chat/chat.controller.ts"
+          }
+        },
+        {
+          "name": "GET /chat/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                ":id"
+              ]
+            },
+            "description": "chat/chat.controller.ts"
+          }
+        },
+        {
+          "name": "GET /chat/all",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "all"
+              ]
+            },
+            "description": "chat/chat.controller.ts"
+          }
+        },
+        {
+          "name": "GET /chat/assigned/:chatId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/assigned/:chatId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "assigned",
+                ":chatId"
+              ]
+            },
+            "description": "chat/chat.controller.ts"
+          }
+        },
+        {
+          "name": "GET /chat/create/:userId/:sellerId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/create/:userId/:sellerId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "create",
+                ":userId",
+                ":sellerId"
+              ]
+            },
+            "description": "chat/chat.controller.ts"
+          }
+        },
+        {
+          "name": "GET /chat/fetch/:userId/:sellerId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/fetch/:userId/:sellerId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "fetch",
+                ":userId",
+                ":sellerId"
+              ]
+            },
+            "description": "chat/chat.controller.ts"
+          }
+        },
+        {
+          "name": "GET /chat/fetch/seller/:sellerId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/fetch/seller/:sellerId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "fetch",
+                "seller",
+                ":sellerId"
+              ]
+            },
+            "description": "chat/chat.controller.ts"
+          }
+        },
+        {
+          "name": "GET /chat/fetch/user/:userId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/fetch/user/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "fetch",
+                "user",
+                ":userId"
+              ]
+            },
+            "description": "chat/chat.controller.ts"
+          }
+        },
+        {
+          "name": "GET /chat/get-chat-count/:userId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/get-chat-count/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "get-chat-count",
+                ":userId"
+              ]
+            },
+            "description": "chat/chat.controller.ts"
+          }
+        },
+        {
+          "name": "GET /chat/monitor/all",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/monitor/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "monitor",
+                "all"
+              ]
+            },
+            "description": "chat/chat.controller.ts"
+          }
+        },
+        {
+          "name": "GET /chat/monitor/debug",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/monitor/debug",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "monitor",
+                "debug"
+              ]
+            },
+            "description": "chat/chat.controller.ts"
+          }
+        },
+        {
+          "name": "POST /chat/assign/:chatId/:monitorId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/assign/:chatId/:monitorId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "assign",
+                ":chatId",
+                ":monitorId"
+              ]
+            },
+            "description": "chat/chat.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /chat/block/:blockerId/:blockedUserId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/block/:blockerId/:blockedUserId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "block",
+                ":blockerId",
+                ":blockedUserId"
+              ]
+            },
+            "description": "chat/chat.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /chat/confidential/grant/:chatId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/confidential/grant/:chatId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "confidential",
+                "grant",
+                ":chatId"
+              ]
+            },
+            "description": "chat/chat.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /chat/unblock/:blockerId/:blockedUserId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/unblock/:blockerId/:blockedUserId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "unblock",
+                ":blockerId",
+                ":blockedUserId"
+              ]
+            },
+            "description": "chat/chat.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "PUT /chat/archive/:chatId/:userId",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/archive/:chatId/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "archive",
+                ":chatId",
+                ":userId"
+              ]
+            },
+            "description": "chat/chat.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "PUT /chat/mark-read/:chatId/:userId",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/mark-read/:chatId/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "mark-read",
+                ":chatId",
+                ":userId"
+              ]
+            },
+            "description": "chat/chat.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "PUT /chat/mark-read/monitor/:chatId",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/mark-read/monitor/:chatId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "mark-read",
+                "monitor",
+                ":chatId"
+              ]
+            },
+            "description": "chat/chat.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "PUT /chat/message/:messageId/edit",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/message/:messageId/edit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "message",
+                ":messageId",
+                "edit"
+              ]
+            },
+            "description": "chat/chat.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "PUT /chat/unarchive/:chatId/:userId",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/unarchive/:chatId/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "unarchive",
+                ":chatId",
+                ":userId"
+              ]
+            },
+            "description": "chat/chat.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "PUT /chat/update/label",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/update/label",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "update",
+                "label"
+              ]
+            },
+            "description": "chat/chat.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "email-template",
+      "item": [
+        {
+          "name": "DELETE /email-template/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/email-template/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "email-template",
+                ":id"
+              ]
+            },
+            "description": "email-template/email-template.controller.ts"
+          }
+        },
+        {
+          "name": "GET /email-template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/email-template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "email-template"
+              ]
+            },
+            "description": "email-template/email-template.controller.ts"
+          }
+        },
+        {
+          "name": "GET /email-template/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/email-template/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "email-template",
+                ":id"
+              ]
+            },
+            "description": "email-template/email-template.controller.ts"
+          }
+        },
+        {
+          "name": "PATCH /email-template/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/email-template/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "email-template",
+                ":id"
+              ]
+            },
+            "description": "email-template/email-template.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /email-template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/email-template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "email-template"
+              ]
+            },
+            "description": "email-template/email-template.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "financial-admin",
+      "item": [
+        {
+          "name": "GET /financial-admin/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/financial-admin/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "financial-admin",
+                ":id"
+              ]
+            },
+            "description": "financial-admin/financial-admin.controller.ts"
+          }
+        },
+        {
+          "name": "PATCH /financial-admin/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/financial-admin/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "financial-admin",
+                ":id"
+              ]
+            },
+            "description": "financial-admin/financial-admin.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "listing",
+      "item": [
+        {
+          "name": "DELETE /listing/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listing/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listing",
+                ":id"
+              ]
+            },
+            "description": "listing/listing.controller.ts"
+          }
+        },
+        {
+          "name": "DELETE /listing/:id/confidential/revoke/:buyerId",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listing/:id/confidential/revoke/:buyerId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listing",
+                ":id",
+                "confidential",
+                "revoke",
+                ":buyerId"
+              ]
+            },
+            "description": "listing/listing.controller.ts"
+          }
+        },
+        {
+          "name": "GET /listing",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listing"
+              ]
+            },
+            "description": "listing/listing.controller.ts"
+          }
+        },
+        {
+          "name": "GET /listing/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listing/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listing",
+                ":id"
+              ]
+            },
+            "description": "listing/listing.controller.ts"
+          }
+        },
+        {
+          "name": "GET /listing/:id/confidential/access/:buyerId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listing/:id/confidential/access/:buyerId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listing",
+                ":id",
+                "confidential",
+                "access",
+                ":buyerId"
+              ]
+            },
+            "description": "listing/listing.controller.ts"
+          }
+        },
+        {
+          "name": "GET /listing/:id/confidential/access/me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listing/:id/confidential/access/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listing",
+                ":id",
+                "confidential",
+                "access",
+                "me"
+              ]
+            },
+            "description": "listing/listing.controller.ts"
+          }
+        },
+        {
+          "name": "GET /listing/secure/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listing/secure/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listing",
+                "secure",
+                ":id"
+              ]
+            },
+            "description": "listing/listing.controller.ts"
+          }
+        },
+        {
+          "name": "GET /listing/secure/all",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listing/secure/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listing",
+                "secure",
+                "all"
+              ]
+            },
+            "description": "listing/listing.controller.ts"
+          }
+        },
+        {
+          "name": "PATCH /listing/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listing/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listing",
+                ":id"
+              ]
+            },
+            "description": "listing/listing.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /listing",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listing"
+              ]
+            },
+            "description": "listing/listing.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /listing/:id/confidential/grant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listing/:id/confidential/grant",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listing",
+                ":id",
+                "confidential",
+                "grant"
+              ]
+            },
+            "description": "listing/listing.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /listing/guest/draft",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listing/guest/draft",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listing",
+                "guest",
+                "draft"
+              ]
+            },
+            "description": "listing/listing.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "monitoring-alerts",
+      "item": [
+        {
+          "name": "GET /monitoring-alerts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/monitoring-alerts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "monitoring-alerts"
+              ]
+            },
+            "description": "monitoring-alert/monitoring-alert.controller.ts"
+          }
+        },
+        {
+          "name": "PATCH /monitoring-alerts/:id/assign",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/monitoring-alerts/:id/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "monitoring-alerts",
+                ":id",
+                "assign"
+              ]
+            },
+            "description": "monitoring-alert/monitoring-alert.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "PATCH /monitoring-alerts/:id/status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/monitoring-alerts/:id/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "monitoring-alerts",
+                ":id",
+                "status"
+              ]
+            },
+            "description": "monitoring-alert/monitoring-alert.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "niche",
+      "item": [
+        {
+          "name": "DELETE /niche/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/niche/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "niche",
+                ":id"
+              ]
+            },
+            "description": "niche/niche.controller.ts"
+          }
+        },
+        {
+          "name": "GET /niche",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/niche",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "niche"
+              ]
+            },
+            "description": "niche/niche.controller.ts"
+          }
+        },
+        {
+          "name": "GET /niche/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/niche/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "niche",
+                ":id"
+              ]
+            },
+            "description": "niche/niche.controller.ts"
+          }
+        },
+        {
+          "name": "PATCH /niche/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/niche/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "niche",
+                ":id"
+              ]
+            },
+            "description": "niche/niche.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /niche",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/niche",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "niche"
+              ]
+            },
+            "description": "niche/niche.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "notification",
+      "item": [
+        {
+          "name": "DELETE /notification/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notification/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                ":id"
+              ]
+            },
+            "description": "notification/notification.controller.ts"
+          }
+        },
+        {
+          "name": "GET /notification",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notification",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification"
+              ]
+            },
+            "description": "notification/notification.controller.ts"
+          }
+        },
+        {
+          "name": "GET /notification/unread-count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notification/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "unread-count"
+              ]
+            },
+            "description": "notification/notification.controller.ts"
+          }
+        },
+        {
+          "name": "PUT /notification/:id/read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notification/:id/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                ":id",
+                "read"
+              ]
+            },
+            "description": "notification/notification.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "PUT /notification/mark-all-read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notification/mark-all-read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "mark-all-read"
+              ]
+            },
+            "description": "notification/notification.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "plan",
+      "item": [
+        {
+          "name": "DELETE /plan/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plan/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plan",
+                ":id"
+              ]
+            },
+            "description": "plan/plan.controller.ts"
+          }
+        },
+        {
+          "name": "GET /plan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plan"
+              ]
+            },
+            "description": "plan/plan.controller.ts"
+          }
+        },
+        {
+          "name": "GET /plan/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plan/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plan",
+                ":id"
+              ]
+            },
+            "description": "plan/plan.controller.ts"
+          }
+        },
+        {
+          "name": "POST /plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plan"
+              ]
+            },
+            "description": "plan/plan.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "PUT /plan/:id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plan/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plan",
+                ":id"
+              ]
+            },
+            "description": "plan/plan.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "prohibited-word",
+      "item": [
+        {
+          "name": "DELETE /prohibited-word/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/prohibited-word/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prohibited-word",
+                ":id"
+              ]
+            },
+            "description": "prohibited-word/prohibited-word.controller.ts"
+          }
+        },
+        {
+          "name": "GET /prohibited-word/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/prohibited-word/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prohibited-word"
+              ]
+            },
+            "description": "prohibited-word/prohibited-word.controller.ts"
+          }
+        },
+        {
+          "name": "GET /prohibited-word/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/prohibited-word/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prohibited-word",
+                ":id"
+              ]
+            },
+            "description": "prohibited-word/prohibited-word.controller.ts"
+          }
+        },
+        {
+          "name": "PATCH /prohibited-word/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/prohibited-word/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prohibited-word",
+                ":id"
+              ]
+            },
+            "description": "prohibited-word/prohibited-word.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /prohibited-word",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/prohibited-word",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prohibited-word"
+              ]
+            },
+            "description": "prohibited-word/prohibited-word.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "question-admin",
+      "item": [
+        {
+          "name": "DELETE /question-admin/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/question-admin/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "question-admin",
+                ":id"
+              ]
+            },
+            "description": "question-admin/question-admin.controller.ts"
+          }
+        },
+        {
+          "name": "GET /question-admin",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/question-admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "question-admin"
+              ]
+            },
+            "description": "question-admin/question-admin.controller.ts"
+          }
+        },
+        {
+          "name": "GET /question-admin/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/question-admin/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "question-admin",
+                ":id"
+              ]
+            },
+            "description": "question-admin/question-admin.controller.ts"
+          }
+        },
+        {
+          "name": "GET /question-admin/type/:type",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/question-admin/type/:type",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "question-admin",
+                "type",
+                ":type"
+              ]
+            },
+            "description": "question-admin/question-admin.controller.ts"
+          }
+        },
+        {
+          "name": "PATCH /question-admin/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/question-admin/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "question-admin",
+                ":id"
+              ]
+            },
+            "description": "question-admin/question-admin.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /question-admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/question-admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "question-admin"
+              ]
+            },
+            "description": "question-admin/question-admin.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "root",
+      "item": [
+        {
+          "name": "GET /",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": []
+            },
+            "description": "app.controller.ts"
+          }
+        },
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "app.controller.ts"
+          }
+        },
+        {
+          "name": "GET /perf",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/perf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "perf"
+              ]
+            },
+            "description": "app.controller.ts"
+          }
+        }
+      ]
+    },
+    {
+      "name": "service-tool",
+      "item": [
+        {
+          "name": "DELETE /service-tool/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/service-tool/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "service-tool",
+                ":id"
+              ]
+            },
+            "description": "service-tool/service-tool.controller.ts"
+          }
+        },
+        {
+          "name": "GET /service-tool",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/service-tool",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "service-tool"
+              ]
+            },
+            "description": "service-tool/service-tool.controller.ts"
+          }
+        },
+        {
+          "name": "GET /service-tool/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/service-tool/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "service-tool",
+                ":id"
+              ]
+            },
+            "description": "service-tool/service-tool.controller.ts"
+          }
+        },
+        {
+          "name": "POST /service-tool",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/service-tool",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "service-tool"
+              ]
+            },
+            "description": "service-tool/service-tool.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "PUT /service-tool/:id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/service-tool/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "service-tool",
+                ":id"
+              ]
+            },
+            "description": "service-tool/service-tool.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "subscription",
+      "item": [
+        {
+          "name": "GET /subscription/admin/stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/admin/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "admin",
+                "stats"
+              ]
+            },
+            "description": "subscription/subscription.controller.ts"
+          }
+        },
+        {
+          "name": "GET /subscription/current",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "current"
+              ]
+            },
+            "description": "subscription/subscription.controller.ts"
+          }
+        },
+        {
+          "name": "GET /subscription/payment-history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/payment-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "payment-history"
+              ]
+            },
+            "description": "subscription/subscription.controller.ts"
+          }
+        },
+        {
+          "name": "GET /subscription/payment-method/:userId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/payment-method/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "payment-method",
+                ":userId"
+              ]
+            },
+            "description": "subscription/subscription.controller.ts"
+          }
+        },
+        {
+          "name": "GET /subscription/plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "plans"
+              ]
+            },
+            "description": "subscription/subscription.controller.ts"
+          }
+        },
+        {
+          "name": "GET /subscription/portal",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/portal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "portal"
+              ]
+            },
+            "description": "subscription/subscription.controller.ts"
+          }
+        },
+        {
+          "name": "GET /subscription/rules",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "rules"
+              ]
+            },
+            "description": "subscription/subscription.controller.ts"
+          }
+        },
+        {
+          "name": "GET /subscription/usage",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/usage",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "usage"
+              ]
+            },
+            "description": "subscription/subscription.controller.ts"
+          }
+        },
+        {
+          "name": "GET /subscription/user/:userId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/user/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "user",
+                ":userId"
+              ]
+            },
+            "description": "subscription/subscription.controller.ts"
+          }
+        },
+        {
+          "name": "POST /subscription/cancel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "cancel"
+              ]
+            },
+            "description": "subscription/subscription.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /subscription/change-billing",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/change-billing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "change-billing"
+              ]
+            },
+            "description": "subscription/subscription.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /subscription/checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "checkout"
+              ]
+            },
+            "description": "subscription/subscription.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /subscription/resume",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/resume",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "resume"
+              ]
+            },
+            "description": "subscription/subscription.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /subscription/sync-session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/sync-session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "sync-session"
+              ]
+            },
+            "description": "subscription/subscription.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "subscription",
+      "item": [
+        {
+          "name": "POST /subscription/webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/webhook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "webhook"
+              ]
+            },
+            "description": "subscription/webhook.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "support",
+      "item": [
+        {
+          "name": "DELETE /support/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/support/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support",
+                ":id"
+              ]
+            },
+            "description": "support/support.controller.ts"
+          }
+        },
+        {
+          "name": "GET /support",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/support",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support"
+              ]
+            },
+            "description": "support/support.controller.ts"
+          }
+        },
+        {
+          "name": "GET /support/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/support/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support",
+                ":id"
+              ]
+            },
+            "description": "support/support.controller.ts"
+          }
+        },
+        {
+          "name": "GET /support/user",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/support/user",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support",
+                "user"
+              ]
+            },
+            "description": "support/support.controller.ts"
+          }
+        },
+        {
+          "name": "PATCH /support/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/support/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support",
+                ":id"
+              ]
+            },
+            "description": "support/support.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /support",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/support",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support"
+              ]
+            },
+            "description": "support/support.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "user",
+      "item": [
+        {
+          "name": "DELETE /user/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                ":id"
+              ]
+            },
+            "description": "user/user.controller.ts"
+          }
+        },
+        {
+          "name": "GET /user/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user"
+              ]
+            },
+            "description": "user/user.controller.ts"
+          }
+        },
+        {
+          "name": "GET /user/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                ":id"
+              ]
+            },
+            "description": "user/user.controller.ts"
+          }
+        },
+        {
+          "name": "GET /user/favourite",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/favourite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "favourite"
+              ]
+            },
+            "description": "user/user.controller.ts"
+          }
+        },
+        {
+          "name": "GET /user/favourite/add/:listingId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/favourite/add/:listingId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "favourite",
+                "add",
+                ":listingId"
+              ]
+            },
+            "description": "user/user.controller.ts"
+          }
+        },
+        {
+          "name": "GET /user/favourite/remove/:listingId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/favourite/remove/:listingId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "favourite",
+                "remove",
+                ":listingId"
+              ]
+            },
+            "description": "user/user.controller.ts"
+          }
+        },
+        {
+          "name": "GET /user/favourite/user/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/favourite/user/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "favourite",
+                "user",
+                ":id"
+              ]
+            },
+            "description": "user/user.controller.ts"
+          }
+        },
+        {
+          "name": "GET /user/favourite/user/:id/count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/favourite/user/:id/count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "favourite",
+                "user",
+                ":id",
+                "count"
+              ]
+            },
+            "description": "user/user.controller.ts"
+          }
+        },
+        {
+          "name": "PATCH /user/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                ":id"
+              ]
+            },
+            "description": "user/user.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "PATCH /user/preferences/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/preferences/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "preferences",
+                ":id"
+              ]
+            },
+            "description": "user/user.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "PATCH /user/update-by-admin/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/update-by-admin/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "update-by-admin",
+                ":id"
+              ]
+            },
+            "description": "user/user.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user"
+              ]
+            },
+            "description": "user/user.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /user/create-by-admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/create-by-admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "create-by-admin"
+              ]
+            },
+            "description": "user/user.controller.ts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

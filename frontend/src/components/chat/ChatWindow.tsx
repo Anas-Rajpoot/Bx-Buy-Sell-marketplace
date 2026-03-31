@@ -37,6 +37,7 @@ interface Message {
     profile_pic?: string | null;
     role?: 'USER' | 'SELLER' | 'ADMIN' | 'MONITER';
   };
+  metadata?: Record<string, any> | null;
 }
 
 interface ChatWindowProps {
@@ -76,6 +77,8 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [isChatPinned, setIsChatPinned] = useState(false);
+  const [hasConfidentialAccess, setHasConfidentialAccess] = useState<boolean | null>(null);
+  const [isUpdatingConfidentialAccess, setIsUpdatingConfidentialAccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -2209,6 +2212,76 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
     }
   };
 
+  const chatIdForAccess = chatRoom?.id || conversationId;
+  const listingIdForAccess = chatRoom?.listingId;
+  const isCurrentUserSeller = Boolean(chatRoom?.sellerId && chatRoom?.sellerId === currentUserId);
+  const buyerIdForAccess = chatRoom?.userId;
+
+  const loadConfidentialAccessStatus = useCallback(async () => {
+    if (!isCurrentUserSeller || !listingIdForAccess || !buyerIdForAccess) {
+      setHasConfidentialAccess(null);
+      return;
+    }
+
+    const response = await apiClient.getBuyerConfidentialAccessStatus(
+      listingIdForAccess,
+      buyerIdForAccess,
+    );
+    if (response.success && response.data) {
+      setHasConfidentialAccess(Boolean((response.data as any).hasAccess));
+      return;
+    }
+    setHasConfidentialAccess(null);
+  }, [isCurrentUserSeller, listingIdForAccess, buyerIdForAccess]);
+
+  useEffect(() => {
+    loadConfidentialAccessStatus();
+  }, [loadConfidentialAccessStatus]);
+
+  const handleGrantConfidentialAccess = async () => {
+    if (!chatIdForAccess) {
+      toast.error("Chat room not loaded");
+      return;
+    }
+
+    setIsUpdatingConfidentialAccess(true);
+    try {
+      const response = await apiClient.grantConfidentialAccessFromChat(chatIdForAccess);
+      if (response.success) {
+        toast.success("Confidential details are now visible for this buyer");
+        setHasConfidentialAccess(true);
+      } else {
+        toast.error(response.error || "Failed to grant confidential access");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to grant confidential access");
+    } finally {
+      setIsUpdatingConfidentialAccess(false);
+    }
+  };
+
+  const handleRevokeConfidentialAccess = async () => {
+    if (!chatIdForAccess) {
+      toast.error("Chat room not loaded");
+      return;
+    }
+
+    setIsUpdatingConfidentialAccess(true);
+    try {
+      const response = await apiClient.revokeConfidentialAccessFromChat(chatIdForAccess);
+      if (response.success) {
+        toast.success("Confidential details are now hidden for this buyer");
+        setHasConfidentialAccess(false);
+      } else {
+        toast.error(response.error || "Failed to revoke confidential access");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to revoke confidential access");
+    } finally {
+      setIsUpdatingConfidentialAccess(false);
+    }
+  };
+
   const handleEditMessage = async (messageId: string) => {
     if (!socketRef.current || !isConnected) {
       toast.error("Socket not connected");
@@ -2447,6 +2520,26 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {isCurrentUserSeller && listingIdForAccess && (
+                <>
+                  {hasConfidentialAccess ? (
+                    <DropdownMenuItem
+                      disabled={isUpdatingConfidentialAccess}
+                      onClick={handleRevokeConfidentialAccess}
+                    >
+                      <X className="mr-2 h-4 w-4" /> Revoke Confidential Access
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      disabled={isUpdatingConfidentialAccess}
+                      onClick={handleGrantConfidentialAccess}
+                    >
+                      <Check className="mr-2 h-4 w-4" /> Grant Confidential Access
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem onClick={handleArchiveChat}>
                 <Archive className="mr-2 h-4 w-4" /> Archive Chat
               </DropdownMenuItem>

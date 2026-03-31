@@ -55,14 +55,15 @@ export class ListingController {
     }
     
     const filters = {
-      status: status as 'PUBLISH' | 'DRAFT' | undefined,
+      status: (status as 'PUBLISH' | 'DRAFT' | undefined) || 'PUBLISH',
       category,
       userId,
       page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
     };
-    
-    const data = await this.listingService.findAll(filters);
+
+    const viewer = await this.listingService.resolveViewerContext(undefined);
+    const data = await this.listingService.findAll(filters, viewer);
     
     // Only cache if we got results (don't cache empty arrays for too long)
     if (Array.isArray(data) && data.length > 0) {
@@ -92,7 +93,8 @@ export class ListingController {
       await this.cacheManager.del(`${this.constructor.name}:${id}`);
     }
     
-    const data = await this.listingService.findOne(id);
+    const viewer = await this.listingService.resolveViewerContext(undefined);
+    const data = await this.listingService.findOne(id, viewer);
     
     // Only cache if we got data
     if (data) {
@@ -103,6 +105,46 @@ export class ListingController {
       );
     }
     return data;
+  }
+
+  @Get('secure/all')
+  @ApiQuery({ name: 'status', required: false, description: 'Filter by status (PUBLISH, DRAFT)' })
+  @ApiQuery({ name: 'category', required: false, description: 'Filter by category name' })
+  @ApiQuery({ name: 'userId', required: false, description: 'Filter by user ID' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number for pagination' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Number of items per page' })
+  async findAllSecure(
+    @Req() req: Request,
+    @Query('status') status?: string,
+    @Query('category') category?: string,
+    @Query('userId') userId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const currentUser = (req as any).user;
+    const viewer = await this.listingService.resolveViewerContext(currentUser?.id);
+    const filters = {
+      status: status as 'PUBLISH' | 'DRAFT' | undefined,
+      category,
+      userId,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    };
+
+    return this.listingService.findAll(filters, viewer);
+  }
+
+  @Get('secure/:id')
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'Listing Id',
+    required: true,
+  })
+  async findOneSecure(@Req() req: Request, @Param('id') id: string) {
+    const currentUser = (req as any).user;
+    const viewer = await this.listingService.resolveViewerContext(currentUser?.id);
+    return this.listingService.findOne(id, viewer);
   }
 
   @Post()
@@ -128,6 +170,73 @@ export class ListingController {
     } catch (error) {
       throw error;
     }
+  }
+
+  @Post(':id/confidential/grant')
+  async grantConfidentialAccess(
+    @Req() req: Request,
+    @Param('id') listingId: string,
+    @Body() body: { buyerId: string; chatId?: string },
+  ) {
+    const { id: sellerId } = (req as any).user;
+    return this.listingService.grantConfidentialAccess(
+      listingId,
+      sellerId,
+      body.buyerId,
+      body.chatId,
+    );
+  }
+
+  @Delete(':id/confidential/revoke/:buyerId')
+  async revokeConfidentialAccess(
+    @Req() req: Request,
+    @Param('id') listingId: string,
+    @Param('buyerId') buyerId: string,
+  ) {
+    const { id: sellerId } = (req as any).user;
+    return this.listingService.revokeConfidentialAccess(
+      listingId,
+      sellerId,
+      buyerId,
+    );
+  }
+
+  @Get(':id/confidential/access/me')
+  async getMyConfidentialAccess(
+    @Req() req: Request,
+    @Param('id') listingId: string,
+  ) {
+    const { id: buyerId } = (req as any).user;
+    return this.listingService.getConfidentialAccessStatus(listingId, buyerId);
+  }
+
+  @Get(':id/confidential/access/:buyerId')
+  async getBuyerConfidentialAccessForSeller(
+    @Req() req: Request,
+    @Param('id') listingId: string,
+    @Param('buyerId') buyerId: string,
+  ) {
+    const { id: sellerId } = (req as any).user;
+    return this.listingService.getConfidentialAccessStatusForSeller(
+      listingId,
+      sellerId,
+      buyerId,
+    );
+  }
+
+  @Public()
+  @Post('guest/draft')
+  @ApiBody({ type: () => ListingSchemaDTO })
+  async createGuestDraft(@Body(new ZodValidationPipe(listingSchema)) body) {
+    // Unregistered users can prepare listing data, but must register to save/publish.
+    return {
+      success: true,
+      requiresRegistration: true,
+      message:
+        'Register to unlock 🔓. Unregistered users can prepare a listing draft, but must register to save or publish.',
+      registerRedirect: '/register',
+      draft: body,
+    };
   }
 
   @Patch(':id')

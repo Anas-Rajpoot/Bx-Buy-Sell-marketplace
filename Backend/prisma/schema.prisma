@@ -64,6 +64,29 @@ enum ChatStatus {
   ARCHIVED
 }
 
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  PAST_DUE
+  TRIALING
+  INCOMPLETE
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
 model User {
   id                String          @id @default(uuid()) @map("_id")
   first_name        String?
@@ -110,6 +133,10 @@ model User {
   MonitoringAlertReporter   MonitoringAlert[] @relation("AlertReporter")
   MonitoringAlertProblematic MonitoringAlert[] @relation("AlertProblematic")
   MonitoringAlertResponsible MonitoringAlert[] @relation("AlertResponsible")
+  subscription   UserSubscription?
+  payments       Payment[]
+  confidentialListingAccesses ListingConfidentialAccess[] @relation("ConfidentialAccessBuyer")
+  confidentialListingAccessGrants ListingConfidentialAccess[] @relation("ConfidentialAccessSeller")
 }
 
 model MonitoringAlert {
@@ -216,11 +243,34 @@ model Listing {
   handover           ListingQuestion[] @relation("HandoverQuestion")
   portfolioLink      String?
   managed_by_ex      Boolean           @default(false)
+  confidentialControl Boolean          @default(false)
+  featuredOnCategoryPage Boolean       @default(false)
+  featuredOnStartPage Boolean          @default(false)
+  confidentialAccesses ListingConfidentialAccess[]
   Favourite          Favourite[]
   chats              Chat[]            @relation // CRITICAL: Link to chats for this listing
   created_at         DateTime          @default(now())
   updated_at         DateTime          @updatedAt
   deleted_at         DateTime?
+}
+
+model ListingConfidentialAccess {
+  id               String   @id @default(uuid()) @map("_id")
+  listingId        String
+  buyerId          String
+  grantedBySellerId String
+  chatId           String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  listing          Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyer            User     @relation("ConfidentialAccessBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  grantedBySeller  User     @relation("ConfidentialAccessSeller", fields: [grantedBySellerId], references: [id], onDelete: Cascade)
+  chat             Chat?    @relation(fields: [chatId], references: [id], onDelete: SetNull)
+
+  @@unique([listingId, buyerId])
+  @@index([listingId])
+  @@index([buyerId])
 }
 
 model ListingCategory {
@@ -269,14 +319,47 @@ model NicheOption {
 
 model Plan {
   id            String   @id @default(uuid()) @map("_id")
+  name          String   @unique
+  slug          String   @unique
   title         String
   description   String
-  duration_type String
-  type          String // Monthly or Yearly
-  price         String
-  feature       String[]
+  
+  // Legacy fields (keep for backward compatibility)
+  duration_type String?
+  type          String?
+  price         String?
+  feature       String[]  @default([])
+  
+  // New pricing fields
+  monthlyPrice          String  @default("0")
+  yearlyPrice           String  @default("0")
+  
+  // Stripe IDs
+  stripeMonthlyPriceId  String?
+  stripeYearlyPriceId   String?
+  stripeProductId       String?
+  
+  // Feature limits
+  maxListings       Int      @default(0)
+  maxPhotos         Int      @default(5)
+  maxVideoDuration  Int      @default(0)
+  canUseAnalytics   Boolean  @default(false)
+  prioritySupport   Boolean  @default(false)
+  featuredListing   Boolean  @default(false)
+  canBoostListing   Boolean  @default(false)
+  customBranding    Boolean  @default(false)
+  
+  // Metadata
+  isActive      Boolean  @default(true)
+  isDefault     Boolean  @default(false)
+  sortOrder     Int      @default(0)
+  
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
+  
+  // Relations
+  subscriptions UserSubscription[]
+  payments      Payment[]
 }
 
 model EmailTemplate {
@@ -417,6 +500,7 @@ model Chat {
   status        ChatStatus      @default(ACTIVE)
   chatLabels    ChatLabel[]
   SupportTicket SupportTicket[]
+  confidentialAccesses ListingConfidentialAccess[]
 }
 
 model ChatLabel {
@@ -442,6 +526,7 @@ model Message {
   content   String?
   type      MessageType @default(TEXT)
   fileUrl   String? // for file/image type messages
+  metadata  Json?
   delivered Boolean     @default(false)
   read      Boolean     @default(false)
   createdAt DateTime    @default(now())
@@ -522,4 +607,61 @@ model Notification {
   updatedAt DateTime @updatedAt
 
   @@index([userId, read, createdAt])
+}
+
+model UserSubscription {
+  id                     String              @id @default(uuid()) @map("_id")
+  userId                 String              @unique
+  user                   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId                 String
+  plan                   Plan                @relation(fields: [planId], references: [id])
+  
+  // Stripe data
+  stripeCustomerId       String?             @unique
+  stripeSubscriptionId   String?             @unique
+  stripePriceId          String?
+  stripeCurrentPeriodEnd DateTime?
+  
+  // Subscription status
+  status                 SubscriptionStatus  @default(ACTIVE)
+  billingCycle           BillingCycle        @default(MONTHLY)
+  
+  // Dates
+  startDate              DateTime            @default(now())
+  endDate                DateTime?
+  cancelledAt            DateTime?
+  trialEndsAt            DateTime?
+  
+  created_at             DateTime            @default(now())
+  updated_at             DateTime            @updatedAt
+}
+
+model Payment {
+  id                    String         @id @default(uuid()) @map("_id")
+  userId                String
+  user                  User           @relation(fields: [userId], references: [id])
+  
+  // Stripe data
+  stripePaymentIntentId String?        @unique
+  stripeInvoiceId       String?
+  stripeChargeId        String?
+  
+  // Payment details
+  amount                String
+  currency              String         @default("usd")
+  status                PaymentStatus  @default(PENDING)
+  
+  // Related subscription
+  planId                String?
+  plan                  Plan?          @relation(fields: [planId], references: [id])
+  subscriptionId        String?
+  
+  billingCycle          BillingCycle?
+  description           String?
+  
+  // Metadata
+  metadata              Json?
+  
+  created_at            DateTime       @default(now())
+  updated_at            DateTime       @updatedAt
 }

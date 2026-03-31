@@ -70,6 +70,10 @@ const getAllAnswers = (questions: any[]): Record<string, string> => {
   return result;
 };
 
+const isLockedValue = (value: unknown): value is string =>
+  typeof value === "string" &&
+  value.toLowerCase().includes("to unlock");
+
 // MediaCarousel Component
 const MediaCarousel = ({ images, isFavorite, isTogglingFavorite, onFavorite, onShare, categoryName }: {
   images: string[];
@@ -676,7 +680,23 @@ const SummaryCard = ({ listing, onContactSeller, onMakeOffer, isStartingChat }: 
 };
 
 // MetricCard Component
-const MetricCard = ({ label, value, icon: Icon, image, customWidth, customHeight }: { label: string; value: string | number; icon?: any; image?: string; customWidth?: string; customHeight?: string }) => {
+const MetricCard = ({
+  label,
+  value,
+  icon: Icon,
+  image,
+  customWidth,
+  customHeight,
+  onUnlockClick,
+}: {
+  label: string;
+  value: string | number;
+  icon?: any;
+  image?: string;
+  customWidth?: string;
+  customHeight?: string;
+  onUnlockClick?: () => void;
+}) => {
   return (
     <div
       style={{
@@ -708,19 +728,43 @@ const MetricCard = ({ label, value, icon: Icon, image, customWidth, customHeight
         >
           {label}
         </div>
-        <div
-          style={{
-            fontFamily: 'Lufga',
-            fontWeight: 500,
-            fontStyle: 'normal',
-            fontSize: '28px',
-            lineHeight: '120%',
-            letterSpacing: '0%',
-            color: 'rgba(0, 0, 0, 1)',
-          }}
-        >
-          {value}
-        </div>
+        {isLockedValue(value) ? (
+          <button
+            type="button"
+            onClick={onUnlockClick}
+            style={{
+              fontFamily: 'Lufga',
+              fontWeight: 600,
+              fontStyle: 'normal',
+              fontSize: '20px',
+              lineHeight: '120%',
+              letterSpacing: '0%',
+              color: '#0067ff',
+              textDecoration: 'underline',
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
+            {value}
+          </button>
+        ) : (
+          <div
+            style={{
+              fontFamily: 'Lufga',
+              fontWeight: 500,
+              fontStyle: 'normal',
+              fontSize: '28px',
+              lineHeight: '120%',
+              letterSpacing: '0%',
+              color: 'rgba(0, 0, 0, 1)',
+            }}
+          >
+            {value}
+          </div>
+        )}
       </div>
       {image && (
         <img 
@@ -740,7 +784,69 @@ const MetricCard = ({ label, value, icon: Icon, image, customWidth, customHeight
 };
 
 // ProgressMetricCard Component (with progress bar)
-const ProgressMetricCard = ({ label, value }: { label: string; value: string | number }) => {
+const ProgressMetricCard = ({
+  label,
+  value,
+  onUnlockClick,
+}: {
+  label: string;
+  value: string | number;
+  onUnlockClick?: () => void;
+}) => {
+  if (isLockedValue(value)) {
+    return (
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '389.67px',
+          minHeight: '118px',
+          borderRadius: '20px',
+          border: '1px solid rgba(0, 0, 0, 0.1)',
+          padding: '24px',
+          background: 'rgba(255, 255, 255, 1)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+        }}
+      >
+        <div
+          style={{
+            fontFamily: 'Lufga',
+            fontWeight: 500,
+            fontStyle: 'normal',
+            fontSize: '20px',
+            lineHeight: '120%',
+            letterSpacing: '0%',
+            color: '#000000',
+          }}
+        >
+          {label}
+        </div>
+        <button
+          type="button"
+          onClick={onUnlockClick}
+          style={{
+            fontFamily: 'Lufga',
+            fontWeight: 600,
+            fontStyle: 'normal',
+            fontSize: '20px',
+            lineHeight: '120%',
+            letterSpacing: '0%',
+            color: '#0067ff',
+            textDecoration: 'underline',
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            textAlign: 'left',
+            cursor: 'pointer',
+          }}
+        >
+          {value}
+        </button>
+      </div>
+    );
+  }
+
   // Extract percentage from value (e.g., "45%" -> 45, or just use the number)
   const percentage = typeof value === 'string' 
     ? parseFloat(value.replace('%', '')) || 0 
@@ -1000,28 +1106,19 @@ const ListingDetail = ({ embedded = false, adminLayout = false }: ListingDetailP
   const [chartPeriod, setChartPeriod] = useState('monthly');
 
   const { data: listing, isLoading, error } = useQuery({
-    queryKey: ["listing", id],
+    queryKey: ["listing", id, isAuthenticated],
     queryFn: async () => {
       if (!id) throw new Error("Listing ID is required");
-      
-      // Use the SAME API as listing cards (getListings) to ensure we get the same data structure
-      // This approach works because getListings includes all relations properly
-      console.log('🔍 Fetching listing using getListings API (same as listing cards)...');
-      const listingsResponse = await apiClient.getListings({ nocache: 'true' });
-      
-      if (!listingsResponse.success) {
-        throw new Error(listingsResponse.error || 'Failed to fetch listings');
+
+      const listingResponse = isAuthenticated
+        ? await apiClient.getSecureListingById(id)
+        : await apiClient.getListingById(id, true);
+
+      if (!listingResponse.success || !listingResponse.data) {
+        throw new Error(listingResponse.error || 'Failed to fetch listing');
       }
-      
-      const allListings = Array.isArray(listingsResponse.data) ? listingsResponse.data : [];
-      console.log(`📦 Fetched ${allListings.length} listings from API`);
-      
-      // Find the specific listing by ID
-      const foundListing: any = allListings.find((l: any) => l.id === id);
-      if (!foundListing) {
-        throw new Error('Listing not found');
-      }
-      const listingData: any = foundListing;
+
+      const listingData: any = listingResponse.data;
       
       console.log("📦 Listing data from API (using getListings - same as listing cards):", listingData);
       console.log("🔍 Checking all required fields:");
@@ -1128,10 +1225,12 @@ console.log("detasdetail", listing)
 
   // Fetch similar listings (get more than 3 for carousel)
   const { data: similarListings = [] } = useQuery({
-    queryKey: ["similar-listings", id, listing?.category?.[0]?.id],
+    queryKey: ["similar-listings", id, listing?.category?.[0]?.id, isAuthenticated],
     queryFn: async () => {
       try {
-        const response = await apiClient.getListings({ nocache: 'true' });
+        const response = isAuthenticated
+          ? await apiClient.getSecureListings()
+          : await apiClient.getListings({ nocache: 'true' });
         if (response.success && response.data) {
           const allListings = Array.isArray(response.data) ? response.data : [];
           // Filter out current listing and get published listings (get more for carousel)
@@ -1257,6 +1356,22 @@ console.log("detasdetail", listing)
     : '-';
   const adminIntroRaw = intro || adDescription || businessDescription || '';
   const adminIntro = adminIntroRaw.length > 140 ? `${adminIntroRaw.slice(0, 140)}...` : adminIntroRaw;
+  const unlockRedirect = listing?.lockAction?.redirectTo || '/register';
+  const unlockCtaText = listing?.lockAction?.ctaText || 'register to unlock 🔓';
+
+  const handleUpgradeUnlockClick = () => {
+    navigate(unlockRedirect);
+  };
+
+  const handleLockClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    const text = (target.textContent || '').toLowerCase();
+    if (!text.includes('to unlock')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    handleUpgradeUnlockClick();
+  };
 
   // Management
   const freelancers = getAnswerByQuestion(listing?.managementQuestion || [], ['freelancer', 'freelance']) || '2';
@@ -1282,8 +1397,11 @@ console.log("detasdetail", listing)
   const supportDuration = getAnswerByQuestion(listing?.handover || [], ['support duration', 'support period', 'months']) || '12 months';
 
   // Attachments
+  const hasLockedAttachments = (listing?.advertisement || []).some(
+    (a: any) => a.answer_type === 'FILE' && isLockedValue(a.answer),
+  );
   const attachments = listing?.advertisement?.filter((a: any) => 
-    a.answer_type === 'FILE' && a.answer
+    a.answer_type === 'FILE' && a.answer && !isLockedValue(a.answer)
   ).map((a: any) => ({
     fileName: a.answer.split('/').pop() || 'Document',
     url: a.answer,
@@ -1617,7 +1735,10 @@ console.log("detasdetail", listing)
   const ownerIdVerified = Boolean(ownerProfile.id_verified);
 
   const content = (
-      <div className={`${isAdminView ? 'pt-6' : 'pt-24'} ${isMobile ? 'pb-12' : 'pb-20'}`}>
+      <div
+        className={`${isAdminView ? 'pt-6' : 'pt-24'} ${isMobile ? 'pb-12' : 'pb-20'}`}
+        onClickCapture={handleLockClickCapture}
+      >
         <div className={`container mx-auto ${isMobile ? 'px-4' : 'px-4'} max-w-7xl`}>
           {!isAdminView && (
             <Button
@@ -2003,24 +2124,49 @@ console.log("detasdetail", listing)
                   height: isMobile ? '24px' : '32px',
                 }}
               />
-              <a 
-                href={`https://${website}`} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                style={{
-                  fontFamily: 'Lufga',
-                  fontWeight: 500,
-                  fontStyle: 'normal',
-                  fontSize: getFontSize('14px', '20px', '28px'),
-                  lineHeight: '120%',
-                  letterSpacing: '0%',
-                  color: 'rgba(0, 0, 0, 1)',
-                  textDecoration: 'none',
-                  wordBreak: 'break-all',
-                }}
-              >
-                {website}
-              </a>
+              {isLockedValue(website) ? (
+                <button
+                  type="button"
+                  onClick={handleUpgradeUnlockClick}
+                  style={{
+                    fontFamily: 'Lufga',
+                    fontWeight: 500,
+                    fontStyle: 'normal',
+                    fontSize: getFontSize('14px', '20px', '28px'),
+                    lineHeight: '120%',
+                    letterSpacing: '0%',
+                    color: '#0067ff',
+                    textDecoration: 'underline',
+                    wordBreak: 'break-all',
+                    background: 'transparent',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  {website}
+                </button>
+              ) : (
+                <a 
+                  href={`https://${website}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{
+                    fontFamily: 'Lufga',
+                    fontWeight: 500,
+                    fontStyle: 'normal',
+                    fontSize: getFontSize('14px', '20px', '28px'),
+                    lineHeight: '120%',
+                    letterSpacing: '0%',
+                    color: 'rgba(0, 0, 0, 1)',
+                    textDecoration: 'none',
+                    wordBreak: 'break-all',
+                  }}
+                >
+                  {website}
+                </a>
+              )}
             </div>
             
             {/* Content Sections */}
@@ -2530,26 +2676,32 @@ console.log("detasdetail", listing)
               <ProgressMetricCard
                 label="Conversion Rate"
                 value={conversionRate}
+                onUnlockClick={handleUpgradeUnlockClick}
               />
               <ProgressMetricCard
                 label="Refund Rate"
                 value={refundRate}
+                onUnlockClick={handleUpgradeUnlockClick}
               />
               <ProgressMetricCard
                 label="Returning customers"
                 value={returningCustomers}
+                onUnlockClick={handleUpgradeUnlockClick}
               />
               <MetricCard
                 label="E-Mail Subscribers"
                 value={emailSubscribers}
+                onUnlockClick={handleUpgradeUnlockClick}
               />
               <MetricCard
                 label="Average order value"
                 value={avgOrderValue}
+                onUnlockClick={handleUpgradeUnlockClick}
               />
               <MetricCard
                 label="Customer base"
                 value={customerBase}
+                onUnlockClick={handleUpgradeUnlockClick}
               />
             </div>
           </div>
@@ -2857,12 +3009,14 @@ console.log("detasdetail", listing)
                   value={numProducts}
                   customWidth={isMobile ? "100%" : "570.5px"}
                   customHeight="124.01px"
+                  onUnlockClick={handleUpgradeUnlockClick}
                 />
                 <MetricCard
                   label="Selling Model"
                   value={sellingModel}
                   customWidth={isMobile ? "100%" : "570.5px"}
                   customHeight="124.01px"
+                  onUnlockClick={handleUpgradeUnlockClick}
                 />
               </div>
               
@@ -2871,14 +3025,17 @@ console.log("detasdetail", listing)
                 <MetricCard
                   label="Seller has inventory?"
                   value={hasInventory}
+                  onUnlockClick={handleUpgradeUnlockClick}
                 />
                 <MetricCard
                   label="how much?"
                   value={inventoryValue}
+                  onUnlockClick={handleUpgradeUnlockClick}
                 />
                 <MetricCard
                   label="Is it included in the price?"
                   value={inventoryIncluded}
+                  onUnlockClick={handleUpgradeUnlockClick}
                 />
               </div>
             </div>
@@ -2920,14 +3077,17 @@ console.log("detasdetail", listing)
               <MetricCard
                 label="Freelancers"
                 value={freelancers}
+                onUnlockClick={handleUpgradeUnlockClick}
               />
               <MetricCard
                 label="Employees"
                 value={employees}
+                onUnlockClick={handleUpgradeUnlockClick}
               />
               <MetricCard
                 label="CEO Time Invest per week"
                 value={ceoTime}
+                onUnlockClick={handleUpgradeUnlockClick}
               />
             </div>
           </div>
@@ -3425,7 +3585,7 @@ console.log("detasdetail", listing)
           </div>
 
           {/* Attachments Section */}
-          {attachments.length > 0 && (
+          {(attachments.length > 0 || hasLockedAttachments) && (
             <div
               style={{
                 width: '1209.44px',
@@ -3466,6 +3626,32 @@ console.log("detasdetail", listing)
                     url={attachment.url}
                   />
                 ))}
+                {hasLockedAttachments && (
+                  <button
+                    type="button"
+                    onClick={handleUpgradeUnlockClick}
+                    style={{
+                      width: '100%',
+                      maxWidth: isMobile ? '100%' : '373.67px',
+                      minHeight: '98px',
+                      borderRadius: '20px',
+                      border: '1px solid rgba(0, 103, 255, 0.35)',
+                      padding: '24px',
+                      background: 'rgba(0, 103, 255, 0.06)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontFamily: 'Lufga',
+                      fontWeight: 600,
+                      fontSize: '18px',
+                      color: '#0067ff',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {unlockCtaText}
+                  </button>
+                )}
               </div>
             </div>
           )}

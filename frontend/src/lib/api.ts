@@ -353,10 +353,51 @@ class ApiClient {
     return this.request(url);
   }
 
+  async getSecureListings(params?: {
+    page?: number;
+    limit?: number;
+    category?: string;
+    status?: string;
+    userId?: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+    const query = queryParams.toString();
+    return this.request(`/listing/secure/all${query ? `?${query}` : ''}`);
+  }
+
+  async getSecureListingById(id: string) {
+    return this.request(`/listing/secure/${id}`);
+  }
+
   async updateListing(id: string, listingData: any) {
     return this.request(`/listing/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(listingData),
+    });
+  }
+
+  async getSubscriptionRules() {
+    return this.request('/subscription/rules', {
+      method: 'GET',
+    });
+  }
+
+  async getMyConfidentialAccessStatus(listingId: string) {
+    return this.request(`/listing/${listingId}/confidential/access/me`, {
+      method: 'GET',
+    });
+  }
+
+  async getBuyerConfidentialAccessStatus(listingId: string, buyerId: string) {
+    return this.request(`/listing/${listingId}/confidential/access/${buyerId}`, {
+      method: 'GET',
     });
   }
 
@@ -956,6 +997,18 @@ class ApiClient {
   async unarchiveChat(chatId: string, userId: string) {
     return this.request(`/chat/unarchive/${chatId}/${userId}`, {
       method: 'PUT',
+    });
+  }
+
+  async grantConfidentialAccessFromChat(chatId: string) {
+    return this.request(`/chat/confidential/grant/${chatId}`, {
+      method: 'POST',
+    });
+  }
+
+  async revokeConfidentialAccessFromChat(chatId: string) {
+    return this.request(`/chat/confidential/revoke/${chatId}`, {
+      method: 'DELETE',
     });
   }
 

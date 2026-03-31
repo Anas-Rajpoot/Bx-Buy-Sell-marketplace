@@ -67,10 +67,36 @@ export default function AdminUserDetails() {
     profitMultipleMax: "",
   });
   const [adminNote, setAdminNote] = useState("");
+  const [isPro, setIsPro] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<any>(null);
 
   useEffect(() => {
     if (!id) return;
     setAdminNote(getAdminUserNote(id));
+  }, [id]);
+
+  useEffect(() => {
+    const checkSubscription = async () => {
+      if (!id) return;
+      try {
+        const response = await (apiClient as any).request(`/subscription/user/${id}`);
+        if (response.success && response.data) {
+          const data = response.data as any;
+          setIsPro(data.plan?.slug === 'pro' && data.status === 'ACTIVE');
+          
+          // Fetch payment method if user has active subscription
+          if (data.stripeCustomerId && data.status === 'ACTIVE') {
+            const pmResponse = await (apiClient as any).request(`/subscription/payment-method/${id}`);
+            if (pmResponse.success && pmResponse.data) {
+              setPaymentMethod(pmResponse.data);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking user subscription:', error);
+      }
+    };
+    checkSubscription();
   }, [id]);
 
   if (isLoading) {
@@ -265,7 +291,6 @@ export default function AdminUserDetails() {
   };
   const isOnline = Boolean((profile as any)?.is_online);
   const rating = (profile as any)?.rating ?? 4.8;
-  const isPro = (profile.user_type || "").toLowerCase() === "seller";
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -324,8 +349,9 @@ export default function AdminUserDetails() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '2.61px',
-                        left: '44px',
-                        top: '97px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        bottom: '-10px',
                       }}
                     >
                       <img src={proIcon} alt="Pro" style={{ width: '12px', height: '12px' }} />
@@ -689,7 +715,7 @@ export default function AdminUserDetails() {
                 <div className="flex items-start justify-between">
                   <img src={simIcon} alt="SIM" style={{ width: '50px', height: '35px' }} />
                   <span style={{ fontFamily: 'Helvetica Now Display', fontWeight: 700, fontSize: '16px', color: '#000000' }}>
-                    VISA
+                    {paymentMethod?.brand?.toUpperCase() || 'VISA'}
                   </span>
                 </div>
                 <div
@@ -702,7 +728,7 @@ export default function AdminUserDetails() {
                     color: '#000000',
                   }}
                 >
-                  **** **** **** 8174
+                  **** **** **** {paymentMethod?.last4 || '****'}
                 </div>
                 <div className="flex items-end justify-between">
                   <div>
@@ -716,7 +742,7 @@ export default function AdminUserDetails() {
                         color: '#00000099',
                       }}
                     >
-                      Exp 3/28
+                      Exp {paymentMethod ? `${paymentMethod.expMonth}/${paymentMethod.expYear?.toString().slice(-2)}` : '-/-'}
                     </div>
                   </div>
                   <div className="text-right">
@@ -742,7 +768,7 @@ export default function AdminUserDetails() {
                         color: '#00000099',
                       }}
                     >
-                      235
+                      ***
                     </div>
                   </div>
                 </div>
@@ -757,13 +783,21 @@ export default function AdminUserDetails() {
                 }}
               >
                 <div style={{ fontFamily: 'ABeeZee', fontWeight: 400, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>Card Type</div>
-                <div style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>Visa</div>
+                <div style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
+                  {paymentMethod ? (paymentMethod.brand.charAt(0).toUpperCase() + paymentMethod.brand.slice(1)) : '-'}
+                </div>
                 <div style={{ fontFamily: 'ABeeZee', fontWeight: 400, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>Card Holder</div>
-                <div style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>{profile.full_name || "-"}</div>
+                <div style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
+                  {paymentMethod?.holderName || profile.full_name || "-"}
+                </div>
                 <div style={{ fontFamily: 'ABeeZee', fontWeight: 400, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>Expire</div>
-                <div style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>03/2028</div>
+                <div style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
+                  {paymentMethod ? `${String(paymentMethod.expMonth).padStart(2, '0')}/${paymentMethod.expYear}` : '-'}
+                </div>
                 <div style={{ fontFamily: 'ABeeZee', fontWeight: 400, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>Card Number</div>
-                <div style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>**** **** **** 8174</div>
+                <div style={{ fontFamily: 'Lufga', fontWeight: 500, fontSize: '18px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
+                  **** **** **** {paymentMethod?.last4 || '****'}
+                </div>
               </div>
             </div>
           </Card>

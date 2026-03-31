@@ -11,12 +11,13 @@ import { apiClient } from "@/lib/api";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { SubscriptionStatus } from "@/components/subscription/SubscriptionStatus";
 
 export default function Settings() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<"profile" | "security" | "activity">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "security" | "activity" | "subscription">("profile");
   const [isEditing, setIsEditing] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [formData, setFormData] = useState({
@@ -349,6 +350,21 @@ export default function Settings() {
                 >
                   Activity Logs
                 </Button>
+                
+                <Button
+                  onClick={() => setActiveTab("subscription")}
+                  className={`w-full justify-center h-14 rounded-xl font-lufga ${
+                    activeTab === "subscription"
+                      ? "bg-[#AEF31F] text-black hover:bg-[#AEF31F]/90"
+                      : "bg-white text-black border border-gray-200 hover:bg-gray-50"
+                  }`}
+                  style={{
+                    fontSize: '18px',
+                    fontWeight: 500,
+                  }}
+                >
+                  Subscription
+                </Button>
               </div>
             </div>
 
@@ -503,6 +519,13 @@ export default function Settings() {
                     <div className="text-center py-12 text-gray-500 font-lufga">
                       <p>No activity logs available</p>
                     </div>
+                  </div>
+                )}
+
+                {activeTab === "subscription" && (
+                  <div className="space-y-8">
+                    <h3 className="text-2xl font-bold text-black font-lufga mb-6">Subscription & Billing</h3>
+                    <SubscriptionStatus />
                   </div>
                 )}
               </div>

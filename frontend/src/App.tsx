@@ -29,6 +29,10 @@ const VerifyOTP = lazy(() => import("./pages/VerifyOTP"));
 const Register = lazy(() => import("./pages/Register"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Settings = lazy(() => import("./pages/Settings"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
+const CheckoutCancel = lazy(() => import("./pages/CheckoutCancel"));
+const ManualSync = lazy(() => import("./pages/ManualSync"));
 const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
 const AdminForgotPassword = lazy(() => import("./pages/admin/AdminForgotPassword"));
 const AdminVerifyOTP = lazy(() => import("./pages/admin/AdminVerifyOTP"));
@@ -75,6 +79,10 @@ const router = createBrowserRouter(
     { path: "/verify-account", element: <VerifyAccount /> },
     { path: "/profile", element: <Profile /> },
     { path: "/settings", element: <Settings /> },
+    { path: "/pricing", element: <Pricing /> },
+    { path: "/checkout/success", element: <CheckoutSuccess /> },
+    { path: "/checkout/cancel", element: <CheckoutCancel /> },
+    { path: "/manual-sync", element: <ManualSync /> },
     { path: "/forgot-password", element: <ForgotPassword /> },
     { path: "/phone-verification", element: <PhoneVerification /> },
     { path: "/verify-otp", element: <VerifyOTP /> },

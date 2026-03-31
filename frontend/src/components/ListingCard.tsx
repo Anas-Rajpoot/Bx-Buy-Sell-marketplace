@@ -26,6 +26,7 @@ interface ListingCardProps {
   managedByEx?: boolean;
   listingId?: string;
   sellerId?: string;
+  lockRedirectTo?: string;
 }
 
 const ListingCard = ({
@@ -44,6 +45,7 @@ const ListingCard = ({
   managedByEx = false,
   listingId,
   sellerId,
+  lockRedirectTo = "/register",
 }: ListingCardProps) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isStartingChat, setIsStartingChat] = useState(false);
@@ -51,6 +53,9 @@ const ListingCard = ({
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
+  const isLockedValue = (value: unknown): value is string =>
+    typeof value === "string" &&
+    value.toLowerCase().includes("to unlock");
 
   // Check if listing is already favorited on mount
   useEffect(() => {
@@ -154,6 +159,10 @@ const ListingCard = ({
         toast.error("Failed to copy link. Please copy manually.");
       }
     }
+  };
+
+  const handleUnlockClick = () => {
+    navigate(lockRedirectTo || "/pricing");
   };
 
   const handleContactSeller = async () => {
@@ -396,8 +405,30 @@ const ListingCard = ({
               overflow: 'hidden',
               textOverflow: 'ellipsis'
             }}
+            onClick={isLockedValue(description) ? handleUnlockClick : undefined}
           >
-            {description}
+            {isLockedValue(description) ? (
+              <button
+                type="button"
+                onClick={handleUnlockClick}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  padding: 0,
+                  margin: 0,
+                  color: "#0067ff",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontSize: "inherit",
+                  lineHeight: "inherit",
+                }}
+              >
+                {description}
+              </button>
+            ) : (
+              description
+            )}
           </p>
         </div>
         

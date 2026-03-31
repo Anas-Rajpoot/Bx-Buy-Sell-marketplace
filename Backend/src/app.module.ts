@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { PlanModule } from './plan/plan.module';
 import { EmailTemplateModule } from './email-template/email-template.module';
 import { CategoryModule } from './category/category.module';
+import { SubscriptionModule } from './subscription/subscription.module';
 import { AuthGuard } from 'common/guard/auth.guard';
 import { RolesGuard } from 'common/guard/role.guard';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -39,6 +40,7 @@ import { MonitoringAlertModule } from './monitoring-alert/monitoring-alert.modul
     PlanModule,
     EmailTemplateModule,
     CategoryModule,
+    SubscriptionModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'uploads'),
       serveRoot: '/uploads',

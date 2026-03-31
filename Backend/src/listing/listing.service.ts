@@ -1,19 +1,220 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateListingT } from './dto/update-listing.dto';
-import { Brand, ListingSchemaT } from './dto/create-listing.dto';
+import { ListingSchemaT } from './dto/create-listing.dto';
+import { SubscriptionService } from '../subscription/subscription.service';
+
+type ViewerType = 'UNREGISTERED' | 'REGISTERED_FREE' | 'REGISTERED_PRO';
+
+type ViewerContext = {
+  userId?: string;
+  viewerType: ViewerType;
+};
 
 @Injectable()
 export class ListingService {
-  constructor(private readonly db: PrismaService) {}
+  constructor(
+    private readonly db: PrismaService,
+    private readonly subscriptionService: SubscriptionService,
+  ) {}
 
-  async findAll(filters?: {
-    status?: 'PUBLISH' | 'DRAFT';
-    category?: string;
-    userId?: string;
-    page?: number;
-    limit?: number;
-  }) {
+  private readonly proUnlockLabel = 'upgrade to unlock 🔓';
+  private readonly proUnlockRedirect = '/pricing';
+  private readonly registerUnlockLabel = 'register to unlock 🔓';
+  private readonly registerUnlockRedirect = '/register';
+
+  private readonly earlyAccessDays = 7;
+
+  private shuffleArray<T>(items: T[]): T[] {
+    const copy = [...items];
+    for (let i = copy.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  private halfText(text: string): string {
+    const value = String(text || '');
+    const half = Math.ceil(value.length / 2);
+    return `${value.slice(0, half)}...`;
+  }
+
+  private maskQuestionData(
+    questions: any[] = [],
+    options?: {
+      hideAll?: boolean;
+      lockLabel?: string;
+      lockType?: 'PRO_SUBSCRIPTION' | 'AUTH_REQUIRED';
+      redirectTo?: string;
+    },
+  ) {
+    const lockLabel = options?.lockLabel || this.proUnlockLabel;
+    const lockType = options?.lockType || 'PRO_SUBSCRIPTION';
+    const redirectTo = options?.redirectTo || this.proUnlockRedirect;
+
+    return (questions || []).map((item) => {
+      const questionText = String(item?.question || '').toLowerCase();
+      const isDescription = questionText.includes('description');
+      const isDomain = questionText.includes('domain');
+      const isFileOrPhoto =
+        item?.answer_type === 'FILE' || item?.answer_type === 'PHOTO';
+
+      const shouldLock = options?.hideAll || isDomain || isFileOrPhoto;
+      if (shouldLock) {
+        return {
+          ...item,
+          answer: lockLabel,
+          locked: true,
+          lockType,
+          redirectTo,
+        };
+      }
+
+      if (isDescription && item?.answer) {
+        return { ...item, answer: this.halfText(item.answer) };
+      }
+
+      return item;
+    });
+  }
+
+  private applyUnregisteredMask(listing: any) {
+    return {
+      ...listing,
+      portfolioLink: this.registerUnlockLabel,
+      lockAction: {
+        lockType: 'AUTH_REQUIRED',
+        ctaText: this.registerUnlockLabel,
+        redirectTo: this.registerUnlockRedirect,
+      },
+      brand: this.maskQuestionData(listing.brand, {
+        lockLabel: this.registerUnlockLabel,
+        lockType: 'AUTH_REQUIRED',
+        redirectTo: this.registerUnlockRedirect,
+      }),
+      financials: this.maskQuestionData(listing.financials, {
+        hideAll: true,
+        lockLabel: this.registerUnlockLabel,
+        lockType: 'AUTH_REQUIRED',
+        redirectTo: this.registerUnlockRedirect,
+      }),
+      statistics: this.maskQuestionData(listing.statistics, {
+        hideAll: true,
+        lockLabel: this.registerUnlockLabel,
+        lockType: 'AUTH_REQUIRED',
+        redirectTo: this.registerUnlockRedirect,
+      }),
+      productQuestion: this.maskQuestionData(listing.productQuestion, {
+        hideAll: true,
+        lockLabel: this.registerUnlockLabel,
+        lockType: 'AUTH_REQUIRED',
+        redirectTo: this.registerUnlockRedirect,
+      }),
+      managementQuestion: this.maskQuestionData(listing.managementQuestion, {
+        hideAll: true,
+        lockLabel: this.registerUnlockLabel,
+        lockType: 'AUTH_REQUIRED',
+        redirectTo: this.registerUnlockRedirect,
+      }),
+      handover: this.maskQuestionData(listing.handover, {
+        hideAll: true,
+        lockLabel: this.registerUnlockLabel,
+        lockType: 'AUTH_REQUIRED',
+        redirectTo: this.registerUnlockRedirect,
+      }),
+      social_account: this.maskQuestionData(listing.social_account, {
+        hideAll: true,
+        lockLabel: this.registerUnlockLabel,
+        lockType: 'AUTH_REQUIRED',
+        redirectTo: this.registerUnlockRedirect,
+      }),
+      advertisement: this.maskQuestionData(listing.advertisement, {
+        lockLabel: this.registerUnlockLabel,
+        lockType: 'AUTH_REQUIRED',
+        redirectTo: this.registerUnlockRedirect,
+      }),
+    };
+  }
+
+  private async hasConfidentialAccess(
+    listingId: string,
+    viewerUserId?: string,
+  ): Promise<boolean> {
+    if (!viewerUserId) {
+      return false;
+    }
+
+    const access = await this.db.listingConfidentialAccess.findUnique({
+      where: {
+        listingId_buyerId: {
+          listingId,
+          buyerId: viewerUserId,
+        },
+      },
+    });
+
+    return Boolean(access);
+  }
+
+  private async applyConfidentialMask(listing: any, viewer?: ViewerContext) {
+    if (!listing?.confidentialControl) {
+      return listing;
+    }
+
+    if (viewer?.userId && viewer.userId === listing.userId) {
+      return listing;
+    }
+
+    const hasBuyerAccess = await this.hasConfidentialAccess(
+      listing.id,
+      viewer?.userId,
+    );
+    if (hasBuyerAccess) {
+      return listing;
+    }
+
+    return {
+      ...listing,
+      portfolioLink: this.proUnlockLabel,
+      lockAction: {
+        lockType: 'PRO_SUBSCRIPTION',
+        ctaText: this.proUnlockLabel,
+        redirectTo: this.proUnlockRedirect,
+      },
+      brand: this.maskQuestionData(listing.brand, { hideAll: true }),
+      productQuestion: this.maskQuestionData(listing.productQuestion, {
+        hideAll: true,
+      }),
+      managementQuestion: this.maskQuestionData(listing.managementQuestion, {
+        hideAll: true,
+      }),
+      handover: this.maskQuestionData(listing.handover, { hideAll: true }),
+      social_account: this.maskQuestionData(listing.social_account, {
+        hideAll: true,
+      }),
+    };
+  }
+
+  async findAll(
+    filters?: {
+      status?: 'PUBLISH' | 'DRAFT';
+      category?: string;
+      userId?: string;
+      page?: number;
+      limit?: number;
+    },
+    viewer?: ViewerContext,
+  ) {
+    const resolvedViewer: ViewerContext = viewer || {
+      viewerType: 'UNREGISTERED',
+    };
+
     // Build where clause for filtering
     const where: any = {};
     
@@ -35,13 +236,34 @@ export class ListingService {
     if (filters?.userId) {
       where.userId = filters.userId;
     }
+
+    // Pro buyers can access listings earlier. Others see them after 7 days.
+    if (resolvedViewer.viewerType !== 'REGISTERED_PRO') {
+      const earlyAccessCutoff = new Date(
+        Date.now() - this.earlyAccessDays * 24 * 60 * 60 * 1000,
+      );
+
+      if (resolvedViewer.userId) {
+        where.OR = [
+          { created_at: { lte: earlyAccessCutoff } },
+          { userId: resolvedViewer.userId },
+        ];
+      } else {
+        where.created_at = { lte: earlyAccessCutoff };
+      }
+    }
     
     // Calculate pagination
     const page = filters?.page || 1;
     const limit = filters?.limit || 100; // Default limit
     const skip = (page - 1) * limit;
     
-    return this.db.listing.findMany({
+    const isCategoryFeed = Boolean(filters?.category);
+    const featuredFlagKey = isCategoryFeed
+      ? 'featuredOnCategoryPage'
+      : 'featuredOnStartPage';
+
+    const listings = await this.db.listing.findMany({
       where,
       include: {
         user: {
@@ -70,10 +292,40 @@ export class ListingService {
         created_at: 'desc', // Order by newest first
       },
     });
+
+    // Rotate featured listings to balance visibility instead of always pinning
+    // the exact same records to the top.
+    const featuredListings = listings.filter(
+      (listing) => Boolean((listing as any)[featuredFlagKey]),
+    );
+    const nonFeaturedListings = listings.filter(
+      (listing) => !Boolean((listing as any)[featuredFlagKey]),
+    );
+    const rotatedListings = [
+      ...this.shuffleArray(featuredListings),
+      ...nonFeaturedListings,
+    ];
+
+    return Promise.all(rotatedListings.map(async (listing) => {
+      const withConfidentialMask = await this.applyConfidentialMask(
+        listing,
+        resolvedViewer,
+      );
+
+      if (resolvedViewer.viewerType === 'UNREGISTERED') {
+        return this.applyUnregisteredMask(withConfidentialMask);
+      }
+
+      return withConfidentialMask;
+    }));
   }
 
-  async findOne(id: string) {
-    return this.db.listing.findUnique({
+  async findOne(id: string, viewer?: ViewerContext) {
+    const resolvedViewer: ViewerContext = viewer || {
+      viewerType: 'UNREGISTERED',
+    };
+
+    const listing = await this.db.listing.findUnique({
       where: { id },
       include: {
         user: {
@@ -98,9 +350,195 @@ export class ListingService {
         handover: true,
       },
     });
+
+    if (!listing) {
+      return null;
+    }
+
+    if (resolvedViewer.viewerType !== 'REGISTERED_PRO') {
+      const earlyAccessCutoff = new Date(
+        Date.now() - this.earlyAccessDays * 24 * 60 * 60 * 1000,
+      );
+      const isOwner = resolvedViewer.userId === listing.userId;
+      if (!isOwner && listing.created_at > earlyAccessCutoff) {
+        return null;
+      }
+    }
+
+    const withConfidentialMask = await this.applyConfidentialMask(
+      listing,
+      resolvedViewer,
+    );
+    if (resolvedViewer.viewerType === 'UNREGISTERED') {
+      return this.applyUnregisteredMask(withConfidentialMask);
+    }
+
+    return withConfidentialMask;
+  }
+
+  async resolveViewerContext(userId?: string): Promise<ViewerContext> {
+    if (!userId) {
+      return { viewerType: 'UNREGISTERED' };
+    }
+
+    const rules = await this.subscriptionService.getUserSubscriptionRules(userId);
+    if (rules.isPro) {
+      return { userId, viewerType: 'REGISTERED_PRO' };
+    }
+
+    return { userId, viewerType: 'REGISTERED_FREE' };
+  }
+
+  async grantConfidentialAccess(
+    listingId: string,
+    sellerId: string,
+    buyerId: string,
+    chatId?: string,
+  ) {
+    const listing = await this.db.listing.findUnique({
+      where: { id: listingId },
+      select: { id: true, userId: true, confidentialControl: true },
+    });
+
+    if (!listing) {
+      throw new NotFoundException('Listing not found');
+    }
+
+    if (listing.userId !== sellerId) {
+      throw new ForbiddenException(
+        'Only the listing seller can grant confidential access.',
+      );
+    }
+
+    if (!listing.confidentialControl) {
+      throw new BadRequestException(
+        'Confidential control is not enabled for this listing.',
+      );
+    }
+
+    if (chatId) {
+      const chat = await this.db.chat.findUnique({
+        where: { id: chatId },
+        select: { id: true, listingId: true, userId: true, sellerId: true },
+      });
+      if (!chat) {
+        throw new NotFoundException('Chat not found');
+      }
+      if (chat.listingId !== listingId) {
+        throw new BadRequestException(
+          'Chat does not belong to this listing.',
+        );
+      }
+      if (chat.sellerId !== sellerId || chat.userId !== buyerId) {
+        throw new ForbiddenException(
+          'Chat participants do not match seller and buyer.',
+        );
+      }
+    }
+
+    return this.db.listingConfidentialAccess.upsert({
+      where: {
+        listingId_buyerId: {
+          listingId,
+          buyerId,
+        },
+      },
+      create: {
+        listingId,
+        buyerId,
+        grantedBySellerId: sellerId,
+        chatId: chatId || null,
+      },
+      update: {
+        grantedBySellerId: sellerId,
+        chatId: chatId || null,
+      },
+    });
+  }
+
+  async revokeConfidentialAccess(
+    listingId: string,
+    sellerId: string,
+    buyerId: string,
+  ) {
+    const listing = await this.db.listing.findUnique({
+      where: { id: listingId },
+      select: { id: true, userId: true },
+    });
+
+    if (!listing) {
+      throw new NotFoundException('Listing not found');
+    }
+
+    if (listing.userId !== sellerId) {
+      throw new ForbiddenException(
+        'Only the listing seller can revoke confidential access.',
+      );
+    }
+
+    const deleted = await this.db.listingConfidentialAccess.deleteMany({
+      where: { listingId, buyerId },
+    });
+
+    return { success: true, revoked: deleted.count > 0 };
+  }
+
+  async getConfidentialAccessStatus(listingId: string, buyerId: string) {
+    const hasAccess = await this.hasConfidentialAccess(listingId, buyerId);
+    return { listingId, buyerId, hasAccess };
+  }
+
+  async getConfidentialAccessStatusForSeller(
+    listingId: string,
+    sellerId: string,
+    buyerId: string,
+  ) {
+    const listing = await this.db.listing.findUnique({
+      where: { id: listingId },
+      select: { id: true, userId: true },
+    });
+
+    if (!listing) {
+      throw new NotFoundException('Listing not found');
+    }
+
+    if (listing.userId !== sellerId) {
+      throw new ForbiddenException(
+        'Only the listing seller can check buyer confidential access.',
+      );
+    }
+
+    return this.getConfidentialAccessStatus(listingId, buyerId);
   }
 
   async create(userId: string, body: ListingSchemaT) {
+    const rules = await this.subscriptionService.getUserSubscriptionRules(userId);
+
+    if (body.confidentialControl && !rules.actions.canToggleConfidentialControl) {
+      throw new ForbiddenException(
+        'Confidential control is available only for Pro sellers.',
+      );
+    }
+
+    if (body.featuredOnCategoryPage && !rules.actions.canFeatureOnCategoryPage) {
+      throw new ForbiddenException(
+        'Featured on category page is available only for Pro sellers.',
+      );
+    }
+
+    if (body.featuredOnStartPage && !rules.actions.canFeatureOnStartPage) {
+      throw new BadRequestException(
+        'Featured on start page is a separate paid add-on, not included in subscription.',
+      );
+    }
+
+    const usage = await this.subscriptionService.getUserListingLimit(userId);
+    if (!usage.canCreate) {
+      throw new ForbiddenException(
+        `You have reached your listing limit (${usage.current}/${usage.max}). Upgrade your subscription to create more listings.`,
+      );
+    }
+
     // return this.db.listing.create({
     //   data: {
     //     brand: {
@@ -189,6 +627,9 @@ export class ListingService {
       user: {
         connect: { id: userId },
       },
+      confidentialControl: Boolean(body.confidentialControl),
+      featuredOnCategoryPage: Boolean(body.featuredOnCategoryPage),
+      featuredOnStartPage: Boolean(body.featuredOnStartPage),
     };
 
     // Only add createMany for arrays that have valid data
@@ -286,7 +727,12 @@ export class ListingService {
 
     // Final validation: ensure at least one data field exists (besides status and user)
     const dataFields = Object.keys(createData).filter(key => 
-      key !== 'status' && key !== 'user' && key !== 'portfolioLink'
+      key !== 'status' &&
+      key !== 'user' &&
+      key !== 'portfolioLink' &&
+      key !== 'confidentialControl' &&
+      key !== 'featuredOnCategoryPage' &&
+      key !== 'featuredOnStartPage'
     );
     
     if (dataFields.length === 0) {
@@ -316,6 +762,33 @@ export class ListingService {
   }
 
   async update(id: string, userId: string, body: UpdateListingT) {
+    if (body.confidentialControl !== undefined) {
+      const rules = await this.subscriptionService.getUserSubscriptionRules(userId);
+      if (body.confidentialControl && !rules.actions.canToggleConfidentialControl) {
+        throw new ForbiddenException(
+          'Confidential control is available only for Pro sellers.',
+        );
+      }
+    }
+
+    if (body.featuredOnCategoryPage !== undefined) {
+      const rules = await this.subscriptionService.getUserSubscriptionRules(userId);
+      if (body.featuredOnCategoryPage && !rules.actions.canFeatureOnCategoryPage) {
+        throw new ForbiddenException(
+          'Featured on category page is available only for Pro sellers.',
+        );
+      }
+    }
+
+    if (body.featuredOnStartPage !== undefined) {
+      const rules = await this.subscriptionService.getUserSubscriptionRules(userId);
+      if (body.featuredOnStartPage && !rules.actions.canFeatureOnStartPage) {
+        throw new BadRequestException(
+          'Featured on start page is a separate paid add-on, not included in subscription.',
+        );
+      }
+    }
+
     // SPECIAL CASE: If only managed_by_ex is being updated, use a simpler update
     // Filter out undefined values to get only the fields being updated
     const updateKeys = Object.keys(body).filter(key => {
@@ -446,6 +919,18 @@ export class ListingService {
     if (body.managed_by_ex !== undefined) {
       updateData.managed_by_ex = Boolean(body.managed_by_ex);
       console.log(`📝 Updating listing ${id}: managed_by_ex = ${updateData.managed_by_ex}`);
+    }
+
+    if (body.confidentialControl !== undefined) {
+      updateData.confidentialControl = Boolean(body.confidentialControl);
+    }
+
+    if (body.featuredOnCategoryPage !== undefined) {
+      updateData.featuredOnCategoryPage = Boolean(body.featuredOnCategoryPage);
+    }
+
+    if (body.featuredOnStartPage !== undefined) {
+      updateData.featuredOnStartPage = Boolean(body.featuredOnStartPage);
     }
     
     // Include all the nested updates

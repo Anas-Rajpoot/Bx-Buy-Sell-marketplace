@@ -87,7 +87,10 @@ export const listingSchema = z.object({
   advertisement: z.array(Question),
   handover: z.array(Question),
   portfolioLink: z.string().optional(),
-  managed_by_ex: z.boolean().optional()
+  managed_by_ex: z.boolean().optional(),
+  confidentialControl: z.boolean().optional(),
+  featuredOnCategoryPage: z.boolean().optional(),
+  featuredOnStartPage: z.boolean().optional(),
 });
 
 export type ListingSchemaT = z.infer<typeof listingSchema>;

@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { apiClient } from "@/lib/api";
 import { toast } from "sonner";
 import { usePlans } from "@/hooks/usePlans";
@@ -25,6 +27,12 @@ export const PackagesStep = ({ formData, listingId, onBack }: PackagesStepProps)
   const [listingStatus, setListingStatus] = useState<"DRAFT" | "PUBLISH">(
     formData.listingStatus === 'PUBLISH' ? 'PUBLISH' : 'DRAFT'
   );
+  const [sellerFeatures, setSellerFeatures] = useState({
+    confidentialControl: Boolean(formData.confidentialControl),
+    featuredOnCategoryPage: Boolean(formData.featuredOnCategoryPage),
+    featuredOnStartPage: Boolean(formData.featuredOnStartPage),
+  });
+  const [rules, setRules] = useState<any>(null);
   const { data: plans, isLoading: plansLoading } = usePlans();
   const { data: brandQuestions } = useBrandQuestions();
   const { data: statisticQuestions } = useStatisticQuestions();
@@ -38,6 +46,17 @@ export const PackagesStep = ({ formData, listingId, onBack }: PackagesStepProps)
   console.log("Form data accumulated:", formData);
   console.log("Selected package:", selectedPackage);
   console.log("Listing status:", listingStatus);
+
+  useEffect(() => {
+    const loadRules = async () => {
+      const response = await apiClient.getSubscriptionRules();
+      if (response.success) {
+        setRules(response.data);
+      }
+    };
+
+    loadRules();
+  }, []);
 
   // Helper function to transform question answers to Question format
   const transformQuestions = (questions: any[], answers: Record<string, any>, answerFor: string) => {
@@ -234,6 +253,9 @@ export const PackagesStep = ({ formData, listingId, onBack }: PackagesStepProps)
       // Other fields can be omitted if empty
       const listingPayload: any = {
         status: listingStatus, // Use selected status (DRAFT or PUBLISH)
+        confidentialControl: sellerFeatures.confidentialControl,
+        featuredOnCategoryPage: sellerFeatures.featuredOnCategoryPage,
+        featuredOnStartPage: sellerFeatures.featuredOnStartPage,
         // Required fields - always send as arrays (even if empty)
         productQuestion: productQuestionArray, // REQUIRED by backend
         managementQuestion: managementQuestionArray, // REQUIRED by backend
@@ -320,9 +342,74 @@ export const PackagesStep = ({ formData, listingId, onBack }: PackagesStepProps)
            parseFloat(plan.price?.replace(/[^0-9.]/g, '') || '0') > 0;
   };
 
+  const canToggleConfidential = Boolean(rules?.actions?.canToggleConfidentialControl);
+  const canFeatureCategory = Boolean(rules?.actions?.canFeatureOnCategoryPage);
+  const canFeatureStart = Boolean(rules?.actions?.canFeatureOnStartPage);
+
   return (
     <div className="max-w-6xl">
       <h1 className="text-3xl font-bold mb-8">Packages</h1>
+
+      <div className="mb-8 p-6 bg-card rounded-xl border border-border space-y-5">
+        <h2 className="text-xl font-semibold">Seller Visibility Controls</h2>
+
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="confidential-control">Confidential Control (Pro)</Label>
+            <p className="text-sm text-muted-foreground">
+              Hide domain, attachments and sensitive details until you grant buyer access in chat.
+            </p>
+          </div>
+          <Switch
+            id="confidential-control"
+            checked={sellerFeatures.confidentialControl}
+            disabled={!canToggleConfidential}
+            onCheckedChange={(checked) =>
+              setSellerFeatures((prev) => ({ ...prev, confidentialControl: checked }))
+            }
+          />
+        </div>
+
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="featured-category">Featured on Category Page (Pro)</Label>
+            <p className="text-sm text-muted-foreground">
+              Rotates equally with other featured listings in the same category.
+            </p>
+          </div>
+          <Switch
+            id="featured-category"
+            checked={sellerFeatures.featuredOnCategoryPage}
+            disabled={!canFeatureCategory}
+            onCheckedChange={(checked) =>
+              setSellerFeatures((prev) => ({ ...prev, featuredOnCategoryPage: checked }))
+            }
+          />
+        </div>
+
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="featured-start">Featured on Start Page (Add-on)</Label>
+            <p className="text-sm text-muted-foreground">
+              Rotates equally on the start page. This is a separate bookable feature.
+            </p>
+          </div>
+          <Switch
+            id="featured-start"
+            checked={sellerFeatures.featuredOnStartPage}
+            disabled={!canFeatureStart}
+            onCheckedChange={(checked) =>
+              setSellerFeatures((prev) => ({ ...prev, featuredOnStartPage: checked }))
+            }
+          />
+        </div>
+
+        {(!canToggleConfidential || !canFeatureCategory || !canFeatureStart) && (
+          <p className="text-sm text-muted-foreground">
+            Some options are locked by your current plan. Upgrade or purchase the required add-on to enable them.
+          </p>
+        )}
+      </div>
 
       {/* Status Selection */}
       <div className="mb-8 p-6 bg-card rounded-xl border border-border">
