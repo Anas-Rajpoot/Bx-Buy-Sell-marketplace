@@ -13,8 +13,14 @@ export class RedisAdapterService extends IoAdapter {
 
   async connectToRedis(): Promise<void> {
     const start = performance.now();
-    const redisHost = process.env.REDIS_HOST || 'localhost:6379';
-    const redisUrl = `redis://${redisHost}`;
+    const redisUrl = (() => {
+      const fromUrl = process.env.REDIS_URL?.trim();
+      if (fromUrl) {
+        return fromUrl.startsWith('redis://') ? fromUrl : `redis://${fromUrl}`;
+      }
+      const host = process.env.REDIS_HOST || 'localhost:6379';
+      return host.startsWith('redis://') ? host : `redis://${host}`;
+    })();
     
     console.log(`🔌 Connecting to Redis: ${redisUrl}`);
     

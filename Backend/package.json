@@ -55,6 +55,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "crypto": "^1.0.1",
+    "dotenv": "^16.4.7",
     "ioredis": "^5.6.1",
     "keyv": "^5.4.0",
     "libphonenumber-js": "^1.12.10",
