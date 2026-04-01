@@ -1,6 +1,7 @@
 import { Controller, Get, NotFoundException } from '@nestjs/common';
 import { AppService } from './app.service';
 import { perfStore } from './perf/perf.store';
+import { Public } from 'common/decorator/public.decorator';
 
 @Controller()
 export class AppController {
@@ -11,6 +12,7 @@ export class AppController {
     return this.appService.getHello();
   }
 
+  @Public()
   @Get('health')
   getHealth() {
     return { ok: true, timestamp: new Date().toISOString() };
