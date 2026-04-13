@@ -106,12 +106,27 @@ class ApiClient {
       let data;
       try {
         const text = await response.text();
-        data = JSON.parse(text);
-      } catch (parseError) {
-        console.error('Failed to parse API response:', parseError);
+        try {
+          data = JSON.parse(text);
+        } catch {
+          console.error(
+            'Invalid JSON from server',
+            path,
+            text?.slice?.(0, 200) ?? text,
+          );
+          return {
+            success: false,
+            error: 'Invalid JSON response from server',
+          };
+        }
+      } catch (readError) {
+        console.error('Failed to read API response body:', readError);
         return {
           success: false,
-          error: 'Invalid JSON response from server',
+          error:
+            readError instanceof Error
+              ? `Response incomplete or connection reset: ${readError.message}`
+              : 'Response incomplete or connection reset',
         };
       }
 

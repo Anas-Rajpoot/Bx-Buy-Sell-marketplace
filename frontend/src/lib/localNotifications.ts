@@ -32,9 +32,17 @@ export const addLocalNotification = (
 ) => {
   if (typeof window === "undefined") return null;
   const current = getLocalNotifications(userId);
-  const id = `local-${typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
+  let suffix: string;
+  try {
+    const c = globalThis.crypto;
+    suffix =
+      c && typeof c.randomUUID === "function"
+        ? c.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  } catch {
+    suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+  const id = `local-${suffix}`;
   const newNotification: LocalNotification = {
     id,
     read: false,

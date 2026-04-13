@@ -30,6 +30,51 @@ export class ListingService {
 
   private readonly earlyAccessDays = 7;
 
+  /** Drop multi‑MB base64 blobs from feed payloads so JSON responses stay well‑formed over HTTP. */
+  private readonly listingFeedMaxAnswerChars = 400_000;
+  private readonly listingFeedMaxRevenueAmountChars = 250_000;
+
+  private trimListingForFeed(listing: Record<string, any>) {
+    const trimQuestions = (items: any[] | undefined) => {
+      if (!Array.isArray(items)) return items;
+      return items.map((q) => {
+        if (!q || typeof q !== 'object') return q;
+        const ans = q.answer;
+        if (typeof ans !== 'string' || ans.length === 0) return q;
+        const isFileLike = q.answer_type === 'FILE' || q.answer_type === 'PHOTO';
+        if (!isFileLike) return q;
+        if (ans.length <= this.listingFeedMaxAnswerChars) return q;
+        if (/^https?:\/\//i.test(ans)) return q;
+        return { ...q, answer: null };
+      });
+    };
+
+    const financials = Array.isArray(listing.financials)
+      ? listing.financials.map((f: any) => {
+          const ra = f?.revenue_amount;
+          if (
+            typeof ra === 'string' &&
+            ra.length > this.listingFeedMaxRevenueAmountChars
+          ) {
+            return { ...f, revenue_amount: '{}' };
+          }
+          return f;
+        })
+      : listing.financials;
+
+    return {
+      ...listing,
+      brand: trimQuestions(listing.brand),
+      statistics: trimQuestions(listing.statistics),
+      productQuestion: trimQuestions(listing.productQuestion),
+      managementQuestion: trimQuestions(listing.managementQuestion),
+      social_account: trimQuestions(listing.social_account),
+      advertisement: trimQuestions(listing.advertisement),
+      handover: trimQuestions(listing.handover),
+      financials,
+    };
+  }
+
   private shuffleArray<T>(items: T[]): T[] {
     const copy = [...items];
     for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -304,7 +349,7 @@ export class ListingService {
     const rotatedListings = [
       ...this.shuffleArray(featuredListings),
       ...nonFeaturedListings,
-    ];
+    ].map((listing) => this.trimListingForFeed(listing as Record<string, any>));
 
     return Promise.all(rotatedListings.map(async (listing) => {
       const withConfidentialMask = await this.applyConfidentialMask(
