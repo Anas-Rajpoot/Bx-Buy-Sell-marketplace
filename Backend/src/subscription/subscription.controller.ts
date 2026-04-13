@@ -31,6 +31,15 @@ export class SubscriptionController {
     return this.subscriptionService.getPlans();
   }
 
+  @Public()
+  @Get('rules-preview')
+  @ApiOperation({
+    summary: 'Subscription rules for anonymous users (listing wizard before sign-in)',
+  })
+  async getRulesPreview() {
+    return this.subscriptionService.getAnonymousSubscriptionRules();
+  }
+
   @Roles(['USER', 'SELLER', 'ADMIN'])
   @Get('current')
   @ApiOperation({ summary: 'Get current user subscription' })

@@ -19,6 +19,7 @@ import { CreateServiceToolDto } from './dto/create-service-tool.dto';
 import { UpdateServiceToolDto } from './dto/update-service-tool.dto';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { CACHE_TTL } from 'common/config/cache.config';
+import { Public } from 'common/decorator/public.decorator';
 
 @Roles(['ADMIN', 'MONITER', 'STAFF'])
 @Controller('service-tool')
@@ -27,6 +28,7 @@ export class ServiceToolController {
     private readonly serviceToolService: ServiceToolService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
+  @Public()
   @Roles(['ADMIN', 'MONITER', 'STAFF', 'USER'])
   @Get()
   async getAll() {
@@ -39,6 +41,7 @@ export class ServiceToolController {
     return data;
   }
 
+  @Public()
   @ApiParam({ name: 'id', description: 'Service Tool ID', type: String })
   @Get(':id')
   async getById(@Param('id') id: string) {

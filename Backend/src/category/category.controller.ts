@@ -23,6 +23,8 @@ import { Roles } from 'common/decorator/roles.decorator';
 import { ApiBody, ApiParam } from '@nestjs/swagger';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { CACHE_TTL } from 'common/config/cache.config';
+import { Public } from 'common/decorator/public.decorator';
+
 @Roles(['ADMIN', 'MONITER'])
 @Controller('category')
 export class CategoryController {
@@ -30,6 +32,7 @@ export class CategoryController {
     private readonly categoryService: CategoryService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
+  @Public()
   @Roles(['ADMIN', 'MONITER', 'USER'])
   @Get()
   async getAll(@Query('nocache') nocache?: string) {
@@ -50,6 +53,7 @@ export class CategoryController {
     await this.cacheManager.set(`${this.constructor.name}`, data, CACHE_TTL);
     return data;
   }
+  @Public()
   @ApiParam({ name: 'id', description: 'Category ID', type: String })
   @Get(':id')
   async getById(@Param('id') id: string) {

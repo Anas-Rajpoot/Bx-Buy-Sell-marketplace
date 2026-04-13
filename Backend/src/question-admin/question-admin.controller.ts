@@ -1,5 +1,6 @@
 import { Controller, Param, Patch, Get, Post, Delete, Body } from '@nestjs/common';
 import { Roles } from 'common/decorator/roles.decorator';
+import { Public } from 'common/decorator/public.decorator';
 import { QuestionAdminService } from './question-admin.service';
 import { QuestionAdminSchema, UpdateQuestionAdminSchema,  } from './dto/question-admin.dto';
 import { ZodValidationPipe } from 'common/validator/zod.validator';
@@ -8,18 +9,21 @@ import { ZodValidationPipe } from 'common/validator/zod.validator';
 @Roles(['ADMIN', 'MONITER', 'USER', 'STAFF'])
 export class QuestionAdminController {
     constructor(private readonly questionAdminService: QuestionAdminService) {}
+    @Public()
     @Roles(['ADMIN', 'MONITER', 'USER', 'STAFF'])
     @Get()
     findAll() {
         return this.questionAdminService.findAll();
     }
-    @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.questionAdminService.findOne(id);
-    }
+    @Public()
     @Get('type/:type')
     findAllWithType(@Param('type') type: string) {
         return this.questionAdminService.findAllWithType(type);
+    }
+    @Public()
+    @Get(':id')
+    findOne(@Param('id') id: string) {
+        return this.questionAdminService.findOne(id);
     }
     
 

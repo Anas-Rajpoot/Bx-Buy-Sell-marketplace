@@ -432,6 +432,83 @@ export class SubscriptionService {
   }
 
   /**
+   * Same shape as getUserSubscriptionRules for logged-out listing wizard (free-plan defaults).
+   */
+  async getAnonymousSubscriptionRules() {
+    const freePlan = await this.db.plan.findUnique({
+      where: { slug: 'free' },
+    });
+    const plan = freePlan;
+    const isPro = false;
+    const usage = {
+      current: 0,
+      max: plan?.slug === 'free' ? 0 : (plan?.maxListings ?? 0),
+      unlimited: (plan?.slug === 'free' ? 0 : (plan?.maxListings ?? 0)) === 0,
+      canCreate: true,
+      remaining: -1,
+    };
+
+    return {
+      status: 'ACTIVE' as SubscriptionStatus,
+      isFree: true,
+      isPro,
+      plan: {
+        id: plan?.id,
+        slug: plan?.slug,
+        name: plan?.name,
+        title: plan?.title,
+      },
+      limits: {
+        listings: usage,
+        maxPhotos: plan?.maxPhotos ?? 5,
+        maxVideoDurationMinutes: plan?.maxVideoDuration ?? 0,
+      },
+      features: {
+        analytics: Boolean(plan?.canUseAnalytics),
+        featuredListing: Boolean(plan?.featuredListing),
+        boostListing: Boolean(plan?.canBoostListing),
+        customBranding: Boolean(plan?.customBranding),
+        prioritySupport: Boolean(plan?.prioritySupport),
+        advancedFilters: isPro,
+        earlyAccessListings: isPro,
+        confidentialControl: isPro,
+        categoryPageFeature: isPro,
+        startPageFeature: false,
+      },
+      actions: {
+        canCreateListing: usage.canCreate,
+        canUseAnalytics: Boolean(plan?.canUseAnalytics),
+        canBoostListing: Boolean(plan?.canBoostListing),
+        canFeatureListing: Boolean(plan?.featuredListing),
+        canAccessEarlyListings: isPro,
+        canUseAdvancedFilters: isPro,
+        canToggleConfidentialControl: isPro,
+        canFeatureOnCategoryPage: isPro,
+        canFeatureOnStartPage: false,
+      },
+      listingAccess: {
+        proEarlyAccessDays: 7,
+        upgradeCtaText: 'upgrade to unlock 🔓',
+        upgradeRedirectTo: '/pricing',
+        registerCtaText: 'register to unlock 🔓',
+        registerRedirectTo: '/register',
+        unregisteredHiddenFields: [
+          'domain',
+          'fullDescription',
+          'profitAndLossSheet',
+          'statistics',
+          'charts',
+          'products',
+          'management',
+          'handover',
+          'socialMedia',
+          'attachments',
+        ],
+      },
+    };
+  }
+
+  /**
    * Get payment history for user
    */
   async getPaymentHistory(userId: string) {

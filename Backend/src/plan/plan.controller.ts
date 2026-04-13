@@ -16,6 +16,7 @@ import { Roles } from 'common/decorator/roles.decorator';
 import { ApiBody, ApiParam } from '@nestjs/swagger';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { CACHE_TTL } from 'common/config/cache.config';
+import { Public } from 'common/decorator/public.decorator';
 
 @Roles(['ADMIN', 'MONITER'])
 @Controller('plan')
@@ -24,6 +25,7 @@ export class PlanController {
     private readonly planService: PlanService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
+  @Public()
   @Roles(['ADMIN', 'MONITER', 'USER'])
   @Get()
   async getAll() {
@@ -35,6 +37,7 @@ export class PlanController {
     await this.cacheManager.set(`${this.constructor.name}`, payload, CACHE_TTL);
     return payload;
   }
+  @Public()
   @ApiParam({ name: 'id', description: 'Plan ID', type: String })
   @Get(':id')
   async getById(@Param('id') id: string) {
