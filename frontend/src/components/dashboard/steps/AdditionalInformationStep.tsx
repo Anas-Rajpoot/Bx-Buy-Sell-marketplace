@@ -10,6 +10,7 @@ import { useProductQuestions } from "@/hooks/useProductQuestions";
 import { useManagementQuestions } from "@/hooks/useManagementQuestions";
 import { toast } from "sonner";
 import { uploadToCloudinary, uploadMultipleToCloudinary } from "@/lib/cloudinary";
+import { isValidListingDateAnswer } from "@/lib/dateUtils";
 
 interface AdditionalInformationStepProps {
   formData?: any;
@@ -168,7 +169,11 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
         errors.push(`${question.question} must be a valid number`);
       }
       
-      if (question.answer_type === 'DATE' && value && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      if (
+        question.answer_type === 'DATE' &&
+        value &&
+        !isValidListingDateAnswer(typeof value === 'string' ? value : String(value))
+      ) {
         errors.push(`${question.question} must be a valid date`);
       }
     });

@@ -8,13 +8,11 @@ export const useUserListings = (userId: string | undefined) => {
       if (!userId) throw new Error("User ID is required");
 
       try {
-        // Get all listings and filter by userId on frontend
-        // TODO: Create backend endpoint /listing/user/:userId for better performance
-        const response = await apiClient.getListings({
-          limit: 1000,
-          nocache: 'true',
+        // Authenticated route so early-access rules do not hide the target user's new listings.
+        const response = await apiClient.getSecureListings({
           userId,
-          status: 'PUBLISH',
+          limit: 1000,
+          nocache: "true",
         });
         const payload = response.success ? (response.data as any) : null;
         const rawListings = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];

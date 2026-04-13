@@ -68,7 +68,12 @@ class ApiClient {
       endpoint.startsWith('/listing') ||
       endpoint.startsWith('/category') ||
       endpoint.startsWith('/health') ||
-      endpoint.startsWith('/plan');
+      endpoint.startsWith('/plan') ||
+      endpoint.startsWith('/question-admin') ||
+      endpoint.startsWith('/service-tool') ||
+      endpoint.startsWith('/admin-social-account') ||
+      endpoint.startsWith('/subscription/plans') ||
+      endpoint.startsWith('/subscription/rules-preview');
     
     if (!finalBearerToken && !isAuthEndpoint && !isPublicEndpoint) {
       console.error('CRITICAL: No bearer token available!');
@@ -121,7 +126,8 @@ class ApiClient {
             currentPath.startsWith('/all-listings') ||
             currentPath.startsWith('/listing/') ||
             currentPath.startsWith('/how-to-buy') ||
-            currentPath.startsWith('/how-to-sell');
+            currentPath.startsWith('/how-to-sell') ||
+            currentPath.startsWith('/dashboard');
           
           // Don't auto-logout if we just logged in (within last 30 seconds)
           // This gives more time for the backend to sync/validate the token
@@ -359,6 +365,7 @@ class ApiClient {
     category?: string;
     status?: string;
     userId?: string;
+    nocache?: string;
   }) {
     const queryParams = new URLSearchParams();
     if (params) {
@@ -385,6 +392,13 @@ class ApiClient {
 
   async getSubscriptionRules() {
     return this.request('/subscription/rules', {
+      method: 'GET',
+    });
+  }
+
+  /** Free-plan rules for the create-listing wizard when the user is not signed in */
+  async getSubscriptionRulesPreview() {
+    return this.request('/subscription/rules-preview', {
       method: 'GET',
     });
   }

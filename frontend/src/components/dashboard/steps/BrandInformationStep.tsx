@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useBrandQuestions } from "@/hooks/useBrandQuestions";
 import { toast } from "sonner";
 import FlagIcon from "@/components/FlagIcon";
+import { isValidListingDateAnswer } from "@/lib/dateUtils";
 
 interface BrandInformationStepProps {
   formData?: any;
@@ -41,7 +42,11 @@ export const BrandInformationStep = ({ formData: parentFormData, onNext, onBack 
         errors.push(`${question.question} must be a valid number`);
       }
       
-      if (question.answer_type === 'DATE' && value && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      if (
+        question.answer_type === 'DATE' &&
+        value &&
+        !isValidListingDateAnswer(typeof value === 'string' ? value : String(value))
+      ) {
         errors.push(`${question.question} must be a valid date`);
       }
       

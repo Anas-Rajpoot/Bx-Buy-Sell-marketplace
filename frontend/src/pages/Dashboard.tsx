@@ -1,7 +1,10 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardGuestBar } from "@/components/dashboard/DashboardGuestBar";
+import { GuestListingAuthDialog } from "@/components/dashboard/GuestListingAuthDialog";
+import { Button } from "@/components/ui/button";
 import { CategoryStep } from "@/components/dashboard/steps/CategoryStep";
 import { BrandInformationStep } from "@/components/dashboard/steps/BrandInformationStep";
 import { ToolsStep } from "@/components/dashboard/steps/ToolsStep";
@@ -16,6 +19,12 @@ import { HandoverStep } from "@/components/dashboard/steps/HandoverStep";
 import { PackagesStep } from "@/components/dashboard/steps/PackagesStep";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/lib/api";
+import {
+  clearInvalidDraftListing,
+  readDraftListing,
+  writeDraftListing,
+} from "@/lib/draftListingStorage";
+import { LISTING_PUBLISH_PENDING_SESSION_KEY } from "@/lib/listingGuestSession";
 import { toast } from "sonner";
 
 export type DashboardStep = 
@@ -42,12 +51,106 @@ const Dashboard = () => {
   const isEditMode = !!id;
   const hasLoadedListingRef = useRef(false);
   const loadedListingIdRef = useRef<string | null>(null);
+  const [draftHydrated, setDraftHydrated] = useState(false);
+  const [guestAuthOpen, setGuestAuthOpen] = useState(false);
+  const [resumePublishNonce, setResumePublishNonce] = useState(0);
+  const resumeFromSessionDoneRef = useRef(false);
+
+  const isGuestCreateFlow = !isEditMode && !isAuthenticated;
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (!authLoading && !isAuthenticated && isEditMode) {
       navigate("/login");
     }
-  }, [isAuthenticated, authLoading, navigate]);
+  }, [isAuthenticated, authLoading, navigate, isEditMode]);
+
+  // Hydrate listing draft from localStorage (guests, or returning users finishing publish)
+  useEffect(() => {
+    if (authLoading) return;
+    clearInvalidDraftListing();
+
+    if (isEditMode) {
+      setDraftHydrated(true);
+      return;
+    }
+
+    if (isAuthenticated) {
+      const pendingSession =
+        typeof window !== "undefined" &&
+        sessionStorage.getItem(LISTING_PUBLISH_PENDING_SESSION_KEY) === "1";
+      const draft = readDraftListing();
+      if (pendingSession || draft?.pendingPublish) {
+        if (draft?.formData && typeof draft.formData === "object") {
+          setFormData(draft.formData);
+        }
+        if (draft?.activeStep) {
+          setActiveStep(draft.activeStep);
+        }
+      }
+      setDraftHydrated(true);
+      return;
+    }
+
+    const draft = readDraftListing();
+    if (draft) {
+      setFormData(draft.formData);
+      setActiveStep(draft.activeStep);
+    }
+    setDraftHydrated(true);
+  }, [authLoading, isAuthenticated, isEditMode]);
+
+  // Persist guest progress to localStorage (progressive save)
+  useEffect(() => {
+    if (!draftHydrated || isEditMode || isAuthenticated) return;
+    const handle = window.setTimeout(() => {
+      const prev = readDraftListing();
+      writeDraftListing({
+        activeStep,
+        formData,
+        pendingPublish: prev?.pendingPublish === true,
+      });
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [formData, activeStep, draftHydrated, isEditMode, isAuthenticated]);
+
+  // After register redirect: session flag tells us to auto-run publish once (after draft is hydrated)
+  useEffect(() => {
+    if (!draftHydrated || authLoading || !isAuthenticated || !user || isEditMode) return;
+    if (activeStep !== "packages") return;
+    if (resumeFromSessionDoneRef.current) return;
+    if (sessionStorage.getItem(LISTING_PUBLISH_PENDING_SESSION_KEY) !== "1") return;
+    resumeFromSessionDoneRef.current = true;
+    sessionStorage.removeItem(LISTING_PUBLISH_PENDING_SESSION_KEY);
+    writeDraftListing({
+      activeStep,
+      formData,
+      pendingPublish: false,
+    });
+    setResumePublishNonce((n) => n + 1);
+  }, [draftHydrated, authLoading, isAuthenticated, user, isEditMode, activeStep, formData]);
+
+  const persistGuestDraft = useCallback(
+    (opts?: { pendingPublish?: boolean }) => {
+      if (isEditMode || isAuthenticated) return;
+      const prev = readDraftListing();
+      writeDraftListing({
+        activeStep,
+        formData,
+        pendingPublish: opts?.pendingPublish ?? prev?.pendingPublish === true,
+      });
+    },
+    [activeStep, formData, isEditMode, isAuthenticated]
+  );
+
+  const handleGuestAuthDialogSuccess = useCallback(() => {
+    sessionStorage.removeItem(LISTING_PUBLISH_PENDING_SESSION_KEY);
+    writeDraftListing({
+      activeStep,
+      formData,
+      pendingPublish: false,
+    });
+    setResumePublishNonce((n) => n + 1);
+  }, [activeStep, formData]);
 
   // Load listing data if in edit mode
   useEffect(() => {
@@ -287,13 +390,23 @@ const Dashboard = () => {
       case "handover":
         return <HandoverStep formData={formData} onNext={(data) => { updateFormData(data); setActiveStep("packages"); }} onBack={() => setActiveStep("ad-informations")} />;
       case "packages":
-        return <PackagesStep formData={formData} listingId={id} onBack={() => setActiveStep("handover")} />;
+        return (
+          <PackagesStep
+            formData={formData}
+            listingId={id}
+            onBack={() => setActiveStep("handover")}
+            isGuest={isGuestCreateFlow}
+            onGuestPersistDraft={persistGuestDraft}
+            onGuestAuthOpenChange={setGuestAuthOpen}
+            resumePublishNonce={resumePublishNonce}
+          />
+        );
       default:
         return null;
     }
   };
 
-  if (authLoading || loadingListing) {
+  if (authLoading || loadingListing || !draftHydrated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -304,7 +417,11 @@ const Dashboard = () => {
     );
   }
 
-  if (!isAuthenticated || !user) {
+  if (isEditMode && (!isAuthenticated || !user)) {
+    return null;
+  }
+
+  if (!isEditMode && isAuthenticated && !user) {
     return null;
   }
 
@@ -318,13 +435,23 @@ const Dashboard = () => {
         <div className="md:hidden border-b border-border bg-background sticky top-0 z-40">
           <div className="flex items-center gap-3 px-4 py-3">
             <DashboardSidebar activeStep={activeStep} onStepChange={setActiveStep} isMobile={true} />
-            <h1 className="text-lg font-semibold">Create Listing</h1>
+            <h1 className="text-lg font-semibold shrink-0">Create Listing</h1>
+            {isGuestCreateFlow && (
+              <div className="ml-auto flex items-center gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/login">Log in</Link>
+                </Button>
+                <Button size="sm" variant="accent" asChild>
+                  <Link to="/register">Sign up</Link>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
         
         {/* Desktop Header */}
         <div className="hidden md:block">
-          <DashboardHeader user={user} />
+          {isGuestCreateFlow ? <DashboardGuestBar /> : user ? <DashboardHeader user={user} /> : null}
         </div>
         
         {/* Main Content */}
@@ -332,6 +459,14 @@ const Dashboard = () => {
           {renderStep()}
         </main>
       </div>
+
+      {isGuestCreateFlow && (
+        <GuestListingAuthDialog
+          open={guestAuthOpen}
+          onOpenChange={setGuestAuthOpen}
+          onAuthSuccess={handleGuestAuthDialogSuccess}
+        />
+      )}
     </div>
   );
 };

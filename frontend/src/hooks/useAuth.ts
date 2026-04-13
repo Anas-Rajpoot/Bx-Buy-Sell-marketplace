@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api";
+import { LISTING_PUBLISH_PENDING_SESSION_KEY } from "@/lib/listingGuestSession";
 
 export interface User {
   id: string;
@@ -95,7 +96,7 @@ export const useAuth = () => {
       setUser(data.user);
       return { success: true, user: data.user };
     }
-    
+
     return { success: false, error: response.error };
   };
 
@@ -111,9 +112,15 @@ export const useAuth = () => {
     
     if (response.success && data?.user) {
       setUser(data.user);
+      if (
+        typeof window !== "undefined" &&
+        sessionStorage.getItem(LISTING_PUBLISH_PENDING_SESSION_KEY) === "1"
+      ) {
+        window.location.assign("/dashboard");
+      }
       return { success: true, user: data.user };
     }
-    
+
     return { success: false, error: response.error };
   };
 

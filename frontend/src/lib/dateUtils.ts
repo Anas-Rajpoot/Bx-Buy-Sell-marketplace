@@ -1,4 +1,27 @@
 /**
+ * Accepts HTML `type="date"` values (`YYYY-MM-DD`) and `type="month"` values (`YYYY-MM`).
+ */
+export function isValidListingDateAnswer(raw: string | null | undefined): boolean {
+  if (raw == null) return false;
+  const s = String(raw).trim();
+  if (!s) return false;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const d = new Date(`${s}T12:00:00`);
+    return !Number.isNaN(d.getTime());
+  }
+
+  if (/^\d{4}-\d{2}$/.test(s)) {
+    const [y, m] = s.split('-').map(Number);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return false;
+    const d = new Date(y, m - 1, 1);
+    return d.getFullYear() === y && d.getMonth() === m - 1;
+  }
+
+  return false;
+}
+
+/**
  * Calculate business age in years from a given date
  * @param dateString - ISO date string or Date object
  * @returns Number of years (rounded down to nearest integer)

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -14,14 +14,30 @@ import { useAdInformationQuestions } from "@/hooks/useAdInformationQuestions";
 import { useHandoverQuestions } from "@/hooks/useHandoverQuestions";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useAccountQuestions } from "@/hooks/useAccountQuestions";
+import { clearDraftListing } from "@/lib/draftListingStorage";
+import { LISTING_PUBLISH_PENDING_SESSION_KEY } from "@/lib/listingGuestSession";
 
 interface PackagesStepProps {
   formData: any;
   listingId?: string;
   onBack: () => void;
+  /** Logged-out user creating a new listing (not edit mode). */
+  isGuest?: boolean;
+  onGuestPersistDraft?: (opts?: { pendingPublish?: boolean }) => void;
+  onGuestAuthOpenChange?: (open: boolean) => void;
+  /** Incremented after sign-in to run the same submit path as logged-in users. */
+  resumePublishNonce?: number;
 }
 
-export const PackagesStep = ({ formData, listingId, onBack }: PackagesStepProps) => {
+export const PackagesStep = ({
+  formData,
+  listingId,
+  onBack,
+  isGuest = false,
+  onGuestPersistDraft,
+  onGuestAuthOpenChange,
+  resumePublishNonce = 0,
+}: PackagesStepProps) => {
   const [selectedPackage, setSelectedPackage] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [listingStatus, setListingStatus] = useState<"DRAFT" | "PUBLISH">(
@@ -42,21 +58,26 @@ export const PackagesStep = ({ formData, listingId, onBack }: PackagesStepProps)
   const { data: handoverQuestions } = useHandoverQuestions();
   const { data: socialAccounts } = useAccounts();
   const { data: accountQuestions } = useAccountQuestions();
-  
+
+  const handleSubmitRef = useRef<() => Promise<void>>(async () => {});
+  const lastResumeNonce = useRef(0);
+
   console.log("Form data accumulated:", formData);
   console.log("Selected package:", selectedPackage);
   console.log("Listing status:", listingStatus);
 
   useEffect(() => {
     const loadRules = async () => {
-      const response = await apiClient.getSubscriptionRules();
+      const response = isGuest
+        ? await apiClient.getSubscriptionRulesPreview()
+        : await apiClient.getSubscriptionRules();
       if (response.success) {
         setRules(response.data);
       }
     };
 
     loadRules();
-  }, []);
+  }, [isGuest]);
 
   // Helper function to transform question answers to Question format
   const transformQuestions = (questions: any[], answers: Record<string, any>, answerFor: string) => {
@@ -188,6 +209,23 @@ export const PackagesStep = ({ formData, listingId, onBack }: PackagesStepProps)
 
   const handleSubmit = async () => {
     // Package selection is optional - no validation required
+    if (isGuest) {
+      setIsSubmitting(true);
+      try {
+        if (listingStatus === "DRAFT") {
+          onGuestPersistDraft?.({});
+          toast.success("Draft saved on this device. Log in when you're ready to publish.");
+          return;
+        }
+        onGuestPersistDraft?.({ pendingPublish: true });
+        sessionStorage.setItem(LISTING_PUBLISH_PENDING_SESSION_KEY, "1");
+        onGuestAuthOpenChange?.(true);
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -289,6 +327,7 @@ export const PackagesStep = ({ formData, listingId, onBack }: PackagesStepProps)
       }
 
       if (response.success) {
+        clearDraftListing();
         const statusMessage = listingId
           ? (listingStatus === 'PUBLISH' 
               ? "Listing updated and published successfully!" 
@@ -325,6 +364,15 @@ export const PackagesStep = ({ formData, listingId, onBack }: PackagesStepProps)
       setIsSubmitting(false);
     }
   };
+
+  handleSubmitRef.current = handleSubmit;
+
+  useEffect(() => {
+    if (!resumePublishNonce || resumePublishNonce === lastResumeNonce.current) return;
+    if (isGuest) return;
+    lastResumeNonce.current = resumePublishNonce;
+    void handleSubmitRef.current();
+  }, [resumePublishNonce, isGuest]);
 
   if (plansLoading) {
     return (

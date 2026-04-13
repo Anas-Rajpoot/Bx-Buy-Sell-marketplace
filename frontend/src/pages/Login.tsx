@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Mail, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { normalizePublicSignupPassword } from "@/lib/authCredentials";
+import { LISTING_PUBLISH_PENDING_SESSION_KEY } from "@/lib/listingGuestSession";
 import { toast } from "sonner";
 
 const Login = () => {
@@ -28,11 +30,18 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const result = await login(email.toLowerCase().trim(), password);
+      const result = await login(
+        email.toLowerCase().trim(),
+        normalizePublicSignupPassword(password)
+      );
 
       if (result.success) {
         toast.success("Successfully logged in!");
-        navigate("/");
+        if (sessionStorage.getItem(LISTING_PUBLISH_PENDING_SESSION_KEY) === "1") {
+          navigate("/dashboard");
+        } else {
+          navigate("/");
+        }
       } else {
         toast.error(result.error || "Failed to log in");
       }

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useStatisticQuestions } from "@/hooks/useStatisticQuestions";
 import { toast } from "sonner";
+import { isValidListingDateAnswer } from "@/lib/dateUtils";
 
 interface StatisticsStepProps {
   onNext: (data: any) => void;
@@ -33,7 +34,11 @@ export const StatisticsStep = ({ onNext, onBack }: StatisticsStepProps) => {
         errors.push(`${question.question} must be a valid number`);
       }
       
-      if (question.answer_type === 'DATE' && value && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      if (
+        question.answer_type === 'DATE' &&
+        value &&
+        !isValidListingDateAnswer(typeof value === 'string' ? value : String(value))
+      ) {
         errors.push(`${question.question} must be a valid date`);
       }
     });

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ListingsSidebar } from "@/components/listings/ListingsSidebar";
 import { ListingCardDashboard } from "@/components/listings/ListingCardDashboard";
@@ -32,44 +32,34 @@ const MyListings = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        navigate("/login");
-      } else {
-        loadListings();
-      }
-      setLoading(false);
-    }
-  }, [user, authLoading, navigate]);
-
-  const loadListings = async () => {
+  const loadListings = useCallback(async () => {
     if (!user) return;
 
     try {
-      // Get all listings (not just PUBLISH) so user can see drafts too
-      const response = await apiClient.getListings({
-        nocache: 'true', // Ensure fresh data
+      // Authenticated endpoint: applies correct viewer context so "early access"
+      // rules do not hide the current user's own new listings (public GET /listing does).
+      const response = await apiClient.getSecureListings({
+        userId: user.id,
+        limit: 500,
+        nocache: "true",
       });
 
-      if (response.success && response.data) {
-        console.log('All listings fetched:', response.data.length);
-        console.log('Current user ID:', user.id);
-        
-        // Filter listings by current user - check both userId and user_id
-        const userListings = Array.isArray(response.data) 
-          ? response.data.filter((listing: any) => {
-              const listingUserId = listing.userId || listing.user_id;
-              const matches = listingUserId === user.id;
-              if (matches) {
-                console.log('Found matching listing:', listing.id, 'userId:', listingUserId);
-              }
-              return matches;
-            })
-          : [];
-        
-        console.log('Filtered user listings:', userListings.length);
-        
+      if (response.success && response.data != null) {
+        const payload = response.data as any;
+        const rawListings = Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload)
+            ? payload
+            : [];
+
+        const userListings = rawListings.filter((listing: any) => {
+          const listingUserId =
+            listing.userId ||
+            listing.user_id ||
+            listing.user?.id;
+          return listingUserId === user.id;
+        });
+
         // Extract title from brand questions (same as admin listings)
         const mappedListings: Listing[] = userListings.map((listing: any) => {
           // Get title from brand data
@@ -195,7 +185,6 @@ const MyListings = () => {
           };
         });
 
-        console.log('Mapped listings:', mappedListings.length);
         setListings(mappedListings);
       } else {
         toast.error(response.error || "Failed to load listings");
@@ -204,7 +193,26 @@ const MyListings = () => {
       console.error("Error loading listings:", error);
       toast.error("Failed to load listings");
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      await loadListings();
+      if (!cancelled) setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authLoading, navigate, loadListings]);
 
   const filteredListings = listings.filter((listing) =>
     listing.title.toLowerCase().includes(searchQuery.toLowerCase())

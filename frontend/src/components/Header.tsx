@@ -292,6 +292,32 @@ const Header = () => {
                   <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 rounded-full" asChild>
                     <Link to="/login">Login</Link>
                   </Button>
+                  <Button
+                    size="sm"
+                    className={`rounded-full font-medium flex items-center ${
+                      isListingDetailPage
+                        ? ""
+                        : "bg-[#FFFFFF0D] text-white hover:bg-[#D3FC50] hover:text-black"
+                    }`}
+                    style={isListingDetailPage ? {
+                      width: "159px",
+                      height: "52px",
+                      borderRadius: "60px",
+                      paddingTop: "13px",
+                      paddingRight: "20px",
+                      paddingBottom: "13px",
+                      paddingLeft: "20px",
+                      gap: "10px",
+                      background: "rgba(0, 0, 0, 1)",
+                      color: "white",
+                    } : {}}
+                    asChild
+                  >
+                    <Link to="/dashboard" className="flex items-center" style={isListingDetailPage ? { gap: "10px" } : {}}>
+                      <Plus className={isListingDetailPage ? "w-4 h-4" : "w-4 h-4 mr-1"} />
+                      Add Listing
+                    </Link>
+                  </Button>
                   <Button size="sm" className="bg-[#D3FC50] text-black hover:bg-[#D3FC50]/90 rounded-full font-medium" asChild>
                     <Link to="/register">Sign Up</Link>
                   </Button>
@@ -426,6 +452,14 @@ const Header = () => {
                           className="rounded-full px-4 py-3 bg-[#FFFFFF0D] text-white hover:bg-[#D3FC50] hover:text-black transition-colors text-center"
                         >
                           Login
+                        </Link>
+                        <Link
+                          to="/dashboard"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="rounded-full px-4 py-3 bg-[#FFFFFF0D] text-white hover:bg-[#D3FC50] hover:text-black transition-colors flex items-center gap-3"
+                        >
+                          <Plus className="w-5 h-5" />
+                          Add Listing
                         </Link>
                         <Link
                           to="/register"
