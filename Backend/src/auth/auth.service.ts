@@ -60,12 +60,17 @@ export class AuthService {
     const { email, password } = body;
     const user = await this.userService.findOneByEmail(email);
 
-    // Validation Checks
-    if (!user) throw new HttpException(`User Not Found`, HttpStatus.NOT_FOUND);
+    const isMatch = user
+      ? await bcrypt.compare(password, user.password_hash)
+      : false;
 
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch)
-      throw new HttpException(`Invalid Credentials`, HttpStatus.FORBIDDEN);
+    // Same message and status for unknown user and wrong password (no user enumeration).
+    if (!user || !isMatch) {
+      throw new HttpException(
+        'Invalid email or password',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
 
     // Removing Unnecessary Data & Getting Tokens
     let formattedUser = this.formatResponse(user);

@@ -213,12 +213,27 @@ class ApiClient {
             }
           }
         }
-        
-        // Add specific messages for common errors
-        if (response.status === 401) {
-          errorMessage = 'Unauthorized: Your session may have expired. Please log in again.';
+
+        const defaultStatusMessage = `API Error: ${response.status}`;
+        const isAuthFlowEndpoint =
+          path.startsWith('/auth/signin') ||
+          path.startsWith('/auth/signup') ||
+          path.startsWith('/auth/verify-otp') ||
+          path.startsWith('/auth/get-otp') ||
+          path.startsWith('/auth/reset-password') ||
+          path.startsWith('/auth/update-password');
+
+        // Add specific messages only when the server did not return something useful
+        if (response.status === 401 && !isAuthFlowEndpoint) {
+          errorMessage =
+            'Unauthorized: Your session may have expired. Please log in again.';
         } else if (response.status === 404) {
-          errorMessage = `Route not found: ${path}. The backend endpoint may not be available. Please ensure the backend server is running and the route is registered.`;
+          const stillGeneric =
+            errorMessage === defaultStatusMessage ||
+            errorMessage.startsWith('API Error:');
+          if (stillGeneric) {
+            errorMessage = `Route not found: ${path}. The backend endpoint may not be available. Please ensure the backend server is running and the route is registered.`;
+          }
         } else if (response.status === 405) {
           errorMessage = `Method not allowed: ${options.method || 'GET'} is not allowed for ${path}.`;
         }
