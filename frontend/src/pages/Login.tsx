@@ -10,6 +10,15 @@ import { normalizePublicSignupPassword } from "@/lib/authCredentials";
 import { LISTING_PUBLISH_PENDING_SESSION_KEY } from "@/lib/listingGuestSession";
 import { toast } from "sonner";
 
+const getPostLoginRoute = (rawRole?: string) => {
+  const role = rawRole?.toUpperCase();
+
+  if (role === "ADMIN") return "/admin/dashboard";
+  if (role === "MONITER" || role === "MODERATOR") return "/admin/team";
+  if (role === "SELLER") return "/my-listings";
+  return "/all-listings";
+};
+
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -40,7 +49,7 @@ const Login = () => {
         if (sessionStorage.getItem(LISTING_PUBLISH_PENDING_SESSION_KEY) === "1") {
           navigate("/dashboard");
         } else {
-          navigate("/");
+          navigate(getPostLoginRoute(result.user?.role));
         }
       } else {
         toast.error(result.error || "Failed to log in");

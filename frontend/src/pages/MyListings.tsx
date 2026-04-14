@@ -31,15 +31,16 @@ const MyListings = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+  const userId = user?.id;
 
   const loadListings = useCallback(async () => {
-    if (!user) return;
+    if (!userId) return;
 
     try {
       // Authenticated endpoint: applies correct viewer context so "early access"
       // rules do not hide the current user's own new listings (public GET /listing does).
       const response = await apiClient.getSecureListings({
-        userId: user.id,
+        userId,
         limit: 500,
         nocache: "true",
       });
@@ -57,7 +58,7 @@ const MyListings = () => {
             listing.userId ||
             listing.user_id ||
             listing.user?.id;
-          return listingUserId === user.id;
+          return listingUserId === userId;
         });
 
         // Extract title from brand questions (same as admin listings)
@@ -193,11 +194,11 @@ const MyListings = () => {
       console.error("Error loading listings:", error);
       toast.error("Failed to load listings");
     }
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
+    if (!userId) {
       navigate("/login");
       return;
     }
@@ -212,7 +213,7 @@ const MyListings = () => {
     return () => {
       cancelled = true;
     };
-  }, [user, authLoading, navigate, loadListings]);
+  }, [userId, authLoading, navigate, loadListings]);
 
   const filteredListings = listings.filter((listing) =>
     listing.title.toLowerCase().includes(searchQuery.toLowerCase())

@@ -1,7 +1,21 @@
-// API Configuration
+// API Configuration — must be the NestJS origin (scheme + host + port), not the static SPA URL.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 // Bearer token for API authorization - used when user is not logged in
 const API_BEARER_TOKEN = import.meta.env.VITE_API_BEARER_TOKEN || '';
+
+function apiBaseOriginMatchesPage(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return new URL(API_BASE_URL).origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+function looksLikeHtmlDocument(text: string): boolean {
+  const s = text.trimStart().toLowerCase();
+  return s.startsWith('<!doctype') || s.startsWith('<html');
+}
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -106,6 +120,21 @@ class ApiClient {
       let data;
       try {
         const text = await response.text();
+        if (looksLikeHtmlDocument(text)) {
+          const sameOrigin = apiBaseOriginMatchesPage();
+          const hint = sameOrigin
+            ? ' VITE_API_BASE_URL is the same as this site\'s address, so /user, /listing, etc. hit the SPA and return index.html. Set VITE_API_BASE_URL (and rebuild) to your NestJS URL, e.g. http://YOUR_IP:9000.'
+            : ' The URL returned a web page instead of JSON. Confirm VITE_API_BASE_URL points to the running Nest API and that reverse-proxy paths forward /user, /listing, /category, /notification to Node.';
+          console.error(
+            'API returned HTML instead of JSON',
+            { path, apiBase: API_BASE_URL, sameOriginAsPage: sameOrigin },
+            text?.slice?.(0, 300),
+          );
+          return {
+            success: false,
+            error: `API misconfigured: server sent a web page, not JSON.${hint}`,
+          };
+        }
         try {
           data = JSON.parse(text);
         } catch {
