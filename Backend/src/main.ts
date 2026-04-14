@@ -110,7 +110,10 @@ if (process.env.RABBIT_MQ) {
 
   const port = process.env.PORT ?? 5000;
   const listenStart = performance.now();
-  await app.listen(port);
+  const server = await app.listen(port);
+  // Avoid premature socket closes behind reverse proxies (helps large JSON responses).
+  server.keepAliveTimeout = 65_000;
+  server.headersTimeout = 66_000;
   perfStore.timings.appListenMs = performance.now() - listenStart;
   perfStore.timings.totalBootstrapMs = performance.now() - bootstrapStart;
   console.log(`🚀 Application is running on: http://localhost:${port}`);

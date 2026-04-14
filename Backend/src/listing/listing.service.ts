@@ -8,6 +8,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateListingT } from './dto/update-listing.dto';
 import { ListingSchemaT } from './dto/create-listing.dto';
 import { SubscriptionService } from '../subscription/subscription.service';
+import { trimListingFeedRecord } from 'common/util/trim-listing-feed.util';
 
 type ViewerType = 'UNREGISTERED' | 'REGISTERED_FREE' | 'REGISTERED_PRO';
 
@@ -18,62 +19,26 @@ type ViewerContext = {
 
 @Injectable()
 export class ListingService {
+  private readonly earlyAccessDays: number;
+
   constructor(
     private readonly db: PrismaService,
     private readonly subscriptionService: SubscriptionService,
-  ) {}
+  ) {
+    const parsed = Number.parseInt(
+      process.env.LISTING_EARLY_ACCESS_DAYS ?? '7',
+      10,
+    );
+    this.earlyAccessDays =
+      Number.isFinite(parsed) && parsed >= 0
+        ? Math.min(parsed, 3650)
+        : 7;
+  }
 
   private readonly proUnlockLabel = 'upgrade to unlock 🔓';
   private readonly proUnlockRedirect = '/pricing';
   private readonly registerUnlockLabel = 'register to unlock 🔓';
   private readonly registerUnlockRedirect = '/register';
-
-  private readonly earlyAccessDays = 7;
-
-  /** Drop multi‑MB base64 blobs from feed payloads so JSON responses stay well‑formed over HTTP. */
-  private readonly listingFeedMaxAnswerChars = 400_000;
-  private readonly listingFeedMaxRevenueAmountChars = 250_000;
-
-  private trimListingForFeed(listing: Record<string, any>) {
-    const trimQuestions = (items: any[] | undefined) => {
-      if (!Array.isArray(items)) return items;
-      return items.map((q) => {
-        if (!q || typeof q !== 'object') return q;
-        const ans = q.answer;
-        if (typeof ans !== 'string' || ans.length === 0) return q;
-        const isFileLike = q.answer_type === 'FILE' || q.answer_type === 'PHOTO';
-        if (!isFileLike) return q;
-        if (ans.length <= this.listingFeedMaxAnswerChars) return q;
-        if (/^https?:\/\//i.test(ans)) return q;
-        return { ...q, answer: null };
-      });
-    };
-
-    const financials = Array.isArray(listing.financials)
-      ? listing.financials.map((f: any) => {
-          const ra = f?.revenue_amount;
-          if (
-            typeof ra === 'string' &&
-            ra.length > this.listingFeedMaxRevenueAmountChars
-          ) {
-            return { ...f, revenue_amount: '{}' };
-          }
-          return f;
-        })
-      : listing.financials;
-
-    return {
-      ...listing,
-      brand: trimQuestions(listing.brand),
-      statistics: trimQuestions(listing.statistics),
-      productQuestion: trimQuestions(listing.productQuestion),
-      managementQuestion: trimQuestions(listing.managementQuestion),
-      social_account: trimQuestions(listing.social_account),
-      advertisement: trimQuestions(listing.advertisement),
-      handover: trimQuestions(listing.handover),
-      financials,
-    };
-  }
 
   private shuffleArray<T>(items: T[]): T[] {
     const copy = [...items];
@@ -300,7 +265,7 @@ export class ListingService {
     
     // Calculate pagination
     const page = filters?.page || 1;
-    const limit = filters?.limit || 100; // Default limit
+    const limit = filters?.limit || 40; // Default cap — callers can pass a higher limit if needed
     const skip = (page - 1) * limit;
     
     const isCategoryFeed = Boolean(filters?.category);
@@ -349,7 +314,7 @@ export class ListingService {
     const rotatedListings = [
       ...this.shuffleArray(featuredListings),
       ...nonFeaturedListings,
-    ].map((listing) => this.trimListingForFeed(listing as Record<string, any>));
+    ].map((listing) => trimListingFeedRecord(listing as Record<string, any>));
 
     return Promise.all(rotatedListings.map(async (listing) => {
       const withConfidentialMask = await this.applyConfidentialMask(
@@ -410,8 +375,9 @@ export class ListingService {
       }
     }
 
+    const normalizedListing = trimListingFeedRecord(listing as Record<string, any>);
     const withConfidentialMask = await this.applyConfidentialMask(
-      listing,
+      normalizedListing,
       resolvedViewer,
     );
     if (resolvedViewer.viewerType === 'UNREGISTERED') {

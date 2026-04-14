@@ -4,12 +4,15 @@ import {
   Delete,
   Get,
   Inject,
+  Logger,
   Param,
   Patch,
   Post,
   Query,
   Req,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { ListingService } from './listing.service';
 
 import { listingSchema, ListingSchemaDTO } from './dto/create-listing.dto';
@@ -22,6 +25,8 @@ import { Public } from 'common/decorator/public.decorator';
 
 @Controller('listing')
 export class ListingController {
+  private readonly logger = new Logger(ListingController.name);
+
   constructor(
     private readonly listingService: ListingService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
@@ -36,6 +41,7 @@ export class ListingController {
   @ApiQuery({ name: 'limit', required: false, description: 'Number of items per page' })
   @ApiQuery({ name: 'nocache', required: false, description: 'Bypass cache (true/false)' })
   async findAll(
+    @Res({ passthrough: true }) res: Response,
     @Query('status') status?: string,
     @Query('category') category?: string,
     @Query('userId') userId?: string,
@@ -64,12 +70,23 @@ export class ListingController {
 
     const viewer = await this.listingService.resolveViewerContext(undefined);
     const data = await this.listingService.findAll(filters, viewer);
-    
+
+    const count = Array.isArray(data) ? data.length : 0;
+    res.setHeader('X-Listings-Count', String(count));
+    if (nocache === 'true') {
+      res.setHeader('Cache-Control', 'private, no-store');
+    }
+    if (count === 0) {
+      this.logger.debug(
+        'GET /listing returned 0 rows (no PUBLISH matches, or early-access window hides listings newer than LISTING_EARLY_ACCESS_DAYS for non-PRO anonymous viewers).',
+      );
+    }
+
     // Only cache if we got results (don't cache empty arrays for too long)
     if (Array.isArray(data) && data.length > 0) {
       await this.cacheManager.set(cacheKey, data, CACHE_TTL);
     }
-    
+
     return data;
   }
 

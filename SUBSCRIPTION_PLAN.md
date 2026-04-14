@@ -4,7 +4,10 @@
 Complete Stripe-based subscription system with Free and Pro tiers.
 
 ---
+WhatsApp Anas Rajpoot Nm Soft
+anasrajpoot945@gmail.com 
 
+Anas-Rajpoot
 ## Plans
 
 ### Free Plan

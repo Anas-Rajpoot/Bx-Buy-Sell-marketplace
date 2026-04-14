@@ -1,6 +1,7 @@
 import { HttpException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { trimListingFeedRecord } from 'common/util/trim-listing-feed.util';
 import type { UpdateUserType, UserType } from './dto/user.dto';
 import type {
   UpdateAdminUserType,
@@ -9,6 +10,23 @@ import type {
 @Injectable()
 export class UserService {
   constructor(private db: PrismaService) {}
+
+  /** Drop embedded base64 / huge strings that break HTTP responses behind proxies. */
+  private trimHeavyUserMediaFields(user: any) {
+    if (!user || typeof user !== 'object') return user;
+    const max = 48_000;
+    const fix = (v: unknown) => {
+      if (typeof v !== 'string') return v;
+      if (v.length <= max && !/^data:/i.test(v)) return v;
+      if (/^https?:\/\//i.test(v) && v.length <= max) return v;
+      return null;
+    };
+    return {
+      ...user,
+      profile_pic: fix(user.profile_pic),
+      background: fix(user.background),
+    };
+  }
   async findAll() {
     return await this.db.user.findMany({
       omit: {
@@ -22,7 +40,7 @@ export class UserService {
   }
 
   async findOneByID(id: string) {
-    return this.db.user.findUnique({
+    const user = await this.db.user.findUnique({
       where: { id: id },
       omit: {
         password_hash: true,
@@ -44,6 +62,7 @@ export class UserService {
         },
       },
     });
+    return this.trimHeavyUserMediaFields(user);
   }
 
   async findRoleByID(id: string) {
@@ -71,29 +90,35 @@ export class UserService {
   }
 
   async getAllFavourite(id: string) {
-    console.log(id)
-    return await this.db.favourite.findMany({
+    console.log(id);
+    const rows = await this.db.favourite.findMany({
       where: {
         userId: `${id}`,
       },
-      include:{
-        listing:{
-          include:{
-            brand:true,
-            advertisement:true,
-            category:true,
-            financials:true,
-            handover:true,
-            managementQuestion:true,
-            productQuestion:true,
-            social_account:true,
-            statistics:true,
-            tools:true,
-            user:true
-          }
-        }
-      }
+      include: {
+        listing: {
+          include: {
+            brand: true,
+            advertisement: true,
+            category: true,
+            financials: true,
+            handover: true,
+            managementQuestion: true,
+            productQuestion: true,
+            social_account: true,
+            statistics: true,
+            tools: true,
+            user: true,
+          },
+        },
+      },
     });
+    return rows.map((row) => ({
+      ...row,
+      listing: row.listing
+        ? trimListingFeedRecord(row.listing as Record<string, any>)
+        : row.listing,
+    }));
   }
 
   async getFavouriteCount(id: string) {
