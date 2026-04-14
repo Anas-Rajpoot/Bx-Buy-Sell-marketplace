@@ -5,6 +5,7 @@ import { apiClient } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { useCategories } from "@/hooks/useCategories";
 import { formatBusinessAge } from "@/lib/dateUtils";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ListingsProps {
   searchQuery: string;
@@ -16,6 +17,7 @@ const Listings = ({ searchQuery }: ListingsProps) => {
   const [listings, setListings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const LISTINGS_PER_PAGE = 6; // Show only 6 listings on home page
+  const { isAuthenticated, loading: authLoading } = useAuth();
   
   // Use the same hook as admin dashboard for consistent category display
   const { data: categoriesData = [], isLoading: categoriesLoading } = useCategories({ nocache: true });
@@ -29,8 +31,9 @@ const Listings = ({ searchQuery }: ListingsProps) => {
   )];
 
   useEffect(() => {
+    if (authLoading) return;
     fetchListings();
-  }, []);
+  }, [isAuthenticated, authLoading]);
 
   const fetchListings = async () => {
     setLoading(true);
@@ -39,7 +42,9 @@ const Listings = ({ searchQuery }: ListingsProps) => {
       
       // Fetch ALL listings (same as admin) to ensure we get the same data
       // Then filter to PUBLISH client-side to match admin behavior
-      let response = await apiClient.getListings({ nocache: 'true' }); // Bypass cache to get fresh data
+      const response = isAuthenticated
+        ? await apiClient.getSecureListings()
+        : await apiClient.getListings({ nocache: 'true' }); // Bypass cache for public feed
       console.log('📦 API Response (ALL):', response);
       
       if (response.success) {

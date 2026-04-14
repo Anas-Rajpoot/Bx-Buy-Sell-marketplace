@@ -197,7 +197,7 @@ const AllListings = () => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12; // Show 12 listings per page
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [favoritesCount, setFavoritesCount] = useState(0);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
@@ -291,8 +291,9 @@ const AllListings = () => {
   const { data: categoriesData = [] } = useCategories({ nocache: true });
 
   useEffect(() => {
+    if (authLoading) return;
     fetchListings();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
 
   useEffect(() => {
     // Update URL when filters change
