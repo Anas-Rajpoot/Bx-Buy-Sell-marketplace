@@ -19,10 +19,10 @@ import SettingsSvg from "./Settings.svg?react";
 import TeamMembersSvg from "./Team-Members.svg?react";
 import ToolsSvg from "./Tools.svg?react";
 import UsersSvg from "./Users.svg?react";
-import EditSvg from "./Edit.svg?react";
-import BlockSvg from "./Block.svg?react";
-import DeleteSvg from "./Delete.svg?react";
-import MessagesSvg from "./Gridicons_chat.svg?react";
+import EditSvg from "./edit.svg?react";
+import BlockSvg from "./block.svg?react";
+import DeleteSvg from "./delete.svg?react";
+import MessagesSvg from "./gridicons_chat.svg?react";
 
 export {
   AccountsSvg,
