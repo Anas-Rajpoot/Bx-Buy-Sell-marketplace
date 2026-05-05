@@ -15,6 +15,7 @@ function createNoopLogClient(): ClientProxy {
 @Module({})
 export class RabbitMqModule {
   static forRoot(): DynamicModule {
+    const rabbitMqEnabled = process.env.RABBIT_MQ_ENABLED === 'true';
     // Build connection string with credentials if provided
     let rabbitMqUrl = process.env.RABBIT_MQ;
     const rabbitMqUser = process.env.RABBIT_MQ_USER || 'admin';
@@ -22,7 +23,7 @@ export class RabbitMqModule {
 
     // If RABBIT_MQ is not set, still register LOG_SERVICE so LogInterceptor can start.
     // Without this, Nest throws: UnknownDependenciesException for LOG_SERVICE in AppModule.
-    if (!rabbitMqUrl) {
+    if (!rabbitMqEnabled || !rabbitMqUrl) {
       return {
         module: RabbitMqModule,
         imports: [],

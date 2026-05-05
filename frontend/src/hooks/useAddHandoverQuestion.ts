@@ -6,7 +6,7 @@ export const useAddHandoverQuestion = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { question: string; answer_type: string }) => {
+    mutationFn: async (data: { question: string; answer_type: string; options?: string[] }) => {
       // Map frontend answer types to backend enum values
       const answerTypeMap: Record<string, string> = {
         'YESNO': 'BOOLEAN',
@@ -25,6 +25,7 @@ export const useAddHandoverQuestion = () => {
         question: data.question,
         answer_type: mappedAnswerType,
         answer_for: "HANDOVER",
+        options: data.options || [],
       });
 
       if (!response.success) {

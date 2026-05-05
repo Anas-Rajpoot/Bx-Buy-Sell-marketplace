@@ -32,10 +32,28 @@ export const CategoryStep = ({ formData, onNext }: CategoryStepProps) => {
   const { data: categories = [], isLoading: loading } = useCategories({ nocache: true });
 
   useEffect(() => {
-    if (formData?.category) {
-      setSelectedCategory(formData.category);
+    const raw = formData?.category;
+    if (raw === undefined || raw === null || raw === "") {
+      return;
     }
-  }, [formData]);
+    if (!categories.length) {
+      return;
+    }
+    const rawStr = String(raw);
+    const byId = categories.find((c) => c.id === rawStr);
+    if (byId) {
+      setSelectedCategory(byId.id);
+      return;
+    }
+    const byName = categories.find(
+      (c) => (c.name || "").trim().toLowerCase() === rawStr.trim().toLowerCase(),
+    );
+    if (byName) {
+      setSelectedCategory(byName.id);
+      return;
+    }
+    setSelectedCategory(rawStr);
+  }, [formData?.category, categories]);
 
   const handleCategorySelect = (categoryId: string) => {
     if (!categoryId) {

@@ -2151,6 +2151,42 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
     }
   };
 
+  const handleUnarchiveChat = async () => {
+    const chatIdToUse = chatRoom?.id || conversationId;
+    if (!chatIdToUse || !currentUserId) {
+      toast.error("Chat room not loaded");
+      return;
+    }
+
+    try {
+      const response = await apiClient.unarchiveChat(chatIdToUse, currentUserId);
+
+      if (response.success) {
+        toast.success("Chat unarchived successfully");
+        if (chatRoom) {
+          setChatRoom({ ...chatRoom, status: 'ACTIVE' });
+        }
+        window.dispatchEvent(
+          new CustomEvent("chat:unarchived", {
+            detail: {
+              chatId: chatIdToUse,
+              userId: chatRoom?.userId || userId,
+              sellerId: chatRoom?.sellerId || sellerId,
+            },
+          })
+        );
+        if (refreshConversations) {
+          refreshConversations();
+        }
+      } else {
+        toast.error(response.error || "Failed to unarchive chat");
+      }
+    } catch (error) {
+      console.error("Error unarchiving chat:", error);
+      toast.error("Failed to unarchive chat");
+    }
+  };
+
   const handlePinChat = () => {
     const chatIdToUse = chatRoom?.id || conversationId;
     if (!chatIdToUse) {
@@ -2540,9 +2576,15 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
                   <DropdownMenuSeparator />
                 </>
               )}
-              <DropdownMenuItem onClick={handleArchiveChat}>
-                <Archive className="mr-2 h-4 w-4" /> Archive Chat
-              </DropdownMenuItem>
+              {chatRoom?.status === 'ARCHIVED' ? (
+                <DropdownMenuItem onClick={handleUnarchiveChat}>
+                  <Archive className="mr-2 h-4 w-4" /> Unarchive Chat
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={handleArchiveChat}>
+                  <Archive className="mr-2 h-4 w-4" /> Archive Chat
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={handlePinChat}>
                 <Pin className="mr-2 h-4 w-4" /> {isChatPinned ? "Unpin Chat" : "Pin Chat"}
               </DropdownMenuItem>

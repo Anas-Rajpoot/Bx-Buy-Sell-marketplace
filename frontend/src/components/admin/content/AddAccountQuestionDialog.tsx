@@ -18,6 +18,7 @@ const QUESTION_TYPES = [
   { value: "NUMBER", label: "Number" },
   { value: "DATE", label: "Date" },
   { value: "SELECT", label: "Select" },
+  { value: "CHECKBOX", label: "Checkbox (Multiple)" },
   { value: "TEXTAREA", label: "Text Area" },
   { value: "YESNO", label: "Yes / No" },
 ];
@@ -36,8 +37,11 @@ export const AddAccountQuestionDialog = ({ open, onOpenChange }: AddAccountQuest
 
     // Process options - split by comma if provided
     let optionsArray: string[] = [];
-    if (questionType === "SELECT" && options.trim()) {
+    if ((questionType === "SELECT" || questionType === "CHECKBOX") && options.trim()) {
       optionsArray = options.split(',').map(opt => opt.trim()).filter(opt => opt.length > 0);
+    }
+    if ((questionType === "SELECT" || questionType === "CHECKBOX") && optionsArray.length < 2) {
+      return;
     }
 
     addQuestion.mutate(
@@ -106,7 +110,7 @@ export const AddAccountQuestionDialog = ({ open, onOpenChange }: AddAccountQuest
               </SelectContent>
             </Select>
           </div>
-          {questionType === "SELECT" && (
+          {(questionType === "SELECT" || questionType === "CHECKBOX") && (
             <div className="space-y-2">
               <Label className="text-sm font-medium text-black">Options (comma-separated)</Label>
               <Input

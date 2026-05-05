@@ -56,13 +56,19 @@ export const Statistics = z.object({
   sales_countries: z.array(Channel),
 });
 
+const normalizeAnswerType = (value: unknown) =>
+  value === 'UMBER' ? 'NUMBER' : value;
+
 // Question
 export const Question = z.object({
   id: z.string().min(2).optional(),
   question: z.string().min(2).optional(),
   answer_for: z.enum(['BRAND', 'PRODUCT', 'MANAGEMENT', 'HANDOVER', 'STATISTIC', 'ADVERTISMENT', 'SOCIAL']),
-  answer_type: z.enum(['TEXT', 'SELECT', 'BOOLEAN', 'NUMBER', 'FILE','PHOTO']).optional(),
-  answer: z.string().min(2).optional(),
+  answer_type: z.preprocess(
+    normalizeAnswerType,
+    z.enum(['TEXT', 'SELECT', 'CHECKBOX', 'BOOLEAN', 'NUMBER', 'FILE', 'PHOTO', 'DATE', 'URL']),
+  ).optional(),
+  answer: z.union([z.string().min(2), z.array(z.string().min(1)).min(1)]).optional(),
   option: z.array(z.string().min(2)).optional(),
 });
 

@@ -28,7 +28,6 @@ interface ListingCardProps {
   sellerId?: string;
   lockRedirectTo?: string;
 }
-
 const ListingCard = ({
   image,
   category,
@@ -238,6 +237,8 @@ const ListingCard = ({
 
   const listingLink = listingId ? `/listing/${listingId}` : null;
 
+
+  console.log(image);
   return (
     <div className="group bg-white relative w-full rounded-lg shadow-sm" style={{ minHeight: '590.84px', height: 'auto' }}>
       <div className="relative overflow-hidden bg-muted w-full" style={{ height: '285px', borderRadius: '20px' }}>
@@ -384,7 +385,11 @@ const ListingCard = ({
               fontSize: '16px',
               lineHeight: '140%',
               letterSpacing: '0%',
-              color: 'rgba(0, 0, 0, 1)'
+              color: 'rgba(0, 0, 0, 1)',
+              width: '100%',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
             }}
           >
             {name}
@@ -403,7 +408,8 @@ const ListingCard = ({
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
-              textOverflow: 'ellipsis'
+              textOverflow: 'ellipsis',
+              height: '42px'
             }}
             onClick={isLockedValue(description) ? handleUnlockClick : undefined}
           >
@@ -471,7 +477,11 @@ const ListingCard = ({
             <span className="font-lufga font-medium text-xs md:text-sm" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#00000080' }}>
               Location:
             </span>
-            <span className="font-lufga font-medium text-xs md:text-sm" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#000000' }}>
+            <span className="font-lufga font-medium text-xs md:text-sm" style={{ fontSize: '14px', lineHeight: '140%', letterSpacing: '0%', color: '#000000', width: '200px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis' 
+              }}>
               {location}
             </span>
           </div>

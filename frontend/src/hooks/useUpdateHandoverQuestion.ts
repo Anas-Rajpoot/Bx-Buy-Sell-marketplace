@@ -10,6 +10,7 @@ export const useUpdateHandoverQuestion = () => {
       id: string; 
       question: string; 
       answer_type: string;
+      options?: string[];
     }) => {
       // Map frontend answer types to backend enum values
       const answerTypeMap: Record<string, string> = {
@@ -22,6 +23,7 @@ export const useUpdateHandoverQuestion = () => {
         question: data.question,
         answer_type: mappedAnswerType,
         answer_for: "HANDOVER",
+        options: data.options,
       });
 
       if (!response.success) {

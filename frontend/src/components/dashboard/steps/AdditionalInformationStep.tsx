@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { TrendingUp, Package, Target, ImageIcon, X, Loader2 } from "lucide-react";
 import { useStatisticQuestions } from "@/hooks/useStatisticQuestions";
 import { useProductQuestions } from "@/hooks/useProductQuestions";
@@ -67,15 +68,26 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
     return value === "yes" || value === "true" || value === true;
   };
 
+  const normalizeSplitRow = (row: any) => {
+    if (!row || typeof row !== "object") return row;
+    const pct =
+      row.percent != null && row.percent !== ""
+        ? row.percent
+        : row.percentage != null && row.percentage !== ""
+          ? row.percentage
+          : "";
+    return { ...row, percent: pct !== undefined && pct !== null ? String(pct) : "" };
+  };
+
   const getSplitValue = (questionId: string) => {
     const raw = formData[questionId];
     if (Array.isArray(raw)) {
-      return raw;
+      return raw.map(normalizeSplitRow);
     }
     if (typeof raw === "string" && raw.trim().startsWith("[")) {
       try {
         const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
+        return Array.isArray(parsed) ? parsed.map(normalizeSplitRow) : [];
       } catch {
         return [];
       }
@@ -532,6 +544,30 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
               ))}
             </SelectContent>
           </Select>
+        );
+
+      case "CHECKBOX":
+        const selectedValues = Array.isArray(value) ? value : [];
+        return (
+          <div className="space-y-2">
+            {question.option && Array.isArray(question.option) && question.option.map((opt: string, idx: number) => {
+              const isChecked = selectedValues.includes(opt);
+              return (
+                <label key={idx} className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={isChecked}
+                    onCheckedChange={(checked) => {
+                      const next = checked
+                        ? [...selectedValues, opt]
+                        : selectedValues.filter((item: string) => item !== opt);
+                      setFormData({ ...formData, [question.id]: next });
+                    }}
+                  />
+                  <span>{opt}</span>
+                </label>
+              );
+            })}
+          </div>
         );
       
       case "PHOTO":

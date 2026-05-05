@@ -127,6 +127,23 @@ const DeletePlanDialog = lazy(() =>
 
 const AdminContentManagement = () => {
   const FINANCIALS_STORAGE_KEY = "admin_financials_table_v1";
+  const getTypeLabel = (type: string) => {
+    const typeMap: Record<string, string> = {
+      PHOTO: "Photo Upload",
+      FILE: "File Upload",
+      NUMBER: "Number",
+      TEXT: "Text",
+      TEXTAREA: "Text Area",
+      DATE: "Date",
+      BOOLEAN: "Yes / No",
+      YESNO: "Yes / No",
+      SELECT: "Dropdown",
+      CHECKBOX: "Checkbox (Multiple)",
+      CHECKBOX_GROUP: "Checkbox (Multiple)",
+      URL: "Link",
+    };
+    return typeMap[type] || type;
+  };
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
@@ -615,22 +632,6 @@ const AdminContentManagement = () => {
                   ) : brandQuestions && Array.isArray(brandQuestions) && brandQuestions.length > 0 ? (
                     <div className="space-y-3 sm:space-y-4">
                       {brandQuestions.map((question: any) => {
-                        // Map backend types to display labels
-                        const getTypeLabel = (type: string) => {
-                          const typeMap: Record<string, string> = {
-                            'TEXT': 'Text',
-                            'NUMBER': 'Number',
-                            'DATE': 'Date',
-                            'SELECT': 'Select',
-                            'TEXTAREA': 'Long Text',
-                            'URL': 'Link',
-                            'BOOLEAN': 'Boolean',
-                            'FILE': 'File',
-                            'PHOTO': 'Photo',
-                          };
-                          return typeMap[type] || type;
-                        };
-                        
                         return (
                         <div
                           key={question.id}
@@ -1305,7 +1306,7 @@ const AdminContentManagement = () => {
                                 <div className="flex-1 min-w-0">
                                   <h4 className="text-black font-semibold text-base sm:text-lg mb-1 break-words">{question.question}</h4>
                                   <p className="text-muted-foreground text-xs sm:text-sm">
-                                    Type: {question.answer_type}
+                                    Type: {getTypeLabel(question.answer_type)}
                                   </p>
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto">
@@ -1367,7 +1368,7 @@ const AdminContentManagement = () => {
                                 <div className="flex-1 min-w-0">
                                   <h4 className="text-black font-semibold text-base sm:text-lg mb-1 break-words">{question.question}</h4>
                                   <p className="text-muted-foreground text-xs sm:text-sm">
-                                    Type: {question.answer_type}
+                                    Type: {getTypeLabel(question.answer_type)}
                                   </p>
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto">
@@ -1429,7 +1430,7 @@ const AdminContentManagement = () => {
                                 <div className="flex-1 min-w-0">
                                   <h4 className="text-black font-semibold text-base sm:text-lg mb-1 break-words">{question.question}</h4>
                                   <p className="text-muted-foreground text-xs sm:text-sm">
-                                    Type: {question.answer_type}
+                                    Type: {getTypeLabel(question.answer_type)}
                                   </p>
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto">
@@ -1570,21 +1571,6 @@ const AdminContentManagement = () => {
                   ) : accountQuestions && accountQuestions.length > 0 ? (
                     <div className="space-y-3 sm:space-y-4">
                       {accountQuestions.map((question: any) => {
-                        const getTypeLabel = (type: string) => {
-                          const typeMap: Record<string, string> = {
-                            'PHOTO': 'Photo Upload',
-                            'FILE': 'File Upload',
-                            'NUMBER': 'Number',
-                            'TEXT': 'Text',
-                            'TEXTAREA': 'Text Area',
-                            'DATE': 'Date',
-                            'BOOLEAN': 'Yes / No',
-                            'YESNO': 'Yes / No',
-                            'SELECT': 'Dropdown',
-                          };
-                          return typeMap[type] || type;
-                        };
-
                         return (
                           <div
                             key={question.id}
@@ -1660,21 +1646,6 @@ const AdminContentManagement = () => {
                   ) : adInformationQuestions && adInformationQuestions.length > 0 ? (
                     <div className="space-y-3 sm:space-y-4">
                       {adInformationQuestions.map((question: any) => {
-                        const getTypeLabel = (type: string) => {
-                          const typeMap: Record<string, string> = {
-                            'PHOTO': 'Photo Upload',
-                            'FILE': 'File Upload',
-                            'NUMBER': 'Number',
-                            'TEXT': 'Text',
-                            'TEXTAREA': 'Text',
-                            'DATE': 'Date',
-                            'BOOLEAN': 'Yes / No',
-                            'YESNO': 'Yes / No',
-                            'SELECT': 'Dropdown',
-                          };
-                          return typeMap[type] || type;
-                        };
-
                         return (
                           <div
                             key={question.id}
@@ -1766,22 +1737,6 @@ const AdminContentManagement = () => {
                           question.question?.toLowerCase().includes(searchQuery.toLowerCase())
                         )
                         .map((question: any) => {
-                          const getTypeLabel = (type: string) => {
-                            const typeMap: Record<string, string> = {
-                              'PHOTO': 'Photo Upload',
-                              'FILE': 'File Upload',
-                              'NUMBER': 'Number',
-                              'TEXT': 'Text',
-                              'TEXTAREA': 'Text',
-                              'DATE': 'Date',
-                              'BOOLEAN': 'Yes / No',
-                              'YESNO': 'Yes / No',
-                              'SELECT': 'Dropdown',
-                              'CHECKBOX_GROUP': 'Checkbox Group',
-                            };
-                            return typeMap[type] || type;
-                          };
-
                           return (
                             <div
                               key={question.id}

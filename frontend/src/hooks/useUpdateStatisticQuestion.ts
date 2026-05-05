@@ -10,11 +10,13 @@ export const useUpdateStatisticQuestion = () => {
       id: string; 
       question: string; 
       answer_type: string;
+      options?: string[];
     }) => {
       const response = await apiClient.updateAdminQuestion(data.id, {
         question: data.question,
         answer_type: data.answer_type,
         answer_for: "STATISTIC",
+        options: data.options,
       });
 
       if (!response.success) {

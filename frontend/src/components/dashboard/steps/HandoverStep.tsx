@@ -14,6 +14,19 @@ interface HandoverStepProps {
   onBack: () => void;
 }
 
+const checkboxSelectionToArray = (v: unknown): string[] => {
+  if (Array.isArray(v)) return v.map(String);
+  if (typeof v === "string" && v.trim().startsWith("[")) {
+    try {
+      const p = JSON.parse(v);
+      return Array.isArray(p) ? p.map(String) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
 export const HandoverStep = ({ formData: parentFormData, onNext, onBack }: HandoverStepProps) => {
   const { data: questions, isLoading } = useHandoverQuestions();
   const [formData, setFormData] = useState<Record<string, any>>(parentFormData || {});
@@ -25,7 +38,7 @@ export const HandoverStep = ({ formData: parentFormData, onNext, onBack }: Hando
   }, [parentFormData]);
 
   const handleCheckboxChange = (questionId: string, option: string, checked: boolean) => {
-    const currentValues = formData[questionId] || [];
+    const currentValues = checkboxSelectionToArray(formData[questionId]);
     if (checked) {
       setFormData(prev => ({ ...prev, [questionId]: [...currentValues, option] }));
     } else {
@@ -49,8 +62,9 @@ export const HandoverStep = ({ formData: parentFormData, onNext, onBack }: Hando
       const value = formData[question.id];
       
       // Required fields validation
-      if (question.answer_type === 'CHECKBOX_GROUP') {
-        if (!value || !Array.isArray(value) || value.length === 0) {
+      if (question.answer_type === 'CHECKBOX_GROUP' || question.answer_type === 'CHECKBOX') {
+        const arr = checkboxSelectionToArray(value);
+        if (arr.length === 0) {
           errors.push(`${question.question} requires at least one selection`);
         }
       } else if (question.answer_type === 'YES_NO' || question.answer_type === 'TWO_OPTIONS' || question.answer_type === 'SELECT') {
@@ -110,11 +124,11 @@ export const HandoverStep = ({ formData: parentFormData, onNext, onBack }: Hando
             <div key={question.id} className="space-y-4">
               <Label className="text-lg font-semibold">{question.question}</Label>
               
-              {question.answer_type === "CHECKBOX_GROUP" && (
+              {(question.answer_type === "CHECKBOX_GROUP" || question.answer_type === "CHECKBOX") && (
                 <div className="grid grid-cols-2 gap-4">
                   {question.option && question.option.length > 0 ? (
                     question.option.map((option: string, index: number) => {
-                      const isSelected = (formData[question.id] || []).includes(option);
+                      const isSelected = checkboxSelectionToArray(formData[question.id]).includes(option);
                       return (
                         <div
                           key={index}
@@ -136,7 +150,7 @@ export const HandoverStep = ({ formData: parentFormData, onNext, onBack }: Hando
                     })
                   ) : (
                     ["Domains", "Brand assets", "Website files", "Phone number(s)", "Email address", "Supplier contacts"].map((option, index) => {
-                      const isSelected = (formData[question.id] || []).includes(option);
+                      const isSelected = checkboxSelectionToArray(formData[question.id]).includes(option);
                       return (
                         <div
                           key={index}

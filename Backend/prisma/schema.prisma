@@ -34,6 +34,7 @@ enum AnswerType {
   FILE
   PHOTO
   URL
+  CHECKBOX
 }
 
 enum AnswerFor {

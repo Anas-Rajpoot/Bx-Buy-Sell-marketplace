@@ -16,6 +16,7 @@ interface AddAdInformationQuestionDialogProps {
 export const AddAdInformationQuestionDialog = ({ open, onOpenChange }: AddAdInformationQuestionDialogProps) => {
   const [question, setQuestion] = useState("");
   const [answerType, setAnswerType] = useState("TEXT");
+  const [options, setOptions] = useState("");
   const addQuestion = useAddAdInformationQuestion();
 
   const handleSubmit = (e?: React.FormEvent) => {
@@ -40,12 +41,22 @@ export const AddAdInformationQuestionDialog = ({ open, onOpenChange }: AddAdInfo
       answer_type: answerType
     });
 
+    let optionsArray: string[] = [];
+    if ((answerType === "SELECT" || answerType === "CHECKBOX") && options.trim()) {
+      optionsArray = options.split(",").map((opt) => opt.trim()).filter((opt) => opt.length > 0);
+    }
+    if ((answerType === "SELECT" || answerType === "CHECKBOX") && optionsArray.length < 2) {
+      toast.error("Please provide at least 2 options");
+      return;
+    }
+
     addQuestion.mutate(
-      { question: trimmedQuestion, answer_type: answerType },
+      { question: trimmedQuestion, answer_type: answerType, options: optionsArray },
       {
         onSuccess: () => {
           setQuestion("");
           setAnswerType("TEXT");
+          setOptions("");
           onOpenChange(false);
         },
         onError: (error: any) => {
@@ -59,6 +70,7 @@ export const AddAdInformationQuestionDialog = ({ open, onOpenChange }: AddAdInfo
   const handleCancel = () => {
     setQuestion("");
     setAnswerType("TEXT");
+    setOptions("");
     onOpenChange(false);
   };
 
@@ -89,6 +101,7 @@ export const AddAdInformationQuestionDialog = ({ open, onOpenChange }: AddAdInfo
                 <SelectItem value="TEXT" className="text-black">Text</SelectItem>
                 <SelectItem value="NUMBER" className="text-black">Number</SelectItem>
                 <SelectItem value="SELECT" className="text-black">Dropdown</SelectItem>
+                <SelectItem value="CHECKBOX" className="text-black">Checkbox (Multiple)</SelectItem>
                 <SelectItem value="PHOTO" className="text-black">Photo Upload</SelectItem>
                 <SelectItem value="FILE" className="text-black">File Upload</SelectItem>
                 <SelectItem value="DATE" className="text-black">Date</SelectItem>
@@ -97,6 +110,17 @@ export const AddAdInformationQuestionDialog = ({ open, onOpenChange }: AddAdInfo
               </SelectContent>
             </Select>
           </div>
+          {(answerType === "SELECT" || answerType === "CHECKBOX") && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-black">Options (comma-separated)</Label>
+              <Input
+                value={options}
+                onChange={(e) => setOptions(e.target.value)}
+                placeholder="Option 1, Option 2, Option 3"
+                className="bg-gray-50 border-gray-200 text-black"
+              />
+            </div>
+          )}
         </div>
         <div className="flex justify-center gap-3 pt-4">
           <Button

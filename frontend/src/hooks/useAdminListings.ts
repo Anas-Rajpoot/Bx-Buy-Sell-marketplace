@@ -8,7 +8,7 @@ export const useAdminListings = () => {
     queryFn: async () => {
       console.log('Fetching listings from backend...');
       
-      const response = await apiClient.getListings();
+      const response = await apiClient.getSecureListings();
       
       console.log('Backend listings response:', response);
       console.log('Raw listings data:', response.data);
@@ -51,6 +51,46 @@ export const useAdminListings = () => {
       
       // Combine listings with profile data and normalize structure
       const localAssignments = getLocalListingAssignments();
+      const extractDomainFromQuestions = (questions: any[] = []): string | null => {
+        if (!Array.isArray(questions)) return null;
+
+        const domainQuestion = questions.find((q: any) =>
+          q?.question?.toLowerCase?.().includes("domain")
+        );
+
+        const rawAnswer = domainQuestion?.answer;
+        if (!rawAnswer) return null;
+
+        // Domain answers are often stored as JSON arrays (e.g. ["example.com"]).
+        if (Array.isArray(rawAnswer)) {
+          const first = rawAnswer.find((item) => typeof item === "string" && item.trim());
+          return first?.trim() || null;
+        }
+
+        if (typeof rawAnswer === "string") {
+          const trimmed = rawAnswer.trim();
+          if (!trimmed) return null;
+
+          if (trimmed.startsWith("[")) {
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (Array.isArray(parsed)) {
+                const first = parsed.find(
+                  (item) => typeof item === "string" && item.trim()
+                );
+                return first?.trim() || null;
+              }
+            } catch {
+              // Not valid JSON array; fall back to raw string.
+            }
+          }
+
+          return trimmed;
+        }
+
+        return null;
+      };
+
       const listingsWithProfiles = listings.map((listing: any) => {
         // Get title from brand data - brand is an array of ListingQuestion objects
         // Each question has a 'question' and 'answer' field
@@ -131,6 +171,7 @@ export const useAdminListings = () => {
                           listing.managed_by_ex === 'true' || 
                           listing.managed_by_ex === '1' ||
                           listing.managed_by_ex === 'True';
+        const domainLink = extractDomainFromQuestions(listing.brand);
         
         return {
           ...listing,
@@ -143,6 +184,7 @@ export const useAdminListings = () => {
           category: Array.isArray(listing.category) ? listing.category : (categoryInfo ? [categoryInfo] : []),
           profile: profilesMap.get(listing.userId || listing.user_id) || null,
           portfolioLink: listing.portfolioLink || null, // Include portfolio link from backend
+          domainLink,
           managed_by_ex: managedByEx, // Normalized boolean value
           responsible_user_id: responsibleUserId, // Include responsible user ID
           responsible_user: responsibleUser, // Include responsible user profile

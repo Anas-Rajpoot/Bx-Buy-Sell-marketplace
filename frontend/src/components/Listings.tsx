@@ -18,17 +18,24 @@ const Listings = ({ searchQuery }: ListingsProps) => {
   const [loading, setLoading] = useState(true);
   const LISTINGS_PER_PAGE = 6; // Show only 6 listings on home page
   const { isAuthenticated, loading: authLoading } = useAuth();
-  
+
   // Use the same hook as admin dashboard for consistent category display
-  const { data: categoriesData = [], isLoading: categoriesLoading } = useCategories({ nocache: true });
-  
+  const { data: categoriesData = [], isLoading: categoriesLoading } =
+    useCategories({ nocache: true });
+
   // Extract category names and add "All" option
-  const categories = ["All", ...categoriesData.map((c: any) => c.name).filter((name: string) => 
-    name !== "Managed by EX" && 
-    name !== "🤝 Managed by EX" &&
-    name !== "managed by ex" &&
-    name?.trim() !== ""
-  )];
+  const categories = [
+    "All",
+    ...categoriesData
+      .map((c: any) => c.name)
+      .filter(
+        (name: string) =>
+          name !== "Managed by EX" &&
+          name !== "🤝 Managed by EX" &&
+          name !== "managed by ex" &&
+          name?.trim() !== "",
+      ),
+  ];
 
   useEffect(() => {
     if (authLoading) return;
@@ -38,77 +45,94 @@ const Listings = ({ searchQuery }: ListingsProps) => {
   const fetchListings = async () => {
     setLoading(true);
     try {
-      console.log('🔍 Fetching ALL listings (will filter to PUBLISH client-side)');
-      
+      console.log(
+        "🔍 Fetching ALL listings (will filter to PUBLISH client-side)",
+      );
+
       // Fetch ALL listings (same as admin) to ensure we get the same data
       // Then filter to PUBLISH client-side to match admin behavior
       const response = isAuthenticated
         ? await apiClient.getSecureListings()
-        : await apiClient.getListings({ nocache: 'true' }); // Bypass cache for public feed
-      console.log('📦 API Response (ALL):', response);
-      
+        : await apiClient.getListings({ nocache: "true" }); // Bypass cache for public feed
+      console.log("📦 API Response (ALL):", response);
+
       if (response.success) {
         let listingsData = Array.isArray(response.data) ? response.data : [];
-        console.log('📊 Total listings count (ALL):', listingsData.length);
-        
+        console.log("📊 Total listings count (ALL):", listingsData.length);
+
         // Filter to only show PUBLISH listings (same logic as admin dashboard)
         // Handle different status formats: 'PUBLISH', 'publish', 'Published', etc.
         const publishedListings = listingsData.filter((l: any) => {
-          const status = String(l.status || '').toUpperCase();
-          return status === 'PUBLISH' || status === 'PUBLISHED';
+          const status = String(l.status || "").toUpperCase();
+          return status === "PUBLISH" || status === "PUBLISHED";
         });
-        
-        console.log('📊 Published listings count (after filter):', publishedListings.length);
-        console.log('📊 Status breakdown:', {
+
+        console.log(
+          "📊 Published listings count (after filter):",
+          publishedListings.length,
+        );
+        console.log("📊 Status breakdown:", {
           total: listingsData.length,
           published: publishedListings.length,
-          draft: listingsData.filter((l: any) => String(l.status || '').toUpperCase() === 'DRAFT').length,
+          draft: listingsData.filter(
+            (l: any) => String(l.status || "").toUpperCase() === "DRAFT",
+          ).length,
           other: listingsData.filter((l: any) => {
-            const s = String(l.status || '').toUpperCase();
-            return s !== 'PUBLISH' && s !== 'PUBLISHED' && s !== 'DRAFT';
+            const s = String(l.status || "").toUpperCase();
+            return s !== "PUBLISH" && s !== "PUBLISHED" && s !== "DRAFT";
           }).length,
-          statuses: [...new Set(listingsData.map((l: any) => l.status))]
+          statuses: [...new Set(listingsData.map((l: any) => l.status))],
         });
-        
+
         // Log first listing to see structure
         if (publishedListings.length > 0) {
-          console.log('✅ First published listing structure:', publishedListings[0]);
-          console.log('   - Brand data:', publishedListings[0].brand);
-          console.log('   - Category data:', publishedListings[0].category);
-          console.log('   - Status:', publishedListings[0].status);
-          console.log('   - ID:', publishedListings[0].id);
+          console.log(
+            "✅ First published listing structure:",
+            publishedListings[0],
+          );
+          console.log("   - Brand data:", publishedListings[0].brand);
+          console.log("   - Category data:", publishedListings[0].category);
+          console.log("   - Status:", publishedListings[0].status);
+          console.log("   - ID:", publishedListings[0].id);
         } else {
-          console.warn('⚠️ No PUBLISH listings found!');
-          console.log('Total listings:', listingsData.length);
-          console.log('Status breakdown:', [...new Set(listingsData.map((l: any) => l.status))]);
+          console.warn("⚠️ No PUBLISH listings found!");
+          console.log("Total listings:", listingsData.length);
+          console.log("Status breakdown:", [
+            ...new Set(listingsData.map((l: any) => l.status)),
+          ]);
         }
-        
+
         setListings(publishedListings);
       } else {
-        console.error('❌ API returned error:', response.error);
-        console.log('Full error response:', response);
+        console.error("❌ API returned error:", response.error);
+        console.log("Full error response:", response);
         setListings([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching listings:', error);
-      console.error('Error details:', error);
+      console.error("❌ Error fetching listings:", error);
+      console.error("Error details:", error);
       setListings([]);
     }
     setLoading(false);
   };
 
-  const filteredListings = listings.filter(listing => {
-    const categoryName = listing.category?.[0]?.name || '';
-    
+  const filteredListings = listings.filter((listing) => {
+    const categoryName = listing.category?.[0]?.name || "";
+
     // Handle category filter
     let matchesCategory = true;
     if (activeCategory !== "All") {
       // Regular category filter
-      matchesCategory = listing.category?.some((cat: any) => cat.name === activeCategory);
+      matchesCategory = listing.category?.some(
+        (cat: any) => cat.name === activeCategory,
+      );
     }
-    
-    const matchesSearch = searchQuery === "" || 
-      listing.brand?.[0]?.businessName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+
+    const matchesSearch =
+      searchQuery === "" ||
+      listing.brand?.[0]?.businessName
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
       categoryName.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
@@ -127,14 +151,14 @@ const Listings = ({ searchQuery }: ListingsProps) => {
             <br className="hidden sm:block" />
             Find your perfect match and grow today!
           </p>
-          
+
           {/* Category Slider - Mobile: horizontal scroll, Desktop: flex-wrap */}
-          <div 
+          <div
             className="mb-6 sm:mb-8 px-4 overflow-x-auto overflow-y-hidden"
             style={{
-              scrollbarWidth: 'none', /* Firefox */
-              msOverflowStyle: 'none', /* IE and Edge */
-              WebkitOverflowScrolling: 'touch', /* iOS smooth scrolling */
+              scrollbarWidth: "none" /* Firefox */,
+              msOverflowStyle: "none" /* IE and Edge */,
+              WebkitOverflowScrolling: "touch" /* iOS smooth scrolling */,
             }}
           >
             <style>{`
@@ -142,11 +166,11 @@ const Listings = ({ searchQuery }: ListingsProps) => {
                 display: none; /* Chrome, Safari, Opera */
               }
             `}</style>
-            <div 
+            <div
               className="flex flex-nowrap sm:flex-wrap justify-start sm:justify-center gap-2 sm:gap-3 category-scroll"
               style={{
-                width: 'max-content',
-                minWidth: '100%',
+                width: "max-content",
+                minWidth: "100%",
               }}
             >
               {categories.map((category, catIndex) => {
@@ -174,217 +198,308 @@ const Listings = ({ searchQuery }: ListingsProps) => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mb-6 sm:mb-8" style={{ gap: '24px', width: '100%', maxWidth: '1521px', margin: '0 auto', paddingLeft: '0', paddingRight: '0' }}>
-              {filteredListings.slice(0, LISTINGS_PER_PAGE).map((listing, index) => {
-                // Extract data from brand questions
-                const brandQuestions = listing.brand || [];
-                const getBrandAnswer = (searchTerms: string[]) => {
-                  const question = brandQuestions.find((b: any) => 
-                    searchTerms.some(term => b.question?.toLowerCase().includes(term.toLowerCase()))
+            <div
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mb-6 sm:mb-8"
+              style={{
+                gap: "24px",
+                width: "100%",
+                maxWidth: "1521px",
+                margin: "0 auto",
+                paddingLeft: "0",
+                paddingRight: "0",
+              }}
+            >
+              {filteredListings
+                .slice(0, LISTINGS_PER_PAGE)
+                .map((listing, index) => {
+                  // Extract data from brand questions
+                  const brandQuestions = listing.brand || [];
+                  const getBrandAnswer = (searchTerms: string[]) => {
+                    const question = brandQuestions.find((b: any) =>
+                      searchTerms.some((term) =>
+                        b.question?.toLowerCase().includes(term.toLowerCase()),
+                      ),
+                    );
+                    return question?.answer || null;
+                  };
+
+                  const businessName =
+                    getBrandAnswer([
+                      "business name",
+                      "company name",
+                      "brand name",
+                      "name",
+                    ]) ||
+                    brandQuestions[0]?.answer ||
+                    listing.title ||
+                    "Unnamed Business";
+                  const businessDescription =
+                    getBrandAnswer([
+                      "description",
+                      "about",
+                      "business description",
+                    ]) ||
+                    listing.description ||
+                    "";
+
+                  // Extract from advertisement questions
+                  const adQuestions = listing.advertisement || [];
+                  const getAdAnswer = (searchTerms: string[]) => {
+                    const question = adQuestions.find((a: any) =>
+                      searchTerms.some((term) =>
+                        a.question?.toLowerCase().includes(term.toLowerCase()),
+                      ),
+                    );
+                    return question?.answer || null;
+                  };
+
+                  // Get listing price from advertisement questions first (as per InitializeRequiredQuestions.tsx)
+                  const askingPrice =
+                    getAdAnswer(["listing price", "price"]) ||
+                    getBrandAnswer([
+                      "asking price",
+                      "price",
+                      "selling price",
+                    ]) ||
+                    listing.price ||
+                    0;
+                  const location =
+                    getBrandAnswer(["country", "location", "address"]) ||
+                    listing.location ||
+                    "Not specified";
+                  // Calculate business age from user account creation date
+                  // Use user account creation date to show how long the business has been on the platform
+                  const userCreatedAt =
+                    listing.user?.created_at || listing.user?.createdAt;
+                  const businessAge = userCreatedAt
+                    ? formatBusinessAge(userCreatedAt)
+                    : undefined;
+                  const adDescription =
+                    getAdAnswer(["description"]) || businessDescription;
+
+                  // Get image from advertisement or brand
+                  let imageUrl = "";
+                  const photoQuestion = adQuestions.find(
+                    (a: any) =>
+                      a.question?.toLowerCase().includes("photo") ||
+                      a.answer_type === "PHOTO",
                   );
-                  return question?.answer || null;
-                };
-                
-                const businessName = getBrandAnswer(['business name', 'company name', 'brand name', 'name']) || 
-                                    brandQuestions[0]?.answer || 
-                                    listing.title || 
-                                    'Unnamed Business';
-                const businessDescription = getBrandAnswer(['description', 'about', 'business description']) || 
-                                           listing.description || 
-                                           '';
-                
-                // Extract from advertisement questions
-                const adQuestions = listing.advertisement || [];
-                const getAdAnswer = (searchTerms: string[]) => {
-                  const question = adQuestions.find((a: any) => 
-                    searchTerms.some(term => a.question?.toLowerCase().includes(term.toLowerCase()))
+                  if (photoQuestion?.answer) {
+                    imageUrl = Array.isArray(photoQuestion.answer)
+                      ? photoQuestion.answer[0]
+                      : photoQuestion.answer;
+                  }
+                  if (!imageUrl) {
+                    const brandInfo = brandQuestions[0];
+                    imageUrl =
+                      brandInfo?.businessPhoto?.[0] ||
+                      brandInfo?.logo ||
+                      listing.image_url ||
+                      listing.photo ||
+                      "/placeholder.svg";
+                  }
+
+                  // Calculate average financials from all financials
+                  const allFinancials = listing.financials || [];
+
+                  let avgRevenue = 0;
+                  let avgNetProfit = 0;
+
+                  // Check for financial table format (new format)
+                  const tableFinancial = allFinancials.find(
+                    (f: any) =>
+                      f.name === "__FINANCIAL_TABLE__" && f.revenue_amount,
                   );
-                  return question?.answer || null;
-                };
-                
-                // Get listing price from advertisement questions first (as per InitializeRequiredQuestions.tsx)
-                const askingPrice = getAdAnswer(['listing price', 'price']) || 
-                                  getBrandAnswer(['asking price', 'price', 'selling price']) || 
-                                  listing.price || 
-                                  0;
-                const location = getBrandAnswer(['country', 'location', 'address']) || 
-                               listing.location || 
-                               'Not specified';
-                // Calculate business age from user account creation date
-                // Use user account creation date to show how long the business has been on the platform
-                const userCreatedAt = listing.user?.created_at || listing.user?.createdAt;
-                const businessAge = userCreatedAt ? formatBusinessAge(userCreatedAt) : undefined;
-                const adDescription = getAdAnswer(['description']) || businessDescription;
-                
-                // Get image from advertisement or brand
-                let imageUrl = '';
-                const photoQuestion = adQuestions.find((a: any) => 
-                  a.question?.toLowerCase().includes('photo') || a.answer_type === 'PHOTO'
-                );
-                if (photoQuestion?.answer) {
-                  imageUrl = Array.isArray(photoQuestion.answer) ? photoQuestion.answer[0] : photoQuestion.answer;
-                }
-                if (!imageUrl) {
-                  const brandInfo = brandQuestions[0];
-                  imageUrl = brandInfo?.businessPhoto?.[0] || 
-                            brandInfo?.logo || 
-                            listing.image_url || 
-                            listing.photo || 
-                            "/placeholder.svg";
-                }
-                
-                // Calculate average financials from all financials
-                const allFinancials = listing.financials || [];
-                
-                let avgRevenue = 0;
-                let avgNetProfit = 0;
-                
-                // Check for financial table format (new format)
-                const tableFinancial = allFinancials.find((f: any) => 
-                  f.name === '__FINANCIAL_TABLE__' && f.revenue_amount
-                );
-                
-                if (tableFinancial && tableFinancial.revenue_amount) {
-                  try {
-                    // Parse JSON data stored in revenue_amount field
-                    const financialTableData = JSON.parse(tableFinancial.revenue_amount);
-                    const rowLabels = financialTableData.rowLabels || [];
-                    const columnLabels = financialTableData.columnLabels || [];
-                    const financialData = financialTableData.financialData || {};
-                    
-                    if (columnLabels.length > 0 && rowLabels.length > 0) {
-                      // Calculate net profit for each column
-                      const columnProfits: number[] = [];
-                      const columnRevenues: number[] = [];
-                      
-                      columnLabels.forEach((col: any) => {
-                        let profit = 0;
-                        let revenue = 0;
-                        
-                        rowLabels.forEach((rowLabel: string) => {
-                          const value = parseFloat(financialData[rowLabel]?.[col.key] || '0');
-                          if (rowLabel.toLowerCase().includes('revenue')) {
-                            profit += value;
-                            revenue += value;
-                          } else {
-                            profit -= value;
-                          }
+
+                  if (tableFinancial && tableFinancial.revenue_amount) {
+                    try {
+                      // Parse JSON data stored in revenue_amount field
+                      const financialTableData = JSON.parse(
+                        tableFinancial.revenue_amount,
+                      );
+                      const rowLabels = financialTableData.rowLabels || [];
+                      const columnLabels =
+                        financialTableData.columnLabels || [];
+                      const financialData =
+                        financialTableData.financialData || {};
+
+                      if (columnLabels.length > 0 && rowLabels.length > 0) {
+                        // Calculate net profit for each column
+                        const columnProfits: number[] = [];
+                        const columnRevenues: number[] = [];
+
+                        columnLabels.forEach((col: any) => {
+                          let profit = 0;
+                          let revenue = 0;
+
+                          rowLabels.forEach((rowLabel: string) => {
+                            const value = parseFloat(
+                              financialData[rowLabel]?.[col.key] || "0",
+                            );
+                            if (rowLabel.toLowerCase().includes("revenue")) {
+                              profit += value;
+                              revenue += value;
+                            } else {
+                              profit -= value;
+                            }
+                          });
+
+                          columnProfits.push(profit);
+                          columnRevenues.push(revenue);
                         });
-                        
-                        columnProfits.push(profit);
-                        columnRevenues.push(revenue);
-                      });
-                      
-                      // Calculate averages
-                      if (columnProfits.length > 0) {
-                        avgNetProfit = columnProfits.reduce((sum, p) => sum + p, 0) / columnProfits.length;
-                        avgRevenue = columnRevenues.reduce((sum, r) => sum + r, 0) / columnRevenues.length;
+
+                        // Calculate averages
+                        if (columnProfits.length > 0) {
+                          avgNetProfit =
+                            columnProfits.reduce((sum, p) => sum + p, 0) /
+                            columnProfits.length;
+                          avgRevenue =
+                            columnRevenues.reduce((sum, r) => sum + r, 0) /
+                            columnRevenues.length;
+                        }
+                      }
+                    } catch (e) {
+                      console.error("Error parsing financial table data:", e);
+                    }
+                  }
+
+                  // If no table data or table data is empty, try old format
+                  if (avgRevenue === 0 && avgNetProfit === 0) {
+                    // Filter out the special table marker record
+                    const validFinancials = allFinancials.filter(
+                      (f: any) => f.name !== "__FINANCIAL_TABLE__",
+                    );
+
+                    // Separate monthly and yearly financials
+                    const monthlyFinancials = validFinancials.filter(
+                      (f: any) => f.type === "monthly",
+                    );
+                    const yearlyFinancials = validFinancials.filter(
+                      (f: any) => f.type === "yearly",
+                    );
+
+                    // Calculate average from monthly data if available
+                    if (monthlyFinancials.length > 0) {
+                      const totalMonthlyRevenue = monthlyFinancials.reduce(
+                        (sum: number, f: any) =>
+                          sum + parseFloat(f.revenue_amount || 0),
+                        0,
+                      );
+                      const totalMonthlyProfit = monthlyFinancials.reduce(
+                        (sum: number, f: any) =>
+                          sum + parseFloat(f.net_profit || 0),
+                        0,
+                      );
+                      avgRevenue =
+                        totalMonthlyRevenue / monthlyFinancials.length;
+                      avgNetProfit =
+                        totalMonthlyProfit / monthlyFinancials.length;
+                    } else if (yearlyFinancials.length > 0) {
+                      // If only yearly data, calculate average yearly and convert to monthly
+                      const totalYearlyRevenue = yearlyFinancials.reduce(
+                        (sum: number, f: any) =>
+                          sum + parseFloat(f.revenue_amount || 0),
+                        0,
+                      );
+                      const totalYearlyProfit = yearlyFinancials.reduce(
+                        (sum: number, f: any) =>
+                          sum + parseFloat(f.net_profit || 0),
+                        0,
+                      );
+                      const avgYearlyRevenue =
+                        totalYearlyRevenue / yearlyFinancials.length;
+                      const avgYearlyProfit =
+                        totalYearlyProfit / yearlyFinancials.length;
+                      // Convert to monthly average
+                      avgRevenue = avgYearlyRevenue / 12;
+                      avgNetProfit = avgYearlyProfit / 12;
+                    } else {
+                      // Fallback: use all financials if type is not specified
+                      if (validFinancials.length > 0) {
+                        const totalRevenue = validFinancials.reduce(
+                          (sum: number, f: any) =>
+                            sum + parseFloat(f.revenue_amount || 0),
+                          0,
+                        );
+                        const totalProfit = validFinancials.reduce(
+                          (sum: number, f: any) =>
+                            sum + parseFloat(f.net_profit || 0),
+                          0,
+                        );
+                        avgRevenue = totalRevenue / validFinancials.length;
+                        avgNetProfit = totalProfit / validFinancials.length;
                       }
                     }
-                  } catch (e) {
-                    console.error('Error parsing financial table data:', e);
                   }
-                }
-                
-                // If no table data or table data is empty, try old format
-                if (avgRevenue === 0 && avgNetProfit === 0) {
-                  // Filter out the special table marker record
-                  const validFinancials = allFinancials.filter((f: any) => f.name !== '__FINANCIAL_TABLE__');
-                  
-                  // Separate monthly and yearly financials
-                  const monthlyFinancials = validFinancials.filter((f: any) => f.type === 'monthly');
-                  const yearlyFinancials = validFinancials.filter((f: any) => f.type === 'yearly');
-                  
-                  // Calculate average from monthly data if available
-                  if (monthlyFinancials.length > 0) {
-                    const totalMonthlyRevenue = monthlyFinancials.reduce((sum: number, f: any) => 
-                      sum + parseFloat(f.revenue_amount || 0), 0
-                    );
-                    const totalMonthlyProfit = monthlyFinancials.reduce((sum: number, f: any) => 
-                      sum + parseFloat(f.net_profit || 0), 0
-                    );
-                    avgRevenue = totalMonthlyRevenue / monthlyFinancials.length;
-                    avgNetProfit = totalMonthlyProfit / monthlyFinancials.length;
-                  } else if (yearlyFinancials.length > 0) {
-                    // If only yearly data, calculate average yearly and convert to monthly
-                    const totalYearlyRevenue = yearlyFinancials.reduce((sum: number, f: any) => 
-                      sum + parseFloat(f.revenue_amount || 0), 0
-                    );
-                    const totalYearlyProfit = yearlyFinancials.reduce((sum: number, f: any) => 
-                      sum + parseFloat(f.net_profit || 0), 0
-                    );
-                    const avgYearlyRevenue = totalYearlyRevenue / yearlyFinancials.length;
-                    const avgYearlyProfit = totalYearlyProfit / yearlyFinancials.length;
-                    // Convert to monthly average
-                    avgRevenue = avgYearlyRevenue / 12;
-                    avgNetProfit = avgYearlyProfit / 12;
-                  } else {
-                    // Fallback: use all financials if type is not specified
-                    if (validFinancials.length > 0) {
-                      const totalRevenue = validFinancials.reduce((sum: number, f: any) => 
-                        sum + parseFloat(f.revenue_amount || 0), 0
-                      );
-                      const totalProfit = validFinancials.reduce((sum: number, f: any) => 
-                        sum + parseFloat(f.net_profit || 0), 0
-                      );
-                      avgRevenue = totalRevenue / validFinancials.length;
-                      avgNetProfit = totalProfit / validFinancials.length;
-                    }
+
+                  // Calculate profit multiple (using average monthly profit * 12 for annual)
+                  let profitMultiple = "Multiple 1.5x Profit"; // Default
+                  if (askingPrice && avgNetProfit > 0) {
+                    const annualProfit = avgNetProfit * 12;
+                    const multiple = parseFloat(askingPrice) / annualProfit;
+                    profitMultiple = `Multiple ${multiple.toFixed(1)}x Profit`;
                   }
-                }
-                
-                // Calculate profit multiple (using average monthly profit * 12 for annual)
-                let profitMultiple = "Multiple 1.5x Profit"; // Default
-                if (askingPrice && avgNetProfit > 0) {
-                  const annualProfit = avgNetProfit * 12;
-                  const multiple = parseFloat(askingPrice) / annualProfit;
-                  profitMultiple = `Multiple ${multiple.toFixed(1)}x Profit`;
-                }
-                
-                // Calculate revenue multiple (using average monthly revenue * 12 for annual)
-                let revenueMultiple = "0.5x Revenue"; // Default
-                if (askingPrice && avgRevenue > 0) {
-                  const annualRevenue = avgRevenue * 12;
-                  const multiple = parseFloat(askingPrice) / annualRevenue;
-                  revenueMultiple = `${multiple.toFixed(1)}x Revenue`;
-                }
-                
-                const categoryInfo = listing.category?.[0];
-                
-                // Ensure unique key
-                const listingKey = listing.id || `listing-${index}-${businessName}`;
-                
-                return (
-                  <div
-                    key={listingKey}
-                    className="animate-scale-in"
-                    style={{ animationDelay: `${index * 100}ms` }}
-                  >
-                    <ListingCard
-                      image={imageUrl}
-                      category={categoryInfo?.name || 'Other'}
-                      name={businessName}
-                      description={adDescription || businessDescription}
-                      price={`$${Number(askingPrice).toLocaleString()}`}
-                      profitMultiple={profitMultiple}
-                      revenueMultiple={revenueMultiple}
-                      location={location}
-                      locationFlag={location}
-                      businessAge={businessAge}
-                      netProfit={avgNetProfit > 0 ? `$${Math.round(avgNetProfit).toLocaleString()}` : undefined}
-                      revenue={avgRevenue > 0 ? `$${Math.round(avgRevenue).toLocaleString()}` : undefined}
-                      managedByEx={listing.managed_by_ex === true || listing.managed_by_ex === 1 || listing.managed_by_ex === 'true' || listing.managed_by_ex === '1'}
-                      listingId={listing.id}
-                      sellerId={listing.userId || listing.user_id}
-                    />
-                  </div>
-                );
-              })}
+
+                  // Calculate revenue multiple (using average monthly revenue * 12 for annual)
+                  let revenueMultiple = "0.5x Revenue"; // Default
+                  if (askingPrice && avgRevenue > 0) {
+                    const annualRevenue = avgRevenue * 12;
+                    const multiple = parseFloat(askingPrice) / annualRevenue;
+                    revenueMultiple = `${multiple.toFixed(1)}x Revenue`;
+                  }
+
+                  const categoryInfo = listing.category?.[0];
+
+                  // Ensure unique key
+                  const listingKey =
+                    listing.id || `listing-${index}-${businessName}`;
+
+                  return (
+                    <div
+                      key={listingKey}
+                      className="animate-scale-in"
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <ListingCard
+                        image={imageUrl}
+                        category={categoryInfo?.name || "Other"}
+                        name={businessName}
+                        description={adDescription || businessDescription}
+                        price={`$${Number(askingPrice).toLocaleString()}`}
+                        profitMultiple={profitMultiple}
+                        revenueMultiple={revenueMultiple}
+                        location={location}
+                        locationFlag={location}
+                        businessAge={businessAge}
+                        netProfit={
+                          avgNetProfit > 0
+                            ? `$${Math.round(avgNetProfit).toLocaleString()}`
+                            : undefined
+                        }
+                        revenue={
+                          avgRevenue > 0
+                            ? `$${Math.round(avgRevenue).toLocaleString()}`
+                            : undefined
+                        }
+                        managedByEx={
+                          listing.managed_by_ex === true ||
+                          listing.managed_by_ex === 1 ||
+                          listing.managed_by_ex === "true" ||
+                          listing.managed_by_ex === "1"
+                        }
+                        listingId={listing.id}
+                        sellerId={listing.userId || listing.user_id}
+                      />
+                    </div>
+                  );
+                })}
             </div>
 
             {filteredListings.length === 0 && (
               <div className="text-center py-20">
-                <p className="text-muted-foreground text-lg">No listings found</p>
+                <p className="text-muted-foreground text-lg">
+                  No listings found
+                </p>
               </div>
             )}
           </>
@@ -392,11 +507,11 @@ const Listings = ({ searchQuery }: ListingsProps) => {
 
         {filteredListings.length > LISTINGS_PER_PAGE && (
           <div className="text-center mt-8">
-            <Button 
-              variant="outline" 
-              size="lg" 
+            <Button
+              variant="outline"
+              size="lg"
               className="rounded-full"
-              onClick={() => navigate('/all-listings')}
+              onClick={() => navigate("/all-listings")}
             >
               View All Listings ({filteredListings.length})
             </Button>

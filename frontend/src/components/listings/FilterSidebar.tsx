@@ -170,7 +170,7 @@ const FilterSidebar = ({ filters, onFiltersChange, onClearFilters, onFind }: Fil
           className="flex flex-col"
           style={{
             width: "100%",
-            maxWidth: "341px",
+            maxWidth: "293px",
             borderRadius: "16px",
             padding: "16px",
             gap: "20px",

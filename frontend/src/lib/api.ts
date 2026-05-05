@@ -584,17 +584,19 @@ class ApiClient {
     answer_type: string;
     answer_for: string;
     option?: string[];
+    options?: string[];
   }) {
     // Backend DTO expects 'options' (plural), not 'option' (singular)
     const payload: any = {
       question: questionData.question,
-      answer_type: questionData.answer_type,
+      answer_type: questionData.answer_type === 'UMBER' ? 'NUMBER' : questionData.answer_type,
       answer_for: questionData.answer_for,
     };
     
     // Only include options if it's provided and not empty
-    if (questionData.option && questionData.option.length > 0) {
-      payload.options = questionData.option; // Send as 'options' to match DTO
+    const normalizedOptions = questionData.options ?? questionData.option;
+    if (normalizedOptions && normalizedOptions.length > 0) {
+      payload.options = normalizedOptions; // Send as 'options' to match DTO
     }
     
     return this.request('/question-admin', {
@@ -608,19 +610,21 @@ class ApiClient {
     answer_type?: string;
     answer_for?: string;
     option?: string[];
+    options?: string[];
   }) {
     // Backend DTO expects 'options' (plural), not 'option' (singular)
     const payload: any = {};
     
     if (questionData.question !== undefined) payload.question = questionData.question;
     if (questionData.answer_type !== undefined) {
-      payload.answer_type = questionData.answer_type;
+      payload.answer_type = questionData.answer_type === 'UMBER' ? 'NUMBER' : questionData.answer_type;
     }
     if (questionData.answer_for !== undefined) payload.answer_for = questionData.answer_for;
     
     // Include options if it's provided (even if empty array to clear options)
-    if (questionData.option !== undefined) {
-      payload.options = questionData.option; // Send as 'options' to match DTO
+    const normalizedOptions = questionData.options ?? questionData.option;
+    if (normalizedOptions !== undefined) {
+      payload.options = normalizedOptions; // Send as 'options' to match DTO
     }
     
     return this.request(`/question-admin/${id}`, {

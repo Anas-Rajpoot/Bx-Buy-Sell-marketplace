@@ -268,7 +268,7 @@ const MyListings = () => {
         </div>
 
         {/* Main Content */}
-        <main className="flex-1 px-4 sm:px-6 md:px-8 lg:px-10 pb-6 sm:pb-8 md:pb-10">
+        <main className="flex-1 p-2">
           {filteredListings.length === 0 ? (
             <div className="text-center py-12 sm:py-16 md:py-20">
               <div className="max-w-md mx-auto px-4">

@@ -9,12 +9,13 @@ import { useState, useEffect } from "react";
 interface EditAdInformationQuestionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  question: { id: string; question: string; answer_type: string } | null;
+  question: { id: string; question: string; answer_type: string; option?: string[] } | null;
 }
 
 export const EditAdInformationQuestionDialog = ({ open, onOpenChange, question }: EditAdInformationQuestionDialogProps) => {
   const [questionText, setQuestionText] = useState("");
   const [answerType, setAnswerType] = useState("TEXT");
+  const [options, setOptions] = useState("");
   const updateQuestion = useUpdateAdInformationQuestion();
 
   useEffect(() => {
@@ -25,6 +26,7 @@ export const EditAdInformationQuestionDialog = ({ open, onOpenChange, question }
         'BOOLEAN': 'YESNO',
       };
       setAnswerType(answerTypeMap[question.answer_type] || question.answer_type);
+      setOptions(question.option && Array.isArray(question.option) ? question.option.join(", ") : "");
     }
   }, [question]);
 
@@ -33,8 +35,13 @@ export const EditAdInformationQuestionDialog = ({ open, onOpenChange, question }
     
     if (!question || !questionText.trim()) return;
 
+    const optionsArray =
+      (answerType === "SELECT" || answerType === "CHECKBOX") && options.trim()
+        ? options.split(",").map((opt) => opt.trim()).filter((opt) => opt.length > 0)
+        : [];
+
     updateQuestion.mutate(
-      { id: question.id, question: questionText, answer_type: answerType },
+      { id: question.id, question: questionText, answer_type: answerType, options: optionsArray },
       {
         onSuccess: () => {
           onOpenChange(false);
@@ -70,6 +77,7 @@ export const EditAdInformationQuestionDialog = ({ open, onOpenChange, question }
                 <SelectItem value="TEXT">Text</SelectItem>
                 <SelectItem value="NUMBER">Number</SelectItem>
                 <SelectItem value="SELECT">Dropdown</SelectItem>
+                <SelectItem value="CHECKBOX">Checkbox (Multiple)</SelectItem>
                 <SelectItem value="PHOTO">Photo Upload</SelectItem>
                 <SelectItem value="FILE">File Upload</SelectItem>
                 <SelectItem value="DATE">Date</SelectItem>
@@ -78,6 +86,18 @@ export const EditAdInformationQuestionDialog = ({ open, onOpenChange, question }
               </SelectContent>
             </Select>
           </div>
+          {(answerType === "SELECT" || answerType === "CHECKBOX") && (
+            <div>
+              <Label htmlFor="options" className="text-white">Options (comma-separated)</Label>
+              <Input
+                id="options"
+                value={options}
+                onChange={(e) => setOptions(e.target.value)}
+                placeholder="Option 1, Option 2, Option 3"
+                className="bg-[#2a2a2a] border-[#3a3a3a] text-white"
+              />
+            </div>
+          )}
           <div className="flex gap-2 justify-end">
             <Button
               type="button"

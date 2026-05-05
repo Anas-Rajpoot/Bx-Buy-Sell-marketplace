@@ -27,6 +27,8 @@ interface PackagesStepProps {
   onGuestAuthOpenChange?: (open: boolean) => void;
   /** Incremented after sign-in to run the same submit path as logged-in users. */
   resumePublishNonce?: number;
+  /** After a successful save, where to send the user (edit flow defaults to listing detail via parent). */
+  afterSuccessRedirect?: "my-listings" | "listing-detail";
 }
 
 export const PackagesStep = ({
@@ -37,6 +39,7 @@ export const PackagesStep = ({
   onGuestPersistDraft,
   onGuestAuthOpenChange,
   resumePublishNonce = 0,
+  afterSuccessRedirect = "my-listings",
 }: PackagesStepProps) => {
   const [selectedPackage, setSelectedPackage] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -84,7 +87,7 @@ export const PackagesStep = ({
     if (!questions || !Array.isArray(questions)) return [];
     
     // Valid answer types according to backend DTO
-    const validAnswerTypes = ['TEXT', 'SELECT', 'BOOLEAN', 'NUMBER', 'FILE', 'PHOTO'];
+    const validAnswerTypes = ['TEXT', 'SELECT', 'CHECKBOX', 'BOOLEAN', 'NUMBER', 'FILE', 'PHOTO', 'DATE', 'URL'];
     
     return questions.map((question) => {
       const answer = answers[question.id];
@@ -95,12 +98,17 @@ export const PackagesStep = ({
       }
       
       // Convert answer to string and ensure it's at least 2 characters
-      let answerStr = '';
-      if (Array.isArray(answer)) {
-        answerStr = answer.join(', ');
-      } else {
-        answerStr = String(answer);
-      }
+      const isArrayAnswer = Array.isArray(answer);
+      const isObjectArrayAnswer =
+        isArrayAnswer && answer.some((item) => typeof item === "object" && item !== null);
+      const answerValue = isArrayAnswer
+        ? (answer as any[]).map((item) =>
+            typeof item === "object" && item !== null ? JSON.stringify(item) : String(item),
+          )
+        : String(answer);
+      const answerStr = isObjectArrayAnswer
+        ? JSON.stringify(answer)
+        : (Array.isArray(answerValue) ? answerValue.join(", ") : answerValue);
       
       // Skip if answer is too short (backend requires min 2 characters)
       if (answerStr.length < 2) {
@@ -125,7 +133,7 @@ export const PackagesStep = ({
       
       return {
         question: questionText,
-        answer: answerStr,
+        answer: question.answer_type === 'CHECKBOX' && Array.isArray(answerValue) ? answerValue : answerStr,
         answer_type: answerType,
         answer_for: answerFor,
         option: question.option || [],
@@ -186,22 +194,33 @@ export const PackagesStep = ({
     const accounts: any[] = [];
     Object.keys(formData.socialAccounts).forEach((platform) => {
       const accountData = formData.socialAccounts[platform];
-      if (accountData && (accountData.url || accountData.followers)) {
-        // Ensure answer is at least 2 characters
-        const answer = accountData.url || `${accountData.followers || 0} followers`;
-        if (answer.length < 2) {
-          console.warn(`Skipping ${platform} account - answer too short: "${answer}"`);
-          return;
-        }
-        
-        accounts.push({
-          question: `${platform} account`,
-          answer: answer,
-          answer_type: 'TEXT',
-          answer_for: 'SOCIAL',
-          option: [],
-        });
+      if (!accountData || !(accountData.url || accountData.followers)) return;
+
+      const urlPart = String(accountData.url || "").trim();
+      const followersStr = String(accountData.followers ?? "").trim();
+      const followersNum = parseInt(followersStr, 10);
+      const followerSegment =
+        followersStr !== "" && !Number.isNaN(followersNum)
+          ? followersNum > 0
+            ? `${followersNum.toLocaleString("en-US")} Followers`
+            : "0 followers"
+          : "";
+
+      const segments = [urlPart, followerSegment].filter(Boolean);
+      const answer = segments.join("|");
+
+      if (answer.length < 2) {
+        console.warn(`Skipping ${platform} account - answer too short: "${answer}"`);
+        return;
       }
+
+      accounts.push({
+        question: `${platform} account`,
+        answer,
+        answer_type: "TEXT",
+        answer_for: "SOCIAL",
+        option: [],
+      });
     });
     
     return accounts;
@@ -338,9 +357,12 @@ export const PackagesStep = ({
         toast.success(statusMessage);
         console.log(listingId ? "Updated listing:" : "Created listing:", response.data);
         
-        // Redirect to my listings page after short delay
         setTimeout(() => {
-          window.location.href = '/my-listings';
+          if (listingId && afterSuccessRedirect === "listing-detail") {
+            window.location.href = `/listing/${listingId}`;
+          } else {
+            window.location.href = "/my-listings";
+          }
         }, 1500);
       } else {
         console.error(`Failed to ${listingId ? 'update' : 'create'} listing:`, response.error);
@@ -591,9 +613,17 @@ export const PackagesStep = ({
           disabled={isSubmitting}
           className="bg-accent hover:bg-accent/90 text-accent-foreground ml-auto px-16"
         >
-          {isSubmitting 
-            ? (listingStatus === "PUBLISH" ? "Publishing..." : "Saving...") 
-            : (listingStatus === "PUBLISH" ? "Publish Listing" : "Save as Draft")}
+          {isSubmitting
+            ? listingId
+              ? "Updating..."
+              : listingStatus === "PUBLISH"
+                ? "Publishing..."
+                : "Saving..."
+            : listingId
+              ? "Update Listing"
+              : listingStatus === "PUBLISH"
+                ? "Publish Listing"
+                : "Save as Draft"}
         </Button>
       </div>
     </div>

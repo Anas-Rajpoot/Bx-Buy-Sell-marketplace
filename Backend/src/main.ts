@@ -47,8 +47,9 @@ async function bootstrap() {
   
 });
 
-//config: RabbitMQ Microservices (Optional - only start if RABBIT_MQ is configured)
-if (process.env.RABBIT_MQ) {
+// config: RabbitMQ Microservices (Optional - only start when explicitly enabled)
+const rabbitMqEnabled = process.env.RABBIT_MQ_ENABLED === 'true';
+if (rabbitMqEnabled && process.env.RABBIT_MQ) {
   try {
     // Build connection string with credentials if provided
     let rabbitMqUrl = process.env.RABBIT_MQ;
@@ -86,8 +87,8 @@ if (process.env.RABBIT_MQ) {
     console.warn('   Error:', error instanceof Error ? error.message : error);
   }
 } else {
-  console.log('ℹ️  RabbitMQ not configured. Activity logging microservice skipped.');
-  console.log('   To enable: Set RABBIT_MQ environment variable (e.g., localhost:5672)');
+  console.log('ℹ️  RabbitMQ microservice disabled. Activity logging microservice skipped.');
+  console.log('   To enable: Set RABBIT_MQ_ENABLED=true and configure RABBIT_MQ (e.g., localhost:5672)');
 }
 
   // config: Redis (measured inside RedisAdapterService)

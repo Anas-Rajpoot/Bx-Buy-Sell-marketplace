@@ -114,14 +114,7 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-semibold">Add New Member</DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onOpenChange(false)}
-              className="h-6 w-6"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+     
           </div>
         </DialogHeader>
 

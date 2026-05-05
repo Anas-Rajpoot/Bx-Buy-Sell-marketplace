@@ -25,10 +25,24 @@ export const ToolsStep = ({ formData: parentFormData, onNext, onBack }: ToolsSte
   const { data: tools, isLoading } = useTools();
 
   useEffect(() => {
-    if (parentFormData?.tools) {
-      setSelectedTools(parentFormData.tools);
+    const raw = parentFormData?.tools;
+    if (!raw || !Array.isArray(raw) || raw.length === 0) {
+      return;
     }
-  }, [parentFormData]);
+    if (!tools || !Array.isArray(tools) || tools.length === 0) {
+      return;
+    }
+    const resolved = raw.map((t: string) => {
+      const s = String(t);
+      const byId = tools.find((x) => x.id === s);
+      if (byId) return byId.id;
+      const byName = tools.find(
+        (x) => (x.name || "").trim().toLowerCase() === s.trim().toLowerCase(),
+      );
+      return byName?.id || s;
+    });
+    setSelectedTools(resolved);
+  }, [parentFormData?.tools, tools]);
 
   const toggleTool = (toolId: string) => {
     setSelectedTools(prev => 

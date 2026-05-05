@@ -11,12 +11,13 @@ import { X } from "lucide-react";
 interface EditHandoverQuestionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  question: { id: string; question: string; answer_type: string } | null;
+  question: { id: string; question: string; answer_type: string; option?: string[] } | null;
 }
 
 export const EditHandoverQuestionDialog = ({ open, onOpenChange, question }: EditHandoverQuestionDialogProps) => {
   const [questionText, setQuestionText] = useState("");
   const [answerType, setAnswerType] = useState("TEXT");
+  const [options, setOptions] = useState("");
   const updateQuestion = useUpdateHandoverQuestion();
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export const EditHandoverQuestionDialog = ({ open, onOpenChange, question }: Edi
         'BOOLEAN': 'YESNO',
       };
       setAnswerType(answerTypeMap[question.answer_type] || question.answer_type);
+      setOptions(question.option && Array.isArray(question.option) ? question.option.join(", ") : "");
     }
   }, [question]);
 
@@ -47,8 +49,13 @@ export const EditHandoverQuestionDialog = ({ open, onOpenChange, question }: Edi
       return;
     }
 
+    let optionsArray: string[] = [];
+    if ((answerType === "SELECT" || answerType === "CHECKBOX") && options.trim()) {
+      optionsArray = options.split(",").map((opt) => opt.trim()).filter((opt) => opt.length > 0);
+    }
+
     updateQuestion.mutate(
-      { id: question.id, question: trimmedQuestion, answer_type: answerType },
+      { id: question.id, question: trimmedQuestion, answer_type: answerType, options: optionsArray },
       {
         onSuccess: () => {
           onOpenChange(false);
@@ -68,6 +75,7 @@ export const EditHandoverQuestionDialog = ({ open, onOpenChange, question }: Edi
         'BOOLEAN': 'YESNO',
       };
       setAnswerType(answerTypeMap[question.answer_type] || question.answer_type);
+      setOptions(question.option && Array.isArray(question.option) ? question.option.join(", ") : "");
     }
     onOpenChange(false);
   };
@@ -99,12 +107,24 @@ export const EditHandoverQuestionDialog = ({ open, onOpenChange, question }: Edi
                 <SelectItem value="TEXT" className="text-black">Text</SelectItem>
                 <SelectItem value="NUMBER" className="text-black">Number</SelectItem>
                 <SelectItem value="SELECT" className="text-black">Dropdown</SelectItem>
+                <SelectItem value="CHECKBOX" className="text-black">Checkbox (Multiple)</SelectItem>
                 <SelectItem value="YESNO" className="text-black">Yes / No</SelectItem>
                 <SelectItem value="TEXTAREA" className="text-black">Text Area</SelectItem>
                 <SelectItem value="DATE" className="text-black">Date</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          {(answerType === "SELECT" || answerType === "CHECKBOX") && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-black">Options (comma-separated)</Label>
+              <Input
+                value={options}
+                onChange={(e) => setOptions(e.target.value)}
+                placeholder="Option 1, Option 2, Option 3"
+                className="bg-gray-50 border-gray-200 text-black"
+              />
+            </div>
+          )}
         </div>
         <div className="flex justify-center gap-3 pt-4">
           <Button

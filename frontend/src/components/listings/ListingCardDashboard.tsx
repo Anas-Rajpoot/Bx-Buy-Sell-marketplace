@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import redInfoIcon from "@/assets/red info icon.svg";
 import dateIcon from "@/assets/date.svg";
-
+import { Link, useNavigate } from "react-router-dom";
 interface ListingCardDashboardProps {
   id: string;
   title: string;
@@ -40,6 +40,7 @@ export const ListingCardDashboard = ({
   unread_messages_count,
   onUpdate,
 }: ListingCardDashboardProps) => {
+  const navigate = useNavigate();
   const [isPublishing, setIsPublishing] = useState(false);
   const normalizedPrice =
     typeof price === "number" ? price : Number(price ?? 0);
@@ -75,7 +76,7 @@ export const ListingCardDashboard = ({
   };
 
   const handleEdit = () => {
-    window.location.href = `/listing/${id}/edit`;
+    navigate(`/listing/${id}/edit`);
   };
 
   const handleDelete = async () => {
@@ -101,12 +102,14 @@ export const ListingCardDashboard = ({
   };
 
   return (
+    
     <div
       className="w-full max-w-[485px] flex flex-col gap-2 sm:gap-3 rounded-[20px] bg-[rgba(250,250,250,1)] relative p-3 sm:p-4"
       style={{
         minHeight: 'auto',
       }}
     >
+      <Link to={`/listing/${id}`}>
       {/* Image */}
       <div
         className="w-full rounded-[20px] overflow-hidden relative bg-[#e5e5e5]"
@@ -129,7 +132,7 @@ export const ListingCardDashboard = ({
             No image
           </div>
         )}
-
+      
         {/* Category Badge */}
         {categoryLabel && (
           <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 h-8 sm:h-9 px-3 sm:px-4 md:px-[17px] py-1.5 sm:py-2 md:py-[7px] rounded-full bg-[rgba(0,0,0,0.25)] backdrop-blur-[44px] flex items-center justify-center">
@@ -163,7 +166,7 @@ export const ListingCardDashboard = ({
           </button>
         </div>
       </div>
-
+      </Link>
       {/* Content */}
       <div className="flex flex-col mt-3 sm:mt-4 md:mt-4">
         {/* First Row: Title and Status */}
@@ -379,5 +382,6 @@ export const ListingCardDashboard = ({
         )}
       </div>
     </div>
+
   );
 };

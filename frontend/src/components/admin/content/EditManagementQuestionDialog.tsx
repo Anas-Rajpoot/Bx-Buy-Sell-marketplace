@@ -12,6 +12,7 @@ interface ManagementQuestion {
   id: string;
   question: string;
   answer_type: string;
+  option?: string[];
 }
 
 interface EditManagementQuestionDialogProps {
@@ -25,6 +26,7 @@ const QUESTION_TYPES = [
   { value: "NUMBER", label: "Number" },
   { value: "DATE", label: "Date" },
   { value: "SELECT", label: "Dropdown" },
+  { value: "CHECKBOX", label: "Checkbox (Multiple)" },
   { value: "YESNO", label: "Yes / No" },
   { value: "TEXTAREA", label: "Text Area" },
 ];
@@ -33,12 +35,14 @@ export const EditManagementQuestionDialog = ({ open, onOpenChange, question }: E
   const [questionText, setQuestionText] = useState("");
   const [hintText, setHintText] = useState("");
   const [questionType, setQuestionType] = useState("TEXT");
+  const [options, setOptions] = useState("");
   const updateQuestion = useUpdateManagementQuestion();
 
   useEffect(() => {
     if (question) {
       setQuestionText(question.question);
       setQuestionType(question.answer_type);
+      setOptions(question.option && Array.isArray(question.option) ? question.option.join(", ") : "");
     }
   }, [question]);
 
@@ -47,11 +51,17 @@ export const EditManagementQuestionDialog = ({ open, onOpenChange, question }: E
       return;
     }
 
+    let optionsArray: string[] = [];
+    if ((questionType === "SELECT" || questionType === "CHECKBOX") && options.trim()) {
+      optionsArray = options.split(",").map((opt) => opt.trim()).filter((opt) => opt.length > 0);
+    }
+
     updateQuestion.mutate(
       {
         id: question.id,
         question: questionText.trim(),
         answer_type: questionType,
+        options: optionsArray,
       },
       {
         onSuccess: () => {
@@ -65,6 +75,7 @@ export const EditManagementQuestionDialog = ({ open, onOpenChange, question }: E
     if (question) {
       setQuestionText(question.question);
       setQuestionType(question.answer_type);
+      setOptions(question.option && Array.isArray(question.option) ? question.option.join(", ") : "");
       setHintText("");
     }
     onOpenChange(false);
@@ -110,6 +121,17 @@ export const EditManagementQuestionDialog = ({ open, onOpenChange, question }: E
               </SelectContent>
             </Select>
           </div>
+          {(questionType === "SELECT" || questionType === "CHECKBOX") && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-black">Options (comma-separated)</Label>
+              <Input
+                value={options}
+                onChange={(e) => setOptions(e.target.value)}
+                placeholder="Option 1, Option 2, Option 3"
+                className="bg-gray-50 border-gray-200 text-black"
+              />
+            </div>
+          )}
         </div>
         <div className="flex justify-center gap-3 pt-4">
           <Button 

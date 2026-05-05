@@ -42,6 +42,51 @@ export class ChatService {
     return matches;
   }
 
+  async detectProhibitedWordsForMessage(
+    senderId: string,
+    content: string,
+  ): Promise<string[]> {
+    if (!content?.trim()) {
+      return [];
+    }
+
+    const sender = await this.db.user.findUnique({
+      where: { id: senderId },
+      select: { role: true },
+    });
+
+    if (sender?.role === 'ADMIN' || sender?.role === 'MONITER') {
+      return [];
+    }
+
+    return this.findProhibitedWords(content);
+  }
+
+  async createProhibitedWordAlert(
+    chatId: string,
+    senderId: string,
+    matches: string[],
+  ) {
+    if (!matches.length) return;
+
+    try {
+      await this.db.monitoringAlert.create({
+        data: {
+          problem_type: 'word',
+          status: 'unsolved',
+          notes: `Detected prohibited word(s): ${matches.join(', ')}. Chat ID: ${chatId}`,
+          reporterId: null,
+          problematicUserId: senderId,
+        },
+      });
+    } catch (alertError) {
+      console.error(
+        '❌ Failed to create monitoring alert for prohibited words:',
+        alertError,
+      );
+    }
+  }
+
   async getChatRoom(userId: string, sellerId: string, listingId?: string) {
     // CRITICAL: Find ALL chat rooms between these users and merge their messages
     const whereConditions = [

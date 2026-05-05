@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useManagementQuestions } from "@/hooks/useManagementQuestions";
 import { toast } from "sonner";
 import { isValidListingDateAnswer } from "@/lib/dateUtils";
@@ -25,7 +26,7 @@ export const ManagementStep = ({ onNext, onBack }: ManagementStepProps) => {
       const value = formData[question.id];
       
       // Required fields validation
-      if (!value || (typeof value === 'string' && value.trim() === '')) {
+      if (!value || (typeof value === 'string' && value.trim() === '') || (Array.isArray(value) && value.length === 0)) {
         errors.push(`${question.question} is required`);
       }
       
@@ -137,6 +138,27 @@ export const ManagementStep = ({ onNext, onBack }: ManagementStepProps) => {
               ))}
             </SelectContent>
           </Select>
+        );
+
+      case "CHECKBOX":
+        const selectedValues = Array.isArray(value) ? value : [];
+        return (
+          <div className="space-y-2">
+            {question.option && Array.isArray(question.option) && question.option.map((opt: string, idx: number) => (
+              <label key={idx} className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={selectedValues.includes(opt)}
+                  onCheckedChange={(checked) => {
+                    const next = checked
+                      ? [...selectedValues, opt]
+                      : selectedValues.filter((item: string) => item !== opt);
+                    setFormData({ ...formData, [question.id]: next });
+                  }}
+                />
+                <span>{opt}</span>
+              </label>
+            ))}
+          </div>
         );
       
       default:

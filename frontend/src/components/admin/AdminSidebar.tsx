@@ -1,72 +1,196 @@
-import { LayoutDashboard, Users, List, MessageSquare, FileText, Settings, LogOut, UserCog, Bell, AlertCircle, FileSearch, Grid3x3, Building2, Wrench, CreditCard, Info, User, Megaphone, HandshakeIcon, Package, Menu } from "lucide-react";
+import { Menu, ChevronDown, ChevronRight } from "lucide-react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/_App Icon 1 (2).png";
-import dashboardIcon from "@/assets/Dashboard icon.svg";
-import teamIcon from "@/assets/Team icon.svg";
-import userIcon from "@/assets/User icon.svg";
-import listIcon from "@/assets/List icon.svg";
-import chatIcon from "@/assets/chat svg.svg";
-import allChatsIcon from "@/assets/All Chats.svg";
-import monitorAlertIcon from "@/assets/Monitor alert.svg";
-import detectWordIcon from "@/assets/Detect word.svg";
-import logoutIcon from "@/assets/logout.svg";
+import {
+  AccountsSvg,
+  AdInformationsSvg,
+  AllChatsSvg,
+  AdditionalInfosSvg,
+  BrandInformationSvg,
+  CategorySvg,
+  ChatSvg,
+  ChatListSvg,
+  ContentManagementSvg,
+  DashboardSvg,
+  DetectWordsSvg,
+  FinancialsSvg,
+  HandoverSvg,
+  ListingsSvg,
+  LogOutSvg,
+  MonitoringAlertsSvg,
+  PackagesSvg,
+  SettingsSvg,
+  TeamMembersSvg,
+  ToolsSvg,
+  UsersSvg,
+} from "@/assets/svg";
 
-const menuItems = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, iconSrc: dashboardIcon, path: "/admin/dashboard" },
-  { id: "team", label: "Team Members", icon: UserCog, iconSrc: teamIcon, path: "/admin/team" },
-  { id: "users", label: "Users", icon: Users, iconSrc: userIcon, path: "/admin/users" },
-  { id: "listings", label: "Listings", icon: List, iconSrc: listIcon, path: "/admin/listings" },
-  { 
-    id: "chat", 
-    label: "Chat", 
-    icon: MessageSquare, 
-    iconSrc: chatIcon,
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type SidebarSubItem = {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  path: string;
+  iconColorMode?: "path" | "filter";
+};
+
+type SidebarMenuItem = {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  path: string;
+  iconColorMode?: "path" | "filter";
+  subItems?: SidebarSubItem[];
+};
+
+// ─── Menu config ──────────────────────────────────────────────────────────────
+
+const menuItems: SidebarMenuItem[] = [
+  { id: "dashboard", label: "Dashboard", icon: DashboardSvg, path: "/admin/dashboard" },
+  { id: "listings", label: "Listings", icon: ListingsSvg, path: "/admin/listings" },
+  { id: "users", label: "Users", icon: UsersSvg, path: "/admin/users" },
+  { id: "team", label: "Team Members", icon: TeamMembersSvg, path: "/admin/team" },
+  {
+    id: "chat",
+    label: "Chat",
+    icon: ChatSvg,
     path: "/admin/chats",
     subItems: [
-      { id: "chat-list", label: "Chat List", icon: MessageSquare, iconSrc: allChatsIcon, path: "/admin/chat-list" },
-      { id: "all-chats", label: "All Chats", icon: MessageSquare, iconSrc: allChatsIcon, path: "/admin/chats" },
-      { id: "analytics", label: "Analytics & Routing", icon: LayoutDashboard, path: "/admin/chat-analytics" },
-      { id: "monitoring", label: "Monitoring Alerts", icon: Bell, iconSrc: monitorAlertIcon, path: "/admin/monitoring-alerts" },
-      { id: "detect-words", label: "Detect Words", icon: FileSearch, iconSrc: detectWordIcon, path: "/admin/detect-words" },
-    ]
+      { id: "all-chats", label: "All Chats", icon: AllChatsSvg, path: "/admin/chats" },
+      { id: "monitoring", label: "Monitoring Alerts", icon: MonitoringAlertsSvg, path: "/admin/monitoring-alerts" },
+      { id: "chat-list", label: "Chat List", icon: ChatListSvg, path: "/admin/chat-list", iconColorMode: "filter" },
+      { id: "detect-words", label: "Detect Words", icon: DetectWordsSvg, path: "/admin/detect-words", iconColorMode: "filter" },
+      { id: "analytics", label: "Analytics", icon: DashboardSvg, path: "/admin/chat-analytics" },
+  
+    ],
   },
-  { 
-    id: "content", 
-    label: "Content Management", 
-    icon: FileText, 
+  {
+    id: "content",
+    label: "Content Management",
+    icon: ContentManagementSvg,
     path: "/admin/content",
     subItems: [
-      { id: "category", label: "Category", icon: Grid3x3, path: "/admin/content/category" },
-      { id: "brand-info", label: "Brand Information", icon: Building2, path: "/admin/content/brand-info" },
-      { id: "tools", label: "Tools", icon: Wrench, path: "/admin/content/tools" },
-      { id: "financials", label: "Financials", icon: CreditCard, path: "/admin/content/financials" },
-      { id: "additional-infos", label: "Additional Infos", icon: Info, path: "/admin/content/additional-infos" },
-      { id: "accounts", label: "Accounts", icon: User, path: "/admin/content/accounts" },
-      { id: "ad-informations", label: "Ad Informations", icon: Megaphone, path: "/admin/content/ad-informations" },
-      { id: "handover", label: "Handover", icon: HandshakeIcon, path: "/admin/content/handover" },
-      { id: "packages", label: "Packages", icon: Package, path: "/admin/content/packages" },
-    ]
+      { id: "category", label: "Category", icon: CategorySvg, path: "/admin/content/category" },
+      { id: "brand-info", label: "Brand Information", icon: BrandInformationSvg, path: "/admin/content/brand-info" },
+      { id: "tools", label: "Tools", icon: ToolsSvg, path: "/admin/content/tools" },
+      { id: "financials", label: "Financials", icon: FinancialsSvg, path: "/admin/content/financials" },
+      { id: "additional-infos", label: "Additional Infos", icon: AdditionalInfosSvg, path: "/admin/content/additional-infos" },
+      { id: "accounts", label: "Accounts", icon: AccountsSvg, path: "/admin/content/accounts" },
+      { id: "ad-informations", label: "Ad Informations", icon: AdInformationsSvg, path: "/admin/content/ad-informations" },
+      { id: "handover", label: "Handover", icon: HandoverSvg, path: "/admin/content/handover" },
+      { id: "packages", label: "Packages", icon: PackagesSvg, path: "/admin/content/packages" },
+    ],
   },
 ];
 
-interface AdminSidebarProps {
-  isMobile?: boolean;
-  onClose?: () => void;
+// ─── Design tokens ────────────────────────────────────────────────────────────
+
+const ACTIVE_BG = "rgba(174, 243, 31, 1)";
+const ACTIVE_TEXT = "rgba(0, 0, 0, 1)";
+const INACTIVE_TEXT = "#999999";
+
+const activeItemStyle: React.CSSProperties = {
+  width: "100%",
+  minHeight: "48px",
+  borderRadius: "12px",
+  padding: "12px 16px",
+  backgroundColor: ACTIVE_BG,
+  border: "none",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "8px",
+  transition: "background 0.15s",
+};
+
+const inactiveItemStyle: React.CSSProperties = {
+  width: "100%",
+  minHeight: "48px",
+  borderRadius: "12px",
+  padding: "12px 16px",
+  backgroundColor: "transparent",
+  border: "none",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "8px",
+  transition: "background 0.15s",
+};
+
+
+interface SidebarIconProps {
+  icon: React.ElementType;
+  active: boolean;
+  size?: number;
+  mode?: "path" | "filter";
 }
+
+const SidebarIcon = ({ icon: Icon, active, size = 20, mode = "path" }: SidebarIconProps) => (
+  <span
+    className="sidebar-icon"
+    style={
+      {
+        "--sidebar-icon-color": active ? ACTIVE_TEXT : INACTIVE_TEXT,
+        "--sidebar-icon-opacity": active ? "1" : "0.6",
+        filter: mode === "filter" && active ? "brightness(0)" : "none",
+        opacity: mode === "filter" ? (active ? 1 : 0.6) : 1,
+        display: "inline-flex",
+      } as React.CSSProperties
+    }
+  >
+    <Icon
+      style={{
+        width: size,
+        height: size,
+        flexShrink: 0,
+      }}
+    />
+  </span>
+);
+
+
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function isPathActive(pathname: string, path: string) {
+  return pathname === path || pathname.startsWith(path + "/");
+}
+
+function isMenuItemActive(item: SidebarMenuItem, pathname: string): boolean {
+  if (isPathActive(pathname, item.path)) return true;
+  return item.subItems?.some((sub) => isPathActive(pathname, sub.path)) ?? false;
+}
+
+function hoverHandlers(isActive: boolean) {
+  return {
+    onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (!isActive) e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)";
+    },
+    onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (!isActive) e.currentTarget.style.backgroundColor = "transparent";
+    },
+  };
+}
+
+// ─── Sidebar content ──────────────────────────────────────────────────────────
 
 const AdminSidebarContent = ({ onClose }: { onClose?: () => void }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
   const [expandedItems, setExpandedItems] = useState<string[]>(["chat", "content"]);
+
   const userRole = user?.role?.toUpperCase();
   const isModerator = userRole === "MONITER" || userRole === "MODERATOR";
+
   const filteredMenuItems = isModerator
     ? menuItems.filter((item) => item.id !== "dashboard" && item.id !== "content")
     : menuItems;
@@ -77,214 +201,136 @@ const AdminSidebarContent = ({ onClose }: { onClose?: () => void }) => {
     navigate("/admin/login");
   };
 
-  const toggleExpanded = (itemId: string) => {
-    setExpandedItems(prev => 
-      prev.includes(itemId) 
-        ? prev.filter(id => id !== itemId)
-        : [...prev, itemId]
+  const toggleExpanded = (id: string) =>
+    setExpandedItems((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
-  };
 
   const handleNavigation = (path: string) => {
     navigate(path);
-    if (onClose) {
-      onClose();
-    }
+    onClose?.();
   };
 
-  const isPathActive = (path: string, subItems?: any[]) => {
-    if (location.pathname === path) return true;
-    if (subItems) {
-      return subItems.some(sub => location.pathname === sub.path || location.pathname.startsWith(sub.path + '/'));
-    }
-    return location.pathname.startsWith(path + '/');
-  };
-
-  // Check if any sub-item is active (for parent tab highlighting)
-  const hasActiveSubItem = (subItems?: any[]) => {
-    if (!subItems) return false;
-    return subItems.some(sub => location.pathname === sub.path || location.pathname.startsWith(sub.path + '/'));
-  };
+  const settingsActive = isPathActive(location.pathname, "/admin/settings");
 
   return (
-    <div 
-      className="bg-[hsl(0_0%_0%)] h-full flex flex-col overflow-hidden"
+    <div
       style={{
-        width: '346px',
-        maxWidth: '100%',
-        paddingTop: '20px',
-        paddingRight: '0px', // Remove right padding so scrollbar is at the edge
-        paddingBottom: '12px',
-        paddingLeft: '12px',
-        backgroundColor: 'rgba(0, 0, 0, 1)',
+        width: "346px",
+        maxWidth: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        padding: "20px 0 12px 12px",
+        backgroundColor: "rgba(0, 0, 0, 1)",
       }}
     >
-      <div className="p-0 flex-shrink-0 mb-4">
-        <Link to="/" className="flex items-center justify-start" onClick={onClose}>
-          <img 
-            src={logo} 
-            alt="EX Logo" 
+      <style>{`
+        .sidebar-icon path[stroke]:not([stroke="none"]) {
+          stroke: var(--sidebar-icon-color) !important;
+        }
+        .sidebar-icon path[fill]:not([fill="none"]) {
+          fill: var(--sidebar-icon-color) !important;
+        }
+        .sidebar-icon path[stroke-opacity] {
+          stroke-opacity: var(--sidebar-icon-opacity) !important;
+        }
+        .sidebar-icon path[fill-opacity] {
+          fill-opacity: var(--sidebar-icon-opacity) !important;
+        }
+        .sidebar-icon [opacity] {
+          opacity: var(--sidebar-icon-opacity) !important;
+        }
+      `}</style>
+      {/* Logo — stays as <img>, it's a raster asset not an icon */}
+      <div style={{ flexShrink: 0, marginBottom: "16px" }}>
+        <Link to="/" onClick={onClose}>
+          <img
+            src={logo}
+            alt="EX Logo"
             className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 object-contain"
           />
         </Link>
       </div>
-      
-      <nav 
-        className="flex-1 overflow-y-auto overflow-x-hidden admin-sidebar-scroll"
+
+      {/* Nav */}
+      <nav
+        className="admin-sidebar-scroll"
         style={{
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-          paddingRight: '12px', // Add padding to content instead of container
+          flex: 1,
+          overflowY: "auto",
+          overflowX: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          gap: "4px",
+          paddingRight: "12px",
         }}
       >
         {filteredMenuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = isPathActive(item.path, item.subItems);
-          const hasActiveChild = hasActiveSubItem(item.subItems);
+          const active = isMenuItemActive(item, location.pathname);
+          const hasChildren = !!item.subItems?.length;
           const isExpanded = expandedItems.includes(item.id);
-          const hasSubItems = item.subItems && item.subItems.length > 0;
-          // Parent tab is active if it's directly active OR has an active child
-          const isParentActive = isActive || hasActiveChild;
-          
+          const textColor = active ? ACTIVE_TEXT : INACTIVE_TEXT;
+
           return (
             <div key={item.id}>
+              {/* Parent row */}
               <button
-                onClick={() => {
-                  if (hasSubItems) {
-                    toggleExpanded(item.id);
-                  } else {
-                    handleNavigation(item.path);
-                  }
-                }}
-                className={`w-full flex items-center justify-between transition-all ${
-                  (isParentActive && !hasSubItems) || (hasSubItems && hasActiveChild)
-                    ? "" 
-                    : "hover:bg-white/5 rounded-lg px-3 sm:px-4 py-2.5 sm:py-3"
-                }`}
-                style={(isParentActive && !hasSubItems) || (hasSubItems && hasActiveChild) ? {
-                  width: '100%',
-                  height: 'auto',
-                  minHeight: '48px',
-                  borderRadius: '12px',
-                  paddingTop: '12px',
-                  paddingRight: '16px',
-                  paddingBottom: '12px',
-                  paddingLeft: '16px',
-                  gap: '8px',
-                  backgroundColor: 'rgba(174, 243, 31, 1)',
-                } : {}}
+                onClick={() =>
+                  hasChildren ? toggleExpanded(item.id) : handleNavigation(item.path)
+                }
+                style={active ? activeItemStyle : inactiveItemStyle}
+                {...hoverHandlers(active)}
               >
-                <div className="flex items-center" style={isActive && !hasSubItems ? { gap: '8px' } : { gap: '8px' }}>
-                  {item.iconSrc ? (
-                    <img
-                      src={item.iconSrc}
-                      alt={`${item.label} icon`}
-                      style={{
-                        width: '20px',
-                        height: '20px',
-                        flexShrink: 0,
-                        opacity: 1,
-                        filter:
-                          (isParentActive && !hasSubItems) || (hasSubItems && hasActiveChild)
-                            ? 'brightness(0)'
-                            : 'brightness(0) invert(1)',
-                      }}
-                    />
-                  ) : (
-                    <Icon 
-                      className="flex-shrink-0" 
-                      style={{
-                        width: '20px',
-                        height: '20px',
-                        color: (isParentActive && !hasSubItems) || (hasSubItems && hasActiveChild) ? 'rgba(0, 0, 0, 1)' : 'rgba(255, 255, 255, 0.6)',
-                        opacity: 1,
-                      }}
-                    />
-                  )}
-                  <span 
-                    className="font-lufga font-medium text-sm lg:text-base"
-                    style={{
-                      fontWeight: 500,
-                      fontSize: '14px',
-                      lineHeight: '150%',
-                      letterSpacing: '0%',
-                      color: (isParentActive && !hasSubItems) || (hasSubItems && hasActiveChild) ? 'rgba(0, 0, 0, 1)' : 'rgba(255, 255, 255, 1)',
-                    }}
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <SidebarIcon icon={item.icon} active={active} mode={item.iconColorMode} />
+                  <span
+                    className="font-lufga"
+                    style={{ fontWeight: 500, fontSize: "20px", lineHeight: "150%", color: textColor }}
                   >
                     {item.label}
                   </span>
                 </div>
-                {hasSubItems && (
-                  isExpanded ? (
-                    <ChevronDown 
-                      className="flex-shrink-0 w-4 h-4 lg:w-7 lg:h-7" 
-                      style={{
-                        color: (isParentActive && !hasSubItems) || (hasSubItems && hasActiveChild) ? 'rgba(0, 0, 0, 1)' : 'rgba(255, 255, 255, 0.6)',
-                        opacity: 1,
-                      }}
-                    />
-                  ) : (
-                    <ChevronRight 
-                      className="flex-shrink-0 w-4 h-4 lg:w-7 lg:h-7" 
-                      style={{
-                        color: (isParentActive && !hasSubItems) || (hasSubItems && hasActiveChild) ? 'rgba(0, 0, 0, 1)' : 'rgba(255, 255, 255, 0.6)',
-                        opacity: 1,
-                      }}
-                    />
-                  )
+
+                {hasChildren && (
+                  isExpanded
+                    ? <ChevronDown style={{ width: 16, height: 16, flexShrink: 0, color: textColor }} />
+                    : <ChevronRight style={{ width: 16, height: 16, flexShrink: 0, color: textColor }} />
                 )}
               </button>
 
               {/* Sub-items */}
-              {hasSubItems && isExpanded && (
-                <div className="ml-2 sm:ml-4 mt-1 space-y-1">
-                  {item.subItems.map((subItem) => {
-                    const SubIcon = subItem.icon;
-                    const isSubActive = location.pathname === subItem.path || location.pathname.startsWith(subItem.path + '/');
-                    
+              {hasChildren && isExpanded && (
+                <div
+                  style={{
+                    marginLeft: "16px",
+                    marginTop: "2px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "2px",
+                  }}
+                >
+                  {item.subItems!.map((sub) => {
+                    const subActive = isPathActive(location.pathname, sub.path);
+                    const subTextColor = subActive ? ACTIVE_TEXT : INACTIVE_TEXT;
+
                     return (
                       <button
-                        key={subItem.id}
-                        onClick={() => handleNavigation(subItem.path)}
-                        className={`w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-all ${
-                          isSubActive
-                            ? "bg-white/10" 
-                            : "hover:bg-white/5"
-                        }`}
+                        key={sub.id}
+                        onClick={() => handleNavigation(sub.path)}
+                        style={subActive ? activeItemStyle : inactiveItemStyle}
+                        {...hoverHandlers(subActive)}
                       >
-                        {subItem.iconSrc ? (
-                          <img
-                            src={subItem.iconSrc}
-                            alt={`${subItem.label} icon`}
-                            className="flex-shrink-0 w-4 h-4 lg:w-7 lg:h-7"
-                            style={{
-                              opacity: 1,
-                              filter: isSubActive ? 'brightness(0)' : 'brightness(0) invert(1)',
-                            }}
-                          />
-                        ) : (
-                          <SubIcon 
-                            className="flex-shrink-0 w-4 h-4 lg:w-7 lg:h-7" 
-                            style={{
-                              color: 'rgba(255, 255, 255, 0.6)',
-                              opacity: 1,
-                            }}
-                          />
-                        )}
-                        <span
-                          className="font-lufga text-sm lg:text-base"
-                          style={{
-                            fontWeight: 500,
-                            fontSize: '14px',
-                            lineHeight: '150%',
-                            letterSpacing: '0%',
-                            color: 'rgba(255, 255, 255, 1)',
-                          }}
-                        >
-                          {subItem.label}
-                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <SidebarIcon icon={sub.icon} active={subActive} mode={sub.iconColorMode} />
+                          <span
+                            className="font-lufga"
+                            style={{ fontWeight: 500, fontSize: "20px", lineHeight: "150%", color: subTextColor }}
+                          >
+                            {sub.label}
+                          </span>
+                        </div>
                       </button>
                     );
                   })}
@@ -295,73 +341,52 @@ const AdminSidebarContent = ({ onClose }: { onClose?: () => void }) => {
         })}
       </nav>
 
-      <div className="p-0 space-y-1 border-t border-white/10 flex-shrink-0 mt-4 pt-4 w-full">
+      {/* Bottom: Settings + Logout */}
+      <div
+        style={{
+          flexShrink: 0,
+          marginTop: "16px",
+          paddingTop: "16px",
+          paddingRight: "12px",
+          borderTop: "1px solid rgba(255,255,255,0.1)",
+          display: "flex",
+          flexDirection: "column",
+          gap: "2px",
+        }}
+      >
+        {/* Settings */}
         <button
           onClick={() => handleNavigation("/admin/settings")}
-          className={`w-full flex items-center justify-between transition-all ${
-            location.pathname === "/admin/settings" || location.pathname.startsWith("/admin/settings/")
-              ? "" 
-              : "hover:bg-white/5 rounded-lg px-3 py-2"
-          }`}
-          style={location.pathname === "/admin/settings" || location.pathname.startsWith("/admin/settings/") ? {
-            width: '100%',
-            height: 'auto',
-            minHeight: '48px',
-            borderRadius: '12px',
-            paddingTop: '12px',
-            paddingRight: '16px',
-            paddingBottom: '12px',
-            paddingLeft: '16px',
-            gap: '8px',
-            backgroundColor: 'rgba(174, 243, 31, 1)',
-          } : {}}
+          style={settingsActive ? activeItemStyle : inactiveItemStyle}
+          {...hoverHandlers(settingsActive)}
         >
-          <div className="flex items-center" style={{ gap: '8px' }}>
-            <Settings 
-              className="flex-shrink-0 w-5 h-5 lg:w-7 lg:h-7" 
-              style={{
-                color: location.pathname === "/admin/settings" || location.pathname.startsWith("/admin/settings/") ? 'rgba(0, 0, 0, 1)' : 'rgba(255, 255, 255, 0.6)',
-                opacity: 1,
-              }}
-            />
-            <span 
-              className="font-lufga font-medium text-sm lg:text-base"
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <SidebarIcon icon={SettingsSvg} active={settingsActive} />
+            <span
+              className="font-lufga"
               style={{
                 fontWeight: 500,
-                fontSize: '14px',
-                lineHeight: '150%',
-                letterSpacing: '0%',
-                color: location.pathname === "/admin/settings" || location.pathname.startsWith("/admin/settings/") ? 'rgba(0, 0, 0, 1)' : 'rgba(255, 255, 255, 1)',
+                fontSize: "14px",
+                lineHeight: "150%",
+                color: settingsActive ? ACTIVE_TEXT : INACTIVE_TEXT,
               }}
             >
               Settings
             </span>
           </div>
         </button>
-        
+
+        {/* Logout — never "active", just always muted white */}
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-between transition-all hover:bg-white/5 rounded-lg px-3 py-2"
+          style={inactiveItemStyle}
+          {...hoverHandlers(false)}
         >
-          <div className="flex items-center" style={{ gap: '8px' }}>
-            <img
-              src={logoutIcon}
-              alt="Logout icon"
-              className="flex-shrink-0 w-5 h-5 lg:w-7 lg:h-7"
-              style={{
-                opacity: 1,
-                filter: 'brightness(0) invert(1)',
-              }}
-            />
-            <span 
-              className="font-lufga font-medium text-sm lg:text-base"
-              style={{
-                fontWeight: 500,
-                fontSize: '14px',
-                lineHeight: '150%',
-                letterSpacing: '0%',
-                color: 'rgba(255, 255, 255, 1)',
-              }}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <LogOutSvg style={{ width: 20, height: 20, flexShrink: 0, opacity: 0.6 }} />
+            <span
+              className="font-lufga"
+              style={{ fontWeight: 500, fontSize: "14px", lineHeight: "150%", color: INACTIVE_TEXT }}
             >
               Log Out
             </span>
@@ -372,9 +397,12 @@ const AdminSidebarContent = ({ onClose }: { onClose?: () => void }) => {
   );
 };
 
-export const AdminSidebar = ({ isMobile = false }: AdminSidebarProps) => {
+// ─── Export ───────────────────────────────────────────────────────────────────
+
+export const AdminSidebar = ({ isMobile = false }: { isMobile?: boolean }) => {
+  const [open, setOpen] = useState(false);
+
   if (isMobile) {
-    const [open, setOpen] = useState(false);
     return (
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
@@ -382,12 +410,10 @@ export const AdminSidebar = ({ isMobile = false }: AdminSidebarProps) => {
             <Menu className="h-6 w-6" />
           </Button>
         </SheetTrigger>
-        <SheetContent 
-          side="left" 
-          className="p-0 bg-[hsl(0_0%_0%)] border-0 w-[346px] sm:w-[346px] overflow-hidden flex flex-col"
-          style={{
-            backgroundColor: 'rgba(0, 0, 0, 1)',
-          }}
+        <SheetContent
+          side="left"
+          className="p-0 border-0 w-[346px] sm:w-[346px] overflow-hidden flex flex-col"
+          style={{ backgroundColor: "rgba(0, 0, 0, 1)" }}
         >
           <AdminSidebarContent onClose={() => setOpen(false)} />
         </SheetContent>

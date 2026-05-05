@@ -482,6 +482,31 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         return;
       }
 
+      // Block prohibited words from being sent; show warning message in chat instead.
+      const prohibitedMatches = await this.chatService.detectProhibitedWordsForMessage(
+        message.senderId,
+        message.content,
+      );
+      if (prohibitedMatches.length > 0) {
+        await this.chatService.createProhibitedWordAlert(
+          message.chatId,
+          message.senderId,
+          prohibitedMatches,
+        );
+
+        const warningMessage = {
+          id: `warning-${Date.now()}`,
+          chatId: message.chatId,
+          senderId: 'system-monitor',
+          content: 'Your message was blocked because it violates community guidelines. Please edit and try again.',
+          type: 'MONITER',
+          createdAt: new Date().toISOString(),
+          read: true,
+        };
+        this.io.to(message.chatId).emit('message', JSON.stringify(warningMessage));
+        return;
+      }
+
       // CRITICAL: Ensure chat room exists before saving message
       // Check if chat room exists, create if missing
       let chatRoom;
@@ -574,7 +599,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       // The sender is already in the room, so they receive it via this single room broadcast
       // NO additional emits - this is the ONLY emit for this message
       this.io.to(message.chatId).emit('message', messageString);
-      
+
       // Emit to monitor room for admin/monitor dashboard updates
       this.io.to('monitor-room').emit('monitor:chat_updated', {
         chatRoomId: message.chatId,

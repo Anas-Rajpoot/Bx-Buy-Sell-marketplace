@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import logo from "@/assets/_App Icon 1 (2).png";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-
+import {CategorySvg} from "../../"
 interface DashboardSidebarProps {
   activeStep: DashboardStep;
   onStepChange: (step: DashboardStep) => void;

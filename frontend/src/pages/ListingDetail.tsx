@@ -16,7 +16,7 @@ import {
   Instagram, Twitter, Music, Mail, ShoppingBag, Building2, Clock,
   PieChart as PieChartIcon, Settings, Globe as GlobeIcon
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -24,6 +24,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import ListingCard from "@/components/ListingCard";
 import { calculateBusinessAgeFromListing } from "@/lib/dateUtils";
+import { useAccounts } from "@/hooks/useAccounts";
+import { useAccountQuestions } from "@/hooks/useAccountQuestions";
 import { BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Legend, Tooltip } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -68,6 +70,348 @@ const getAllAnswers = (questions: any[]): Record<string, string> => {
     }
   });
   return result;
+};
+
+const parseMultiValueAnswer = (raw: unknown): string[] => {
+  const sanitize = (items: string[]) =>
+    items.filter(
+      (item) =>
+        item.length > 0 &&
+        item.toLowerCase() !== "[object object]",
+    );
+
+  if (Array.isArray(raw)) {
+    return sanitize(
+      raw
+      .map((item) => String(item).trim())
+    );
+  }
+  if (typeof raw !== "string") return [];
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return sanitize(
+        parsed
+        .map((item) => String(item).trim())
+      );
+    }
+  } catch {
+    // fall through to delimiter parsing
+  }
+  return sanitize(
+    trimmed
+      .split(",")
+      .map((item) => item.trim()),
+  );
+};
+
+const getHandoverAssets = (
+  questions: any[],
+): Array<{ name: string; included: boolean }> => {
+  if (!questions || !Array.isArray(questions) || questions.length === 0) {
+    return [];
+  }
+
+  const assetQuestion = questions.find((question) => {
+    const questionText = String(question?.question || "").toLowerCase();
+    return (
+      Array.isArray(question?.option) &&
+      question.option.length > 0 &&
+      (questionText.includes("asset") ||
+        questionText.includes("included") ||
+        questionText.includes("handover"))
+    );
+  });
+
+  if (assetQuestion) {
+    const selected = new Set(
+      parseMultiValueAnswer(assetQuestion.answer).map((item) =>
+        item.toLowerCase(),
+      ),
+    );
+    return (assetQuestion.option || []).map((option: string) => {
+      const normalizedOption = String(option).trim();
+      return {
+        name: normalizedOption,
+        included: selected.has(normalizedOption.toLowerCase()),
+      };
+    });
+  }
+
+  const selectedOnly: string[] = [];
+  const seen = new Set<string>();
+
+  questions.forEach((question) => {
+    parseMultiValueAnswer(question?.answer).forEach((value) => {
+      const normalizedValue = value.trim();
+      const key = normalizedValue.toLowerCase();
+      if (!normalizedValue || seen.has(key)) return;
+      seen.add(key);
+      selectedOnly.push(normalizedValue);
+    });
+  });
+
+  return selectedOnly.map((name) => ({ name, included: true }));
+};
+
+const parseSplitAnswer = (raw: unknown): Array<{ name: string; value: number }> => {
+  if (!raw) return [];
+  const normalizeEntry = (entry: any): { name: string; value: number } | null => {
+    if (!entry) return null;
+    if (typeof entry === "object" && !Array.isArray(entry)) {
+      const name = String(entry.name || entry.label || "").trim();
+      const value = Number(entry.percent ?? entry.value ?? 0);
+      if (!name || !Number.isFinite(value) || value <= 0) return null;
+      return { name, value };
+    }
+    if (typeof entry === "string") {
+      const token = entry.trim();
+      if (!token) return null;
+      const percentMatch = token.match(/(\d+(\.\d+)?)\s*%?/);
+      const value = percentMatch ? Number(percentMatch[1]) : NaN;
+      const name = token
+        .replace(/(\d+(\.\d+)?)\s*%?/g, "")
+        .replace(/[:\-]/g, "")
+        .trim();
+      if (!name || !Number.isFinite(value) || value <= 0) return null;
+      return { name, value };
+    }
+    return null;
+  };
+
+  if (Array.isArray(raw)) {
+    return raw.map(normalizeEntry).filter((v): v is { name: string; value: number } => Boolean(v));
+  }
+
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map(normalizeEntry).filter((v): v is { name: string; value: number } => Boolean(v));
+      }
+    } catch {
+      const parts = trimmed.split(",").map((item) => item.trim()).filter(Boolean);
+      return parts.map(normalizeEntry).filter((v): v is { name: string; value: number } => Boolean(v));
+    }
+  }
+
+  return [];
+};
+
+/** API may return `answer` as a string or a single-element array. */
+const pickListingAnswer = (entry: any): unknown => {
+  const raw = entry?.answer;
+  if (Array.isArray(raw)) return raw.length ? raw[0] : undefined;
+  return raw;
+};
+
+const normalizeSocialUrl = (rawValue: unknown): string | null => {
+  if (typeof rawValue !== "string") return null;
+  const trimmed = rawValue.trim();
+  if (!trimmed || trimmed.toLowerCase().includes("follower")) return null;
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const parsed = new URL(withProtocol);
+    return parsed.href;
+  } catch {
+    return null;
+  }
+};
+
+const getSocialDisplayLabel = (url: string | null, fallback: string): string => {
+  if (!url) return fallback;
+  try {
+    const parsed = new URL(url);
+    const host = String(parsed.hostname || "").replace(/^www\./i, "");
+    const path = String(parsed.pathname || "").replace(/^\/+/, "");
+    if (path) {
+      const firstSegment = path.split("/")[0];
+      return `@${firstSegment}`;
+    }
+    return host;
+  } catch {
+    return fallback;
+  }
+};
+
+type SocialBucket = "instagram" | "twitter" | "tiktok";
+
+/**
+ * Wizard rows from PackagesStep use `{uuid} account` or `{PlatformName} account`.
+ * On the public listing page, `useAccounts()` may be empty (admin endpoint), so we
+ * must still allow attaching URLs for these rows even when the hostname is not
+ * instagram.com / tiktok.com / x.com (handles, link-in-bio domains, etc.).
+ */
+const wizardStructuredSocialQuestion = (question: string): boolean => {
+  const q = question.trim();
+  if (/^[a-f0-9-]{36}\s*account/i.test(q)) return true;
+  const mentionsSupportedPlatform =
+    /\binstagram\b/i.test(q) ||
+    /\btiktok\b/i.test(q) ||
+    /\btik\s+tok\b/i.test(q) ||
+    /\b(twitter|x\.com)\b/i.test(q) ||
+    /^x$/i.test(q) ||
+    /\bx\s*\(/i.test(q);
+  // PackagesStep saves `{platform} account`; DB rows may omit "account" or use mixed case.
+  if (/\baccount\s*$/i.test(q)) return mentionsSupportedPlatform;
+  return mentionsSupportedPlatform;
+};
+
+const inferBucketFromUrlString = (raw: string): SocialBucket | null => {
+  const parsed = normalizeSocialUrl(raw);
+  if (!parsed) return null;
+  try {
+    const host = new URL(parsed).hostname.toLowerCase().replace(/^www\./, "");
+    if (host.includes("instagram")) return "instagram";
+    if (host.includes("tiktok")) return "tiktok";
+    if (host.includes("twitter") || host === "x.com" || host.endsWith(".twitter.com")) return "twitter";
+  } catch {
+    /* ignore */
+  }
+  return null;
+};
+
+const inferBucketFromUuidAccountQuestion = (
+  question: string,
+  idToOptionLower: Record<string, string>,
+): SocialBucket | null => {
+  const m = question.trim().match(/^([a-f0-9-]{36})\s*account/i);
+  if (!m) return null;
+  const opt = idToOptionLower[m[1].toLowerCase()] || "";
+  if (opt.includes("instagram")) return "instagram";
+  if (opt.includes("tiktok")) return "tiktok";
+  if (opt.includes("twitter") || opt === "x" || opt.includes("(twitter)")) return "twitter";
+  return null;
+};
+
+/** Map admin SOCIAL account question (exact label match) to a public card bucket. */
+const inferBucketFromAdminQuestion = (
+  question: string,
+  accountQuestions: Array<{ question: string }>,
+): SocialBucket | null => {
+  const qn = question.trim().toLowerCase();
+  const aq = accountQuestions.find((q) => (q.question || "").trim().toLowerCase() === qn);
+  if (!aq) return null;
+  const t = (aq.question || "").toLowerCase();
+  if (t.includes("facebook") && !t.includes("instagram")) return null;
+  if (t.includes("instagram")) return "instagram";
+  if (t.includes("tiktok") || t.includes("tik tok")) return "tiktok";
+  if (t.includes("twitter") || t.includes("x.com") || /\bx\s*\(/.test(t)) return "twitter";
+  return null;
+};
+
+const parseFollowersLabel = (segment: string): string | null => {
+  const s = segment.trim();
+  if (!s) return null;
+  const low = s.toLowerCase();
+  if (low.includes("follower")) return s;
+  const compact = s.replace(/\s/g, "");
+  if (!/^\d[,.\d]*$/.test(compact)) return null;
+  const n = parseInt(compact.replace(/[^0-9]/g, ""), 10);
+  if (Number.isNaN(n) || n <= 0) return null;
+  return `${n.toLocaleString("en-US")} Followers`;
+};
+
+/** Merge all listing `social_account` rows into the three public cards (URLs + follower counts). */
+const aggregateSocialByPlatform = (
+  entries: any[],
+  platformDefs: Array<{ id: string; social_account_option?: string; platform?: string }>,
+  accountQuestions: Array<{ question: string }>,
+): Record<SocialBucket, { url: string | null; followers: string }> => {
+  const empty = (): Record<SocialBucket, { url: string | null; followers: string }> => ({
+    instagram: { url: null, followers: "0 Followers" },
+    twitter: { url: null, followers: "0 Followers" },
+    tiktok: { url: null, followers: "0 Followers" },
+  });
+  const out = empty();
+  if (!Array.isArray(entries) || entries.length === 0) return out;
+
+  const idToOptionLower: Record<string, string> = {};
+  platformDefs.forEach((p) => {
+    idToOptionLower[String(p.id).toLowerCase()] = String(
+      p.social_account_option || p.platform || "",
+    ).toLowerCase();
+  });
+
+  const applySegment = (
+    bucket: SocialBucket,
+    segment: string,
+    allowGenericUrlForBucket: boolean,
+  ) => {
+    const seg = segment.trim();
+    if (!seg) return;
+    const url = normalizeSocialUrl(seg);
+    if (url) {
+      const urlBucket = inferBucketFromUrlString(seg);
+      const canAttachUrl = urlBucket === bucket || (allowGenericUrlForBucket && urlBucket === null);
+      if (canAttachUrl && !out[bucket].url) out[bucket].url = url;
+    }
+    const fl = parseFollowersLabel(seg);
+    if (fl) out[bucket].followers = fl;
+  };
+
+  const sorted = [...entries].sort((a, b) => {
+    const qa = String(a?.question ?? "").trim();
+    const qb = String(b?.question ?? "").trim();
+    const ua = /^[a-f0-9-]{36}\s*account/i.test(qa);
+    const ub = /^[a-f0-9-]{36}\s*account/i.test(qb);
+    if (ua && !ub) return -1;
+    if (!ua && ub) return 1;
+    return 0;
+  });
+
+  sorted.forEach((entry: any) => {
+    const rawAns = pickListingAnswer(entry);
+    const answerText =
+      rawAns !== undefined && rawAns !== null ? String(rawAns).trim() : "";
+    if (!answerText) return;
+    const question = String(entry?.question ?? "");
+    const questionLower = question.toLowerCase();
+
+    if (/facebook/i.test(question) && !/instagram|tiktok|twitter|tik tok/i.test(question)) {
+      return;
+    }
+
+    const segments = answerText.includes("|")
+      ? answerText.split("|").map((s) => s.trim()).filter(Boolean)
+      : [answerText];
+
+    let bucket: SocialBucket | null = null;
+    for (const seg of segments) {
+      bucket = inferBucketFromUrlString(seg);
+      if (bucket) break;
+    }
+
+    const bucketFromUuid = inferBucketFromUuidAccountQuestion(question, idToOptionLower);
+    if (!bucket) bucket = bucketFromUuid;
+    if (!bucket) bucket = inferBucketFromAdminQuestion(question, accountQuestions);
+
+    if (!bucket) {
+      if (questionLower.includes("tiktok") || questionLower.includes("tik tok")) {
+        bucket = "tiktok";
+      } else if (
+        questionLower.includes("twitter") ||
+        questionLower.includes("x.com") ||
+        /\bx\s*\(twitter\)/i.test(question) ||
+        /\bx account/i.test(questionLower)
+      ) {
+        bucket = "twitter";
+      } else if (questionLower.includes("instagram")) {
+        bucket = "instagram";
+      }
+    }
+    if (!bucket) return;
+
+    const allowGenericUrl = wizardStructuredSocialQuestion(question);
+
+    segments.forEach((seg) => applySegment(bucket!, seg, allowGenericUrl));
+  });
+
+  return out;
 };
 
 const isLockedValue = (value: unknown): value is string =>
@@ -849,7 +1193,7 @@ const ProgressMetricCard = ({
 
   // Extract percentage from value (e.g., "45%" -> 45, or just use the number)
   const percentage = typeof value === 'string' 
-    ? parseFloat(value.replace('%', '')) || 0 
+    ? parseFloat(String(value).replace('%', '')) || 0 
     : typeof value === 'number' 
     ? value 
     : 0;
@@ -1265,7 +1609,21 @@ console.log("detasdetail", listing)
   const productAnswers = getAllAnswers(listing?.productQuestion || []);
   const handoverAnswers = getAllAnswers(listing?.handover || []);
   const advertisementAnswers = getAllAnswers(listing?.advertisement || []);
-  const socialAccounts = listing?.social_account || [];
+  const { data: socialAccountDefinitions = [] } = useAccounts();
+  const { data: accountQuestionDefs = [] } = useAccountQuestions();
+  const socialAccountsRaw = listing?.social_account;
+  const socialByPlatform = useMemo(
+    () =>
+      aggregateSocialByPlatform(
+        socialAccountsRaw || [],
+        socialAccountDefinitions,
+        accountQuestionDefs,
+      ),
+    [socialAccountsRaw, socialAccountDefinitions, accountQuestionDefs],
+  );
+  const instagramSocial = socialByPlatform.instagram;
+  const twitterSocial = socialByPlatform.twitter;
+  const tiktokSocial = socialByPlatform.tiktok;
 
   // Extract specific values
   const businessName = getAnswerByQuestion(listing?.brand || [], ['business name', 'company name', 'brand name']) || 
@@ -1387,14 +1745,19 @@ console.log("detasdetail", listing)
 
   // Handover
   const handoverItems = listing?.handover || [];
-  const assetsIncluded = [
-    { name: 'Online Shop', included: handoverItems.some((h: any) => h.question?.toLowerCase().includes('online shop') || h.answer?.toLowerCase().includes('online')) },
-    { name: 'Social Media Accounts', included: handoverItems.some((h: any) => h.question?.toLowerCase().includes('social media')) },
-    { name: 'Trademarks/patents', included: handoverItems.some((h: any) => h.question?.toLowerCase().includes('trademark')) },
-    { name: 'Supplier contacts', included: handoverItems.some((h: any) => h.question?.toLowerCase().includes('supplier')) },
-  ];
-  const postSalesSupport = getAnswerByQuestion(listing?.handover || [], ['post sale', 'post purchase', 'support']) || 'Yes';
-  const supportDuration = getAnswerByQuestion(listing?.handover || [], ['support duration', 'support period', 'months']) || '12 months';
+  const assetsIncluded = getHandoverAssets(handoverItems);
+  const postSalesSupport =
+    getAnswerByQuestion(listing?.handover || [], [
+      "post sale",
+      "post purchase",
+      "support",
+    ]) || "Not provided";
+  const supportDuration =
+    getAnswerByQuestion(listing?.handover || [], [
+      "support duration",
+      "support period",
+      "months",
+    ]) || "Not provided";
 
   // Attachments
   const hasLockedAttachments = (listing?.advertisement || []).some(
@@ -1446,21 +1809,31 @@ console.log("detasdetail", listing)
     }).format(num);
   };
 
-  // Calculate Net Profit for a column (matches FinancialsStep logic)
+  const OVERALL_COSTS_ROW = 'Overall Costs';
+
+  // Calculate Net Profit for a column (matches FinancialsStep.tsx)
   const calculateNetProfitForColumn = (colKey: string, tableData: any): number => {
-    if (!tableData || !tableData.financialData || !tableData.rowLabels) return 0;
-    
+    if (!tableData || !tableData.financialData) return 0;
+    const fd = tableData.financialData;
+    const isSimple = tableData.financialType === 'simple';
+
+    if (isSimple) {
+      const gross = parseFloat(fd['Gross Revenue']?.[colKey] || '0');
+      const costs = parseFloat(fd[OVERALL_COSTS_ROW]?.[colKey] || '0');
+      return gross - costs;
+    }
+
+    const labels: string[] = Array.isArray(tableData.rowLabels) ? tableData.rowLabels : [];
     let total = 0;
-    tableData.rowLabels.forEach((rowLabel: string) => {
-      const value = parseFloat(tableData.financialData[rowLabel]?.[colKey] || '0');
-      // Check if row is a revenue row (contains "Revenue" in name)
+    labels.forEach((rowLabel: string) => {
+      if (rowLabel === OVERALL_COSTS_ROW) return;
+      const value = parseFloat(fd[rowLabel]?.[colKey] || '0');
       if (rowLabel.toLowerCase().includes('revenue')) {
         total += value;
       } else {
         total -= value;
       }
     });
-    
     return total;
   };
 
@@ -1483,9 +1856,102 @@ console.log("detasdetail", listing)
   const rowLabels = financialTableData?.rowLabels || defaultRowLabels;
   const columnLabels = financialTableData?.columnLabels || defaultColumnLabels;
   const financialData = financialTableData?.financialData || {};
+  const profitLossDisplayMode =
+    financialTableData?.financialType === 'simple' ? 'simple' : 'detailed';
+  const profitLossVisibleRows =
+    profitLossDisplayMode === 'simple'
+      ? rowLabels.filter(
+          (row: string) => row === 'Gross Revenue' || row === OVERALL_COSTS_ROW,
+        )
+      : rowLabels.filter((row: string) => row !== OVERALL_COSTS_ROW);
   const columnWidth = 200; // Reduced from 280 to fit table within container (first column remains 325px with +45px)
 
-  // Mock chart data - TODO: Replace with real data from listing
+  const statisticsQuestions = listing?.statistics || [];
+  const findStatisticEntry = (terms: string[]) =>
+    statisticsQuestions.find((item: any) =>
+      terms.some((term) => String(item?.question || "").toLowerCase().includes(term)),
+    );
+
+  const salesChannelsEntry = findStatisticEntry(["sales channels", "sales channel"]);
+  const advertisingChannelsEntry = findStatisticEntry(["advertising channels", "advertising channel", "adverstising channel"]);
+  const salesCountrySplitEntry = findStatisticEntry(["sales countries", "sales country split", "country split"]);
+
+  const salesChannelsSplitList = parseSplitAnswer(salesChannelsEntry?.answer);
+  const advertisingChannelsSplitList = parseSplitAnswer(advertisingChannelsEntry?.answer);
+  const salesCountrySplitList = parseSplitAnswer(salesCountrySplitEntry?.answer);
+  const salesChannelsList = parseMultiValueAnswer(salesChannelsEntry?.answer);
+  const advertisingChannelsList = parseMultiValueAnswer(advertisingChannelsEntry?.answer);
+
+  const colorPalette = [
+    "rgba(198, 255, 28, 1)",
+    "rgba(19, 100, 255, 1)",
+    "rgba(255, 182, 39, 1)",
+    "rgba(255, 92, 135, 1)",
+    "rgba(92, 214, 255, 1)",
+    "rgba(143, 102, 255, 1)",
+  ];
+  const toDonutDataFromSplit = (items: Array<{ name: string; value: number }>) => {
+    if (items.length === 0) return [];
+    return items.map((item, index) => ({
+      name: item.name,
+      value: item.value,
+      color: colorPalette[index % colorPalette.length],
+    }));
+  };
+  const salesChannelsData = toDonutDataFromSplit(salesChannelsSplitList);
+  const advertisingChannelsData = toDonutDataFromSplit(advertisingChannelsSplitList);
+  const salesCountrySplitData = salesCountrySplitList.map((item, index) => ({
+    name: item.name,
+    value: item.value,
+    color: colorPalette[index % colorPalette.length],
+  }));
+  const toTextSummary = (splitItems: Array<{ name: string; value: number }>, fallbackItems: string[]) => {
+    if (splitItems.length > 0) {
+      return splitItems.map((item) => `${item.name} ${item.value}%`).join(", ");
+    }
+    if (fallbackItems.length > 0) {
+      return fallbackItems.join(", ");
+    }
+    return "Not specified";
+  };
+  const salesChannelsSummary = toTextSummary(salesChannelsSplitList, salesChannelsList);
+  const advertisingChannelsSummary = toTextSummary(advertisingChannelsSplitList, advertisingChannelsList);
+  const chartDataByTab: Record<string, Array<{ name: string; value: number; color: string }>> = {
+    "sales-channels": salesChannelsData,
+    "country-split": salesCountrySplitData,
+    advertising: advertisingChannelsData,
+  };
+  const activeChartData = chartDataByTab[selectedChartTab] || [];
+  const activeChartHasData = activeChartData.length > 0;
+
+  useEffect(() => {
+    if (!listing?.id) return;
+    console.log("ListingDetail channel data debug", {
+      listingId: listing.id,
+      statisticsRaw: statisticsQuestions,
+      salesChannelsEntry,
+      salesCountrySplitEntry,
+      advertisingChannelsEntry,
+      salesChannelsSplitList,
+      salesCountrySplitList,
+      advertisingChannelsSplitList,
+      salesChannelsSummary,
+      advertisingChannelsSummary,
+    });
+  }, [
+    listing?.id,
+    statisticsQuestions,
+    salesChannelsEntry,
+    salesCountrySplitEntry,
+    advertisingChannelsEntry,
+    salesChannelsSplitList,
+    salesCountrySplitList,
+    advertisingChannelsSplitList,
+    salesChannelsSummary,
+    advertisingChannelsSummary,
+  ]);
+
+  // Keep this static data for now (outside requested scope)
   const revenueExpensesData = [
     { month: 'Jan 24', revenue: 18000, profit: 5400 },
     { month: 'Feb 24', revenue: 19000, profit: 5700 },
@@ -1499,12 +1965,6 @@ console.log("detasdetail", listing)
     { month: 'Oct 24', revenue: 23000, profit: 6900 },
     { month: 'Nov 24', revenue: 22000, profit: 6600 },
     { month: 'Dec 24', revenue: 24000, profit: 7200 },
-  ];
-
-  const salesChannelsData = [
-    { name: 'Shopify Shop', value: 45, color: 'rgba(198, 255, 28, 1)' },
-    { name: 'Etsy', value: 35, color: 'url(#diagonalHatch)', legendColor: 'rgba(255, 255, 255, 1)' },
-    { name: 'Amazon', value: 20, color: 'rgba(19, 100, 255, 1)' },
   ];
 
   // Check if listing is favorited
@@ -2488,8 +2948,8 @@ console.log("detasdetail", listing)
                   ))}
                 </div>
 
-                {/* Data Rows */}
-                {rowLabels.map((row: string, index: number) => {
+                {/* Data Rows (simple vs detailed matches FinancialsStep) */}
+                {profitLossVisibleRows.map((row: string) => {
                   const isGrossRevenue = row === 'Gross Revenue';
                   const bgColor = isGrossRevenue ? 'rgba(66, 66, 66, 1)' : '#F3F8E8';
                   const textColor = isGrossRevenue ? 'rgba(255, 255, 255, 1)' : 'rgba(0, 0, 0, 1)';
@@ -2886,7 +3346,11 @@ console.log("detasdetail", listing)
                             color: isActive && tab.useSvg ? 'rgba(255, 255, 255, 0.5)' : isActive ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.5)',
                           }}
                         >
-                          Tab to view details
+                          {tab.id === "sales-channels"
+                            ? salesChannelsSummary
+                            : tab.id === "country-split"
+                              ? (salesCountrySplitList.length > 0 ? `${salesCountrySplitList.length} entries` : "No data provided")
+                              : advertisingChannelsSummary}
                         </div>
                       </div>
                     </div>
@@ -2912,41 +3376,52 @@ console.log("detasdetail", listing)
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: isMobile ? '250px' : 'auto' }}>
               <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
                 <div style={{ height: isMobile ? '200px' : '300px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <defs>
-                        <pattern id="diagonalHatch" patternUnits="userSpaceOnUse" width="8.76" height="100" patternTransform="rotate(56.34)">
-                          <rect width="8.76" height="100" fill="rgba(255, 255, 255, 1)" />
-                          <rect width="4.38" height="100" fill="rgba(0, 0, 0, 0.1)" />
-                        </pattern>
-                      </defs>
-                      <Pie
-                        data={salesChannelsData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={isMobile ? 70 : 100}
-                        innerRadius={isMobile ? 40 : 60}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {salesChannelsData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {activeChartHasData ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={activeChartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={isMobile ? 70 : 100}
+                          innerRadius={isMobile ? 40 : 60}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {activeChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div
+                      style={{
+                        display: "flex",
+                        width: "100%",
+                        height: "100%",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "rgba(0, 0, 0, 0.5)",
+                        fontFamily: "Lufga",
+                        fontSize: "16px",
+                      }}
+                    >
+                      No data provided
+                    </div>
+                  )}
                 </div>
                 {/* Legend */}
                 <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '12px' : '24px', marginTop: isMobile ? '16px' : '24px', width: '100%', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-                  {salesChannelsData.map((entry, index) => (
+                  {activeChartData.map((entry, index) => (
                     <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div
                         style={{
                           width: isMobile ? '16px' : '20px',
                           height: isMobile ? '16px' : '20px',
                           borderRadius: '50%',
-                          background: (entry as any).legendColor || entry.color,
+                          background: entry.color,
                         }}
                       />
                       <span
@@ -3188,48 +3663,64 @@ console.log("detasdetail", listing)
                 
                 {/* Assets List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {assetsIncluded.map((asset, index) => (
-                    <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {asset.included ? (
-                        <div
+                  {assetsIncluded.length === 0 ? (
+                    <span
+                      style={{
+                        fontFamily: 'Lufga',
+                        fontWeight: 400,
+                        fontStyle: 'normal',
+                        fontSize: '16px',
+                        lineHeight: '150%',
+                        letterSpacing: '0%',
+                        color: 'rgba(0, 0, 0, 0.5)',
+                      }}
+                    >
+                      No handover assets provided.
+                    </span>
+                  ) : (
+                    assetsIncluded.map((asset, index) => (
+                      <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {asset.included ? (
+                          <div
+                            style={{
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '4px',
+                              background: 'rgba(197, 253, 31, 1)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <CheckCircle2 className="w-4 h-4 text-black" style={{ width: '16px', height: '16px', color: 'rgba(0, 0, 0, 1)' }} />
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '4px',
+                              border: '1px solid rgba(0, 0, 0, 0.3)',
+                              background: 'rgba(255, 255, 255, 1)',
+                            }}
+                          />
+                        )}
+                        <span
                           style={{
-                            width: '20px',
-                            height: '20px',
-                            borderRadius: '4px',
-                            background: 'rgba(197, 253, 31, 1)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            fontFamily: 'Lufga',
+                            fontWeight: 400,
+                            fontStyle: 'normal',
+                            fontSize: '16px',
+                            lineHeight: '150%',
+                            letterSpacing: '0%',
+                            color: asset.included ? 'rgba(0, 0, 0, 1)' : 'rgba(0, 0, 0, 0.5)',
                           }}
                         >
-                          <CheckCircle2 className="w-4 h-4 text-black" style={{ width: '16px', height: '16px', color: 'rgba(0, 0, 0, 1)' }} />
-                        </div>
-                      ) : (
-                        <div
-                          style={{
-                            width: '20px',
-                            height: '20px',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(0, 0, 0, 0.3)',
-                            background: 'rgba(255, 255, 255, 1)',
-                          }}
-                        />
-                      )}
-                      <span
-                        style={{
-                          fontFamily: 'Lufga',
-                          fontWeight: 400,
-                          fontStyle: 'normal',
-                          fontSize: '16px',
-                          lineHeight: '150%',
-                          letterSpacing: '0%',
-                          color: asset.included ? 'rgba(0, 0, 0, 1)' : 'rgba(0, 0, 0, 0.5)',
-                        }}
-                      >
-                        {asset.name}
-                      </span>
-                    </div>
-                  ))}
+                          {asset.name}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -3423,164 +3914,84 @@ console.log("detasdetail", listing)
 
             {/* Social Media Cards */}
             <div style={{ display: 'flex', gap: isMobile ? '12px' : '10px', flexWrap: 'wrap' }}>
-              {/* Instagram Card */}
-              <div
-                style={{
-                  width: isMobile ? '100%' : '373.67px',
-                  height: isMobile ? 'auto' : '98px',
-                  minHeight: isMobile ? '80px' : '98px',
-                  borderRadius: '20px',
-                  border: '1px solid rgba(0, 0, 0, 0.1)',
-                  padding: '24px',
-                  background: 'rgba(255, 255, 255, 1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px',
-                }}
-              >
-                <img
-                  src={InstagramIcon}
-                  alt="Instagram"
-                  style={{
-                    width: '50px',
-                    height: '50px',
-                  }}
-                />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {[
+                { name: "Instagram", icon: InstagramIcon, data: instagramSocial },
+                { name: "X", icon: XIcon, data: twitterSocial },
+                { name: "Tiktok", icon: TikTokIcon, data: tiktokSocial },
+              ].map((platform) => {
+                const secondaryLabel = platform.data.followers !== "0 Followers"
+                  ? platform.data.followers
+                  : getSocialDisplayLabel(platform.data.url, platform.data.followers);
+                const card = (
                   <div
                     style={{
-                      fontFamily: 'Lufga',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '20px',
-                      lineHeight: '120%',
-                      letterSpacing: '0%',
-                      color: 'rgba(0, 0, 0, 1)',
+                      width: isMobile ? '100%' : '373.67px',
+                      height: isMobile ? 'auto' : '98px',
+                      minHeight: isMobile ? '80px' : '98px',
+                      borderRadius: '20px',
+                      border: platform.data.url ? '1px solid rgba(0, 0, 0, 0.2)' : '1px solid rgba(0, 0, 0, 0.1)',
+                      padding: '24px',
+                      background: 'rgba(255, 255, 255, 1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px',
+                      cursor: platform.data.url ? 'pointer' : 'default',
+                      transition: 'all 0.2s ease',
                     }}
                   >
-                    Instagram
+                    <img
+                      src={platform.icon}
+                      alt={platform.name}
+                      style={{
+                        width: '50px',
+                        height: '50px',
+                      }}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div
+                        style={{
+                          fontFamily: 'Lufga',
+                          fontWeight: 500,
+                          fontStyle: 'normal',
+                          fontSize: '20px',
+                          lineHeight: '120%',
+                          letterSpacing: '0%',
+                          color: 'rgba(0, 0, 0, 1)',
+                          textDecoration: platform.data.url ? 'underline' : 'none',
+                        }}
+                      >
+                        {platform.name}
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: 'Lufga',
+                          fontWeight: 500,
+                          fontStyle: 'normal',
+                          fontSize: '14px',
+                          lineHeight: '120%',
+                          letterSpacing: '0%',
+                          color: 'rgba(0, 0, 0, 0.5)',
+                        }}
+                      >
+                        {secondaryLabel}
+                      </div>
+                    </div>
                   </div>
-                  <div
-                    style={{
-                      fontFamily: 'Lufga',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '14px',
-                      lineHeight: '120%',
-                      letterSpacing: '0%',
-                      color: 'rgba(0, 0, 0, 0.5)',
-                    }}
-                  >
-                    12k Followers
-                  </div>
-                </div>
-              </div>
+                );
 
-              {/* X (Twitter) Card */}
-              <div
-                style={{
-                  width: isMobile ? '100%' : '373.67px',
-                  height: isMobile ? 'auto' : '98px',
-                  minHeight: isMobile ? '80px' : '98px',
-                  borderRadius: '20px',
-                  border: '1px solid rgba(0, 0, 0, 0.1)',
-                  padding: '24px',
-                  background: 'rgba(255, 255, 255, 1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px',
-                }}
-              >
-                <img
-                  src={XIcon}
-                  alt="X"
-                  style={{
-                    width: '50px',
-                    height: '50px',
-                  }}
-                />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div
-                    style={{
-                      fontFamily: 'Lufga',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '20px',
-                      lineHeight: '120%',
-                      letterSpacing: '0%',
-                      color: 'rgba(0, 0, 0, 1)',
-                    }}
+                if (!platform.data.url) return <div key={platform.name}>{card}</div>;
+                return (
+                  <a
+                    key={platform.name}
+                    href={platform.data.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ textDecoration: "none", color: "inherit" }}
                   >
-                    X
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: 'Lufga',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '14px',
-                      lineHeight: '120%',
-                      letterSpacing: '0%',
-                      color: 'rgba(0, 0, 0, 0.5)',
-                    }}
-                  >
-                    0 Followers
-                  </div>
-                </div>
-              </div>
-
-              {/* TikTok Card */}
-              <div
-                style={{
-                  width: isMobile ? '100%' : '373.67px',
-                  height: isMobile ? 'auto' : '98px',
-                  minHeight: isMobile ? '80px' : '98px',
-                  borderRadius: '20px',
-                  border: '1px solid rgba(0, 0, 0, 0.1)',
-                  padding: '24px',
-                  background: 'rgba(255, 255, 255, 1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px',
-                }}
-              >
-                <img
-                  src={TikTokIcon}
-                  alt="TikTok"
-                  style={{
-                    width: '50px',
-                    height: '50px',
-                  }}
-                />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div
-                    style={{
-                      fontFamily: 'Lufga',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '20px',
-                      lineHeight: '120%',
-                      letterSpacing: '0%',
-                      color: 'rgba(0, 0, 0, 1)',
-                    }}
-                  >
-                    Tiktok
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: 'Lufga',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '14px',
-                      lineHeight: '120%',
-                      letterSpacing: '0%',
-                      color: 'rgba(0, 0, 0, 0.5)',
-                    }}
-                  >
-                    0 Followers
-                  </div>
-                </div>
-              </div>
+                    {card}
+                  </a>
+                );
+              })}
             </div>
           </div>
 

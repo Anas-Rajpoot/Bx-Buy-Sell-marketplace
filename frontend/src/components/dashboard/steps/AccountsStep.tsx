@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useAccountQuestions } from "@/hooks/useAccountQuestions";
 import { Facebook, Instagram, Twitter, Music, Pin, Linkedin, Youtube } from "lucide-react";
@@ -192,6 +193,27 @@ export const AccountsStep = ({ formData: parentFormData, onNext, onBack }: Accou
               )}
             </SelectContent>
           </Select>
+        );
+
+      case "CHECKBOX":
+        const selectedValues = Array.isArray(value) ? value : [];
+        return (
+          <div className="space-y-2">
+            {question.option && Array.isArray(question.option) && question.option.map((opt: string, idx: number) => (
+              <label key={idx} className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={selectedValues.includes(opt)}
+                  onCheckedChange={(checked) => {
+                    const next = checked
+                      ? [...selectedValues, opt]
+                      : selectedValues.filter((item: string) => item !== opt);
+                    setQuestionAnswers({ ...questionAnswers, [question.id]: next });
+                  }}
+                />
+                <span>{opt}</span>
+              </label>
+            ))}
+          </div>
         );
       
       default:

@@ -17,6 +17,7 @@ const QUESTION_TYPES = [
   { value: "NUMBER", label: "Number" },
   { value: "DATE", label: "Date" },
   { value: "SELECT", label: "Select" },
+  { value: "CHECKBOX", label: "Checkbox (Multiple)" },
   { value: "TEXTAREA", label: "Long Text" },
   { value: "URL", label: "Link" },
 ];
@@ -42,8 +43,12 @@ export const AddBrandQuestionDialog = ({ open, onOpenChange }: AddBrandQuestionD
 
     // Process options - split by comma if provided
     let optionsArray: string[] = [];
-    if (options.trim()) {
+    if ((questionType === "SELECT" || questionType === "CHECKBOX") && options.trim()) {
       optionsArray = options.split(',').map(opt => opt.trim()).filter(opt => opt.length >= 2);
+    }
+    if ((questionType === "SELECT" || questionType === "CHECKBOX") && optionsArray.length < 2) {
+      toast.error("Please provide at least 2 options");
+      return;
     }
 
     console.log('Submitting brand question:', {
@@ -99,17 +104,18 @@ export const AddBrandQuestionDialog = ({ open, onOpenChange }: AddBrandQuestionD
             />
           </div>
 
-          {/* Options Section - Always visible */}
-          <div className="space-y-2">
-            <Label htmlFor="options" className="text-foreground">Options</Label>
-            <Input
-              id="options"
-              placeholder="Options"
-              value={options}
-              onChange={(e) => setOptions(e.target.value)}
-              className="bg-[#F5F5F5] border-border h-12"
-            />
-          </div>
+          {(questionType === "SELECT" || questionType === "CHECKBOX") && (
+            <div className="space-y-2">
+              <Label htmlFor="options" className="text-foreground">Options</Label>
+              <Input
+                id="options"
+                placeholder="Option 1, Option 2, Option 3"
+                value={options}
+                onChange={(e) => setOptions(e.target.value)}
+                className="bg-[#F5F5F5] border-border h-12"
+              />
+            </div>
+          )}
 
           {/* Answer Type Section */}
           <div className="space-y-2">

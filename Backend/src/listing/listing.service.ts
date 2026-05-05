@@ -15,6 +15,7 @@ type ViewerType = 'UNREGISTERED' | 'REGISTERED_FREE' | 'REGISTERED_PRO';
 type ViewerContext = {
   userId?: string;
   viewerType: ViewerType;
+  role?: string | null;
 };
 
 @Injectable()
@@ -39,6 +40,36 @@ export class ListingService {
   private readonly proUnlockRedirect = '/pricing';
   private readonly registerUnlockLabel = 'register to unlock 🔓';
   private readonly registerUnlockRedirect = '/register';
+
+  private normalizeAnswerForStorage(answer: unknown): string | undefined {
+    if (answer === null || answer === undefined) return undefined;
+    if (Array.isArray(answer)) {
+      const hasObjectEntries = answer.some(
+        (item) => typeof item === 'object' && item !== null,
+      );
+      if (hasObjectEntries) {
+        return JSON.stringify(answer);
+      }
+      return JSON.stringify(
+        answer
+          .map((item) => String(item).trim())
+          .filter((item) => item.length > 0),
+      );
+    }
+    return String(answer);
+  }
+
+  private normalizeQuestionArrayForStorage(items: any[] = []): any[] {
+    return items.map((item) => ({
+      ...item,
+      answer: this.normalizeAnswerForStorage(item?.answer),
+      answer_type: this.normalizeAnswerTypeForStorage(item?.answer_type),
+    }));
+  }
+
+  private normalizeAnswerTypeForStorage(answerType: unknown) {
+    return answerType === 'UMBER' ? 'NUMBER' : answerType;
+  }
 
   private shuffleArray<T>(items: T[]): T[] {
     const copy = [...items];
@@ -174,6 +205,11 @@ export class ListingService {
 
   private async applyConfidentialMask(listing: any, viewer?: ViewerContext) {
     if (!listing?.confidentialControl) {
+      return listing;
+    }
+
+    const viewerRole = viewer?.role?.toUpperCase();
+    if (viewerRole === 'ADMIN' || viewerRole === 'MONITER' || viewerRole === 'MODERATOR') {
       return listing;
     }
 
@@ -322,9 +358,9 @@ export class ListingService {
         resolvedViewer,
       );
 
-      if (resolvedViewer.viewerType === 'UNREGISTERED') {
-        return this.applyUnregisteredMask(withConfidentialMask);
-      }
+      // if (resolvedViewer.viewerType === 'UNREGISTERED') {
+      //   return this.applyUnregisteredMask(withConfidentialMask);
+      // }
 
       return withConfidentialMask;
     }));
@@ -380,24 +416,24 @@ export class ListingService {
       normalizedListing,
       resolvedViewer,
     );
-    if (resolvedViewer.viewerType === 'UNREGISTERED') {
-      return this.applyUnregisteredMask(withConfidentialMask);
-    }
+    // if (resolvedViewer.viewerType === 'UNREGISTERED') {
+    //   return this.applyUnregisteredMask(withConfidentialMask);
+    // }
 
     return withConfidentialMask;
   }
 
-  async resolveViewerContext(userId?: string): Promise<ViewerContext> {
+  async resolveViewerContext(userId?: string, role?: string | null): Promise<ViewerContext> {
     if (!userId) {
       return { viewerType: 'UNREGISTERED' };
     }
 
     const rules = await this.subscriptionService.getUserSubscriptionRules(userId);
     if (rules.isPro) {
-      return { userId, viewerType: 'REGISTERED_PRO' };
+      return { userId, viewerType: 'REGISTERED_PRO', role };
     }
 
-    return { userId, viewerType: 'REGISTERED_FREE' };
+    return { userId, viewerType: 'REGISTERED_FREE', role };
   }
 
   async grantConfidentialAccess(
@@ -644,7 +680,7 @@ export class ListingService {
     };
 
     // Only add createMany for arrays that have valid data
-    const validBrand = filterValidArray(body.brand);
+    const validBrand = this.normalizeQuestionArrayForStorage(filterValidArray(body.brand));
     if (validBrand.length > 0) {
       createData.brand = {
         createMany: {
@@ -682,7 +718,7 @@ export class ListingService {
       };
     }
 
-    const validStatistics = filterValidArray(body.statistics);
+    const validStatistics = this.normalizeQuestionArrayForStorage(filterValidArray(body.statistics));
     if (validStatistics.length > 0) {
       createData.statistics = {
         createMany: {
@@ -691,7 +727,7 @@ export class ListingService {
       };
     }
 
-    const validProductQuestion = filterValidArray(body.productQuestion);
+    const validProductQuestion = this.normalizeQuestionArrayForStorage(filterValidArray(body.productQuestion));
     if (validProductQuestion.length > 0) {
       createData.productQuestion = {
         createMany: {
@@ -700,7 +736,7 @@ export class ListingService {
       };
     }
 
-    const validManagementQuestion = filterValidArray(body.managementQuestion);
+    const validManagementQuestion = this.normalizeQuestionArrayForStorage(filterValidArray(body.managementQuestion));
     if (validManagementQuestion.length > 0) {
       createData.managementQuestion = {
         createMany: {
@@ -709,7 +745,7 @@ export class ListingService {
       };
     }
 
-    const validSocialAccount = filterValidArray(body.social_account);
+    const validSocialAccount = this.normalizeQuestionArrayForStorage(filterValidArray(body.social_account));
     if (validSocialAccount.length > 0) {
       createData.social_account = {
         createMany: {
@@ -718,7 +754,7 @@ export class ListingService {
       };
     }
 
-    const validAdvertisement = filterValidArray(body.advertisement);
+    const validAdvertisement = this.normalizeQuestionArrayForStorage(filterValidArray(body.advertisement));
     if (validAdvertisement.length > 0) {
       createData.advertisement = {
         createMany: {
@@ -727,7 +763,7 @@ export class ListingService {
       };
     }
 
-    const validHandover = filterValidArray(body.handover);
+    const validHandover = this.normalizeQuestionArrayForStorage(filterValidArray(body.handover));
     if (validHandover.length > 0) {
       createData.handover = {
         createMany: {
@@ -950,10 +986,10 @@ export class ListingService {
         updateMany: body.brand.map((question) => ({
           where: { id: question.id },
           data: {
-            answer: question.answer,
+            answer: this.normalizeAnswerForStorage(question.answer),
             question: question.question,
             answer_for: question.answer_for,
-            answer_type: question.answer_type,
+            answer_type: this.normalizeAnswerTypeForStorage(question.answer_type) as any,
             option: question.option,
           },
         })),
@@ -998,10 +1034,10 @@ export class ListingService {
         updateMany: body.statistics.map((question) => ({
           where: { id: question.id },
           data: {
-            answer: question.answer,
+            answer: this.normalizeAnswerForStorage(question.answer),
             question: question.question,
             answer_for: question.answer_for,
-            answer_type: question.answer_type,
+            answer_type: this.normalizeAnswerTypeForStorage(question.answer_type) as any,
             option: question.option,
           },
         })),
@@ -1013,10 +1049,10 @@ export class ListingService {
         updateMany: body.productQuestion.map((question) => ({
           where: { id: question.id },
           data: {
-            answer: question.answer,
+            answer: this.normalizeAnswerForStorage(question.answer),
             question: question.question,
             answer_for: question.answer_for,
-            answer_type: question.answer_type,
+            answer_type: this.normalizeAnswerTypeForStorage(question.answer_type) as any,
             option: question.option,
           },
         })),
@@ -1028,10 +1064,10 @@ export class ListingService {
         updateMany: body.managementQuestion.map((question) => ({
           where: { id: question.id },
           data: {
-            answer: question.answer,
+            answer: this.normalizeAnswerForStorage(question.answer),
             question: question.question,
             answer_for: question.answer_for,
-            answer_type: question.answer_type,
+            answer_type: this.normalizeAnswerTypeForStorage(question.answer_type) as any,
             option: question.option,
           },
         })),
@@ -1043,10 +1079,10 @@ export class ListingService {
         updateMany: body.social_account.map((question) => ({
           where: { id: question.id },
           data: {
-            answer: question.answer,
+            answer: this.normalizeAnswerForStorage(question.answer),
             question: question.question,
             answer_for: question.answer_for,
-            answer_type: question.answer_type,
+            answer_type: this.normalizeAnswerTypeForStorage(question.answer_type) as any,
             option: question.option,
           },
         })),
@@ -1058,10 +1094,10 @@ export class ListingService {
         updateMany: body.advertisement.map((question) => ({
           where: { id: question.id },
           data: {
-            answer: question.answer,
+            answer: this.normalizeAnswerForStorage(question.answer),
             question: question.question,
             answer_for: question.answer_for,
-            answer_type: question.answer_type,
+            answer_type: this.normalizeAnswerTypeForStorage(question.answer_type) as any,
             option: question.option,
           },
         })),
@@ -1073,10 +1109,10 @@ export class ListingService {
         updateMany: body.handover.map((question) => ({
           where: { id: question.id },
           data: {
-            answer: question.answer,
+            answer: this.normalizeAnswerForStorage(question.answer),
             question: question.question,
             answer_for: question.answer_for,
-            answer_type: question.answer_type,
+            answer_type: this.normalizeAnswerTypeForStorage(question.answer_type) as any,
             option: question.option,
           },
         })),

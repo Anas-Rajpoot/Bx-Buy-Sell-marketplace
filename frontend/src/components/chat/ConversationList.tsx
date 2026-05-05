@@ -137,7 +137,21 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
         scheduleFetch(0);
       }
     };
+    const handleChatUnarchived = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        chatId?: string;
+        userId?: string;
+        sellerId?: string;
+      }>;
+      const detail = customEvent.detail;
+      setShowArchived(false);
+      if (detail?.chatId && detail?.userId && detail?.sellerId) {
+        onSelectConversation(detail.chatId, detail.userId, detail.sellerId);
+      }
+      scheduleFetch(0);
+    };
     window.addEventListener("storage", handleStorage);
+    window.addEventListener("chat:unarchived", handleChatUnarchived);
 
     return () => {
       clearInterval(interval);
@@ -150,8 +164,9 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
         socketRef.current = null;
       }
       window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("chat:unarchived", handleChatUnarchived);
     };
-  }, [userId]);
+  }, [userId, onSelectConversation]);
 
   // Refresh conversations when selected conversation changes (to update unread counts after marking as read)
   useEffect(() => {

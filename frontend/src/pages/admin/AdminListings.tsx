@@ -484,6 +484,15 @@ export default function AdminListings() {
     });
   };
 
+  const formatDisplayLink = (link: string) => {
+    try {
+      const parsed = new URL(link.startsWith("http") ? link : `https://${link}`);
+      return `${parsed.hostname}${parsed.pathname === "/" ? "" : parsed.pathname}`;
+    } catch {
+      return link;
+    }
+  };
+
   return (
     <div className="flex min-h-screen w-full bg-background">
       <AdminSidebar />
@@ -689,25 +698,25 @@ export default function AdminListings() {
             </div>
           ) : (
             <>
-              <div className="rounded-lg border border-border bg-white shadow-sm overflow-hidden">
+              <div className="rounded-xl border border-border bg-white shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-gray-200 bg-gray-50/50">
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                      <tr className="border-b border-gray-200 bg-gray-50/70">
+                        <th className="px-3 sm:px-6 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
                           User Name
                         </th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                        <th className="px-3 sm:px-6 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
                           Title
                         </th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
+                        <th className="px-3 sm:px-6 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
                           Link
                         </th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                        <th className="px-3 sm:px-6 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
                           Status
                         </th>
                         <th 
-                          className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:text-gray-900 whitespace-nowrap hidden lg:table-cell"
+                          className="px-3 sm:px-6 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:text-gray-900 whitespace-nowrap hidden lg:table-cell"
                           onClick={() => handleSort("created_at")}
                         >
                           <div className="flex items-center gap-1">
@@ -715,13 +724,13 @@ export default function AdminListings() {
                             <ChevronDown className="h-3 w-3" />
                           </div>
                         </th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
+                        <th className="px-3 sm:px-6 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
                           Managed
                         </th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">
+                        <th className="px-3 sm:px-6 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">
                           Responsible
                         </th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                        <th className="px-3 sm:px-6 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
                           View
                         </th>
                       </tr>
@@ -730,6 +739,18 @@ export default function AdminListings() {
                       {paginatedListings.map((listing) => {
                         const ownerRole = listing.profile?.user_type?.toLowerCase() || "";
                         const canModerateOwner = !isModerator || ownerRole === "user";
+                        const rawLink =
+                          listing.domainLink ||
+                          listing.portfolioLink ||
+                          listing.link ||
+                          listing.website ||
+                          listing.url ||
+                          "";
+                        const normalizedLink = rawLink
+                          ? rawLink.startsWith("http")
+                            ? rawLink
+                            : `https://${rawLink}`
+                          : "";
                         return (
                         <tr 
                           key={listing.id} 
@@ -768,16 +789,17 @@ export default function AdminListings() {
                           </td>
                           
                           {/* Link Column */}
-                          <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden md:table-cell">
-                            {listing.portfolioLink ? (
+                          <td className="px-3 sm:px-6 py-3 sm:py-4 hidden md:table-cell">
+                            {rawLink ? (
                               <a 
-                                href={listing.portfolioLink.startsWith('http') ? listing.portfolioLink : `https://${listing.portfolioLink}`}
+                                href={normalizedLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-600 hover:text-accent transition-colors"
+                                className="group flex items-center gap-1.5 text-xs sm:text-sm text-gray-600 hover:text-accent transition-colors max-w-[240px]"
+                                title={rawLink}
                               >
-                                <ExternalLink className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                <span className="max-w-[200px] truncate">{listing.portfolioLink}</span>
+                                <ExternalLink className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0 opacity-70 group-hover:opacity-100" />
+                                <span className="truncate">{formatDisplayLink(rawLink)}</span>
                               </a>
                             ) : (
                               <span className="text-xs sm:text-sm text-gray-400">-</span>

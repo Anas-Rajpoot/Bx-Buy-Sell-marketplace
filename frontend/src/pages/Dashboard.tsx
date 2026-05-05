@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useMatch, useNavigate } from "react-router-dom";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardGuestBar } from "@/components/dashboard/DashboardGuestBar";
@@ -41,14 +41,31 @@ export type DashboardStep =
   | "handover" 
   | "packages";
 
-const Dashboard = () => {
+export type ListingFormMode = "create" | "edit";
+
+export type ListingFormProps = {
+  /** When set with `mode="edit"`, used instead of the URL (e.g. embedded wizard). */
+  mode?: ListingFormMode;
+  listingId?: string;
+};
+
+const Dashboard = ({ mode: modeProp, listingId: listingIdProp }: ListingFormProps = {}) => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id?: string }>();
+  const matchListingEdit = useMatch({ path: "/listing/:id/edit", end: true });
+  const matchDashboardEdit = useMatch({ path: "/dashboard/edit/:id", end: true });
+  const listingIdFromRoute =
+    matchListingEdit?.params.id ?? matchDashboardEdit?.params.id;
+  const id = listingIdProp ?? listingIdFromRoute;
+  const isEditMode =
+    (modeProp === "edit" && Boolean(listingIdProp)) ||
+    Boolean(matchListingEdit || matchDashboardEdit);
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [activeStep, setActiveStep] = useState<DashboardStep>("category");
   const [formData, setFormData] = useState<any>({});
-  const [loadingListing, setLoadingListing] = useState(false);
-  const isEditMode = !!id;
+  /** Edit flow: start true so we never paint steps with empty formData before hydrate (fixes broken pre-fill). */
+  const [loadingListing, setLoadingListing] = useState(() =>
+    Boolean(isEditMode && id),
+  );
   const hasLoadedListingRef = useRef(false);
   const loadedListingIdRef = useRef<string | null>(null);
   const [draftHydrated, setDraftHydrated] = useState(false);
@@ -63,6 +80,14 @@ const Dashboard = () => {
       navigate("/login");
     }
   }, [isAuthenticated, authLoading, navigate, isEditMode]);
+
+  // Avoid stuck spinner on edit when user is not signed in (load effect requires user id)
+  useEffect(() => {
+    if (!isEditMode || !id) return;
+    if (!authLoading && !isAuthenticated) {
+      setLoadingListing(false);
+    }
+  }, [isEditMode, id, authLoading, isAuthenticated]);
 
   // Hydrate listing draft from localStorage (guests, or returning users finishing publish)
   useEffect(() => {
@@ -171,13 +196,62 @@ const Dashboard = () => {
 
   const loadListingData = async () => {
     if (!id) return;
-    
+
     setLoadingListing(true);
     try {
-      // Fetch listing and all question types in parallel
-      const [listingResponse, brandQuestionsRes, statisticQuestionsRes, productQuestionsRes, 
-              managementQuestionsRes, adQuestionsRes, handoverQuestionsRes, accountsRes] = await Promise.all([
-        apiClient.getListingById(id),
+      const getTodayDate = () => {
+        const today = new Date();
+        const day = String(today.getDate()).padStart(2, "0");
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const year = today.getFullYear();
+        return `${day}.${month}.${year}`;
+      };
+
+      /** DB often stores arrays/objects as JSON strings; never collapse arrays to first element. */
+      const pickAnswer = (item: any) => {
+        const raw = item?.answer;
+        if (raw === undefined || raw === null) return null;
+        if (Array.isArray(raw)) return raw;
+        if (typeof raw === "string") {
+          const t = raw.trim();
+          if (
+            (t.startsWith("[") && t.endsWith("]")) ||
+            (t.startsWith("{") && t.endsWith("}"))
+          ) {
+            try {
+              return JSON.parse(t);
+            } catch {
+              /* keep string */
+            }
+          }
+          return raw;
+        }
+        return raw;
+      };
+
+      const hasUsableAnswer = (answer: unknown) => {
+        if (answer === null || answer === undefined) return false;
+        if (typeof answer === "boolean") return true;
+        if (typeof answer === "number") return !Number.isNaN(answer);
+        if (typeof answer === "string") return answer.trim() !== "";
+        if (Array.isArray(answer)) return answer.length > 0;
+        if (typeof answer === "object") return Object.keys(answer as object).length > 0;
+        return true;
+      };
+
+      // Same secure listing fetch as ListingDetail when authenticated
+      const [
+        listingResponse,
+        brandQuestionsRes,
+        statisticQuestionsRes,
+        productQuestionsRes,
+        managementQuestionsRes,
+        adQuestionsRes,
+        handoverQuestionsRes,
+        accountsRes,
+        accountQuestionsRes,
+      ] = await Promise.all([
+        apiClient.getSecureListingById(id),
         apiClient.getAdminQuestionsByType("BRAND"),
         apiClient.getAdminQuestionsByType("STATISTIC"),
         apiClient.getAdminQuestionsByType("PRODUCT"),
@@ -185,9 +259,12 @@ const Dashboard = () => {
         apiClient.getAdminQuestionsByType("ADVERTISMENT"),
         apiClient.getAdminQuestionsByType("HANDOVER"),
         apiClient.getSocialAccounts(),
+        apiClient.getAdminQuestionsByType("SOCIAL"),
       ]);
       
       if (!listingResponse.success || !listingResponse.data) {
+        hasLoadedListingRef.current = false;
+        loadedListingIdRef.current = null;
         toast.error("Failed to load listing data");
         navigate("/my-listings");
         return;
@@ -204,140 +281,278 @@ const Dashboard = () => {
       const adQuestions = adQuestionsRes.success && Array.isArray(adQuestionsRes.data) ? adQuestionsRes.data : [];
       const handoverQuestions = handoverQuestionsRes.success && Array.isArray(handoverQuestionsRes.data) ? handoverQuestionsRes.data : [];
       const socialAccounts = accountsRes.success && Array.isArray(accountsRes.data) ? accountsRes.data : [];
+      const accountQuestions =
+        accountQuestionsRes.success && Array.isArray(accountQuestionsRes.data)
+          ? accountQuestionsRes.data
+          : [];
       
-      // Helper function to match question text to question ID
+      const normalizeQuestionKey = (s: string) =>
+        (s || "")
+          .toLowerCase()
+          .trim()
+          .replace(/\s+/g, " ")
+          .replace(/['"`]/g, "")
+          .replace(/[?:.,!]+$/g, "")
+          .trim();
+
+      /** Map saved listing.question text to current admin question id (handles minor text drift). */
       const matchQuestionToId = (questionText: string, questions: any[]): string | null => {
-        if (!questionText) return null;
-        const normalizedText = questionText.toLowerCase().trim();
-        const match = questions.find((q: any) => 
-          q.question && q.question.toLowerCase().trim() === normalizedText
+        if (!questionText || !questions?.length) return null;
+        const a = normalizeQuestionKey(questionText);
+        if (!a) return null;
+
+        const exact = questions.find(
+          (q: any) => normalizeQuestionKey(String(q.question || "")) === a,
         );
-        return match?.id || null;
+        if (exact?.id) return exact.id;
+
+        const loose = questions.filter((q: any) => {
+          const b = normalizeQuestionKey(String(q.question || ""));
+          if (!b || b.length < 3) return false;
+          return a.includes(b) || b.includes(a);
+        });
+        if (loose.length === 1 && loose[0].id) return loose[0].id;
+
+        const starts = questions.filter((q: any) => {
+          const b = normalizeQuestionKey(String(q.question || ""));
+          return b.length >= 4 && (a.startsWith(b) || b.startsWith(a));
+        });
+        if (starts.length === 1 && starts[0].id) return starts[0].id;
+
+        return null;
       };
       
       // Transform listing data from API format to form data format
       const transformedData: any = {};
       
-      // Extract category
+      // Category on listing is ListingCategory: `id` is join-row UUID, not Business Category id — prefer `name` for wizard matching
       if (listing.category && Array.isArray(listing.category) && listing.category.length > 0) {
-        transformedData.category = listing.category[0].id || listing.category[0].name;
+        const c0 = listing.category[0] as any;
+        const byName =
+          (typeof c0?.name === "string" && c0.name.trim()) ||
+          (typeof c0?.category?.name === "string" && c0.category.name.trim()) ||
+          "";
+        transformedData.category =
+          byName ||
+          (c0?.categoryId != null && String(c0.categoryId)) ||
+          (c0?.category?.id != null && String(c0.category.id)) ||
+          "";
+        if (!transformedData.category && (c0?.id || c0?._id)) {
+          transformedData.category = String(c0.id || c0._id);
+        }
       }
       
       // Extract brand questions - match by question text
       if (listing.brand && Array.isArray(listing.brand)) {
         listing.brand.forEach((item: any) => {
-          if (item.question) {
+          const answer = pickAnswer(item);
+          if (item.question && hasUsableAnswer(answer)) {
             const questionId = matchQuestionToId(item.question, brandQuestions);
-            if (questionId && item.answer) {
-              transformedData[questionId] = item.answer;
+            if (questionId) {
+              transformedData[questionId] = answer;
             }
           }
         });
       }
-      
+
       // Extract statistics questions
       if (listing.statistics && Array.isArray(listing.statistics)) {
         listing.statistics.forEach((item: any) => {
-          if (item.question) {
+          const answer = pickAnswer(item);
+          if (item.question && hasUsableAnswer(answer)) {
             const questionId = matchQuestionToId(item.question, statisticQuestions);
-            if (questionId && item.answer) {
-              transformedData[questionId] = item.answer;
+            if (questionId) {
+              transformedData[questionId] = answer;
             }
           }
         });
       }
-      
+
       // Extract product questions
       if (listing.productQuestion && Array.isArray(listing.productQuestion)) {
         listing.productQuestion.forEach((item: any) => {
-          if (item.question) {
+          const answer = pickAnswer(item);
+          if (item.question && hasUsableAnswer(answer)) {
             const questionId = matchQuestionToId(item.question, productQuestions);
-            if (questionId && item.answer) {
-              transformedData[questionId] = item.answer;
+            if (questionId) {
+              transformedData[questionId] = answer;
             }
           }
         });
       }
-      
+
       // Extract management questions
       if (listing.managementQuestion && Array.isArray(listing.managementQuestion)) {
         listing.managementQuestion.forEach((item: any) => {
-          if (item.question) {
+          const answer = pickAnswer(item);
+          if (item.question && hasUsableAnswer(answer)) {
             const questionId = matchQuestionToId(item.question, managementQuestions);
-            if (questionId && item.answer) {
-              transformedData[questionId] = item.answer;
+            if (questionId) {
+              transformedData[questionId] = answer;
             }
           }
         });
       }
-      
+
       // Extract advertisement questions
       if (listing.advertisement && Array.isArray(listing.advertisement)) {
         listing.advertisement.forEach((item: any) => {
-          if (item.question) {
+          const answer = pickAnswer(item);
+          if (item.question && hasUsableAnswer(answer)) {
             const questionId = matchQuestionToId(item.question, adQuestions);
-            if (questionId && item.answer) {
-              transformedData[questionId] = item.answer;
+            if (questionId) {
+              transformedData[questionId] = answer;
             }
           }
         });
       }
-      
+
       // Extract handover questions
       if (listing.handover && Array.isArray(listing.handover)) {
         listing.handover.forEach((item: any) => {
-          if (item.question) {
+          const answer = pickAnswer(item);
+          if (item.question && hasUsableAnswer(answer)) {
             const questionId = matchQuestionToId(item.question, handoverQuestions);
-            if (questionId && item.answer) {
-              transformedData[questionId] = item.answer;
+            if (questionId) {
+              transformedData[questionId] = answer;
             }
           }
         });
       }
-      
-      // Extract financials
+
+      // Extract financials (detailed table JSON or legacy rows)
       if (listing.financials && Array.isArray(listing.financials)) {
-        const months = listing.financials.map((fin: any) => ({
-          period: fin.name || '',
-          revenue: fin.revenue_amount || '0',
-          revenue2: fin.revenue_amount || '0',
-          cost: fin.annual_cost || '0',
-        }));
-        transformedData.months = months;
-        transformedData.financialType = listing.financials[0]?.type === 'yearly' ? 'yearly' : 'monthly';
+        const tableFinancial = listing.financials.find(
+          (f: any) => f.name === "__FINANCIAL_TABLE__" && f.revenue_amount
+        );
+        if (tableFinancial && tableFinancial.revenue_amount) {
+          try {
+            const tableData = JSON.parse(tableFinancial.revenue_amount);
+            if (tableData) {
+              transformedData.financialType = tableData.financialType || "detailed";
+              transformedData.rowLabels = tableData.rowLabels || [
+                "Gross Revenue",
+                "Net Revenue",
+                "Cost of Goods",
+                "Advertising costs",
+                "Freelancer/Employees",
+                "Transaction Costs",
+                "Other Expenses",
+              ];
+              transformedData.columnLabels = tableData.columnLabels || [
+                { key: "2023", label: "2023" },
+                { key: "2024", label: "2024" },
+                { key: "today", label: getTodayDate() },
+                { key: "Forecast 2025", label: "Forecast 2025" },
+              ];
+              transformedData.financialData = tableData.financialData || {};
+            }
+          } catch {
+            /* fall through to legacy */
+          }
+        }
+        if (!transformedData.months && !transformedData.financialData) {
+          const months = listing.financials
+            .filter((fin: any) => fin.name !== "__FINANCIAL_TABLE__")
+            .map((fin: any) => ({
+              period: fin.name || "",
+              revenue: fin.revenue_amount || "0",
+              revenue2: fin.revenue_amount || "0",
+              cost: fin.annual_cost || "0",
+            }));
+          transformedData.months = months;
+          transformedData.financialType =
+            listing.financials[0]?.type === "yearly" ? "yearly" : "monthly";
+        }
       }
-      
-      // Extract tools
+
+      // ListingTool: `id` is join-row UUID — wizard resolves ServiceTool by catalog `name` (or id)
       if (listing.tools && Array.isArray(listing.tools)) {
-        transformedData.tools = listing.tools.map((tool: any) => tool.id || tool.name);
+        transformedData.tools = listing.tools
+          .map((tool: any) => {
+            const name = typeof tool?.name === "string" ? tool.name.trim() : "";
+            return name || (tool?.id != null ? String(tool.id) : "");
+          })
+          .filter(Boolean);
       }
-      
-      // Extract social accounts - need to match by platform and question text
+
+      // Extract social accounts (platform fields + SOCIAL account questions)
       if (listing.social_account && Array.isArray(listing.social_account)) {
-        const socialAccountsData: any = {};
+        const socialAccountsData: Record<string, { url?: string; followers?: string }> = {};
+        const socialAccountQuestionsData: Record<string, string> = {};
+
         listing.social_account.forEach((acc: any) => {
-          // Try to find platform by matching question text or answer_for
-          const platform = socialAccounts.find((sa: any) => 
-            acc.answer_for && sa.social_account_option?.toLowerCase().includes(acc.answer_for.toLowerCase())
-          );
-          
+          const questionText = (acc.question || "").toLowerCase();
+          const rawAns = pickAnswer(acc);
+          let answerText = "";
+          if (hasUsableAnswer(rawAns)) {
+            if (Array.isArray(rawAns)) {
+              answerText = rawAns.map((x) => String(x)).filter(Boolean).join(", ");
+            } else if (typeof rawAns === "object") {
+              answerText = JSON.stringify(rawAns);
+            } else {
+              answerText = String(rawAns);
+            }
+          }
+
+          if (accountQuestions.length > 0 && acc.question) {
+            const qId = matchQuestionToId(acc.question, accountQuestions);
+            if (qId && answerText) {
+              socialAccountQuestionsData[qId] = answerText;
+              return;
+            }
+          }
+
+          const platform = socialAccounts.find((sa: any) => {
+            const platformName = (sa.platform || sa.social_account_option || "").toLowerCase();
+            if (!platformName) return false;
+            return (
+              questionText.includes(platformName) ||
+              (acc.answer_for &&
+                platformName.includes(String(acc.answer_for).toLowerCase()))
+            );
+          });
+
           if (platform) {
             const platformId = platform.id;
             if (!socialAccountsData[platformId]) {
               socialAccountsData[platformId] = {};
             }
-            // For social accounts, we need to match the question text to get the question ID
-            // This is complex, so we'll store by question text for now
-            if (acc.question && acc.answer) {
-              // Try to find matching question in adQuestions (social account questions might be there)
-              const questionId = matchQuestionToId(acc.question, adQuestions);
-              if (questionId) {
-                socialAccountsData[platformId][questionId] = acc.answer;
+            if (answerText) {
+              const parts = answerText.includes("|")
+                ? answerText.split("|").map((p: string) => p.trim()).filter(Boolean)
+                : [answerText];
+              let urlPart = "";
+              let followersPart = "";
+              for (const part of parts) {
+                const low = part.toLowerCase();
+                if (low.includes("follower")) {
+                  const m = part.match(/\d[\d,]*/);
+                  if (m) followersPart = m[0].replace(/,/g, "");
+                } else if (/^https?:\/\//i.test(part) || /\.[a-z]{2,}\b/i.test(part) || /^@\S+/i.test(part)) {
+                  urlPart = urlPart || part;
+                } else if (/^\d+$/.test(part.replace(/\s/g, ""))) {
+                  followersPart = part.replace(/\s/g, "");
+                } else {
+                  urlPart = urlPart || part;
+                }
+              }
+              if (followersPart) {
+                socialAccountsData[platformId].followers = followersPart;
+              }
+              if (urlPart) {
+                socialAccountsData[platformId].url = urlPart;
               }
             }
           }
         });
-        transformedData.socialAccounts = socialAccountsData;
+
+        if (Object.keys(socialAccountsData).length > 0) {
+          transformedData.socialAccounts = socialAccountsData;
+        }
+        if (Object.keys(socialAccountQuestionsData).length > 0) {
+          transformedData.socialAccountQuestions = socialAccountQuestionsData;
+        }
       }
       
       // Extract portfolio link
@@ -347,13 +562,19 @@ const Dashboard = () => {
       
       // Set status
       if (listing.status) {
-        transformedData.listingStatus = listing.status === 'PUBLISH' ? 'PUBLISH' : 'DRAFT';
+        transformedData.listingStatus = listing.status === "PUBLISH" ? "PUBLISH" : "DRAFT";
       }
-      
+
+      transformedData.confidentialControl = Boolean(listing.confidentialControl);
+      transformedData.featuredOnCategoryPage = Boolean(listing.featuredOnCategoryPage);
+      transformedData.featuredOnStartPage = Boolean(listing.featuredOnStartPage);
+
       setFormData(transformedData);
       toast.success("Listing data loaded successfully");
     } catch (error: any) {
       console.error("Error loading listing:", error);
+      hasLoadedListingRef.current = false;
+      loadedListingIdRef.current = null;
       toast.error("Failed to load listing data");
       navigate("/my-listings");
     } finally {
@@ -399,6 +620,7 @@ const Dashboard = () => {
             onGuestPersistDraft={persistGuestDraft}
             onGuestAuthOpenChange={setGuestAuthOpen}
             resumePublishNonce={resumePublishNonce}
+            afterSuccessRedirect={isEditMode ? "listing-detail" : "my-listings"}
           />
         );
       default:
@@ -435,7 +657,9 @@ const Dashboard = () => {
         <div className="md:hidden border-b border-border bg-background sticky top-0 z-40">
           <div className="flex items-center gap-3 px-4 py-3">
             <DashboardSidebar activeStep={activeStep} onStepChange={setActiveStep} isMobile={true} />
-            <h1 className="text-lg font-semibold shrink-0">Create Listing</h1>
+            <h1 className="text-lg font-semibold shrink-0">
+              {isEditMode ? "Edit Listing" : "Create Listing"}
+            </h1>
             {isGuestCreateFlow && (
               <div className="ml-auto flex items-center gap-2">
                 <Button variant="outline" size="sm" asChild>
@@ -472,3 +696,5 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+/** Same listing wizard as the dashboard; use when you want a named import. */
+export { Dashboard as ListingForm };

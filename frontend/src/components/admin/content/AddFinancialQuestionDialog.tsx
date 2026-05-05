@@ -18,6 +18,7 @@ const QUESTION_TYPES = [
   { value: "NUMBER", label: "Number" },
   { value: "DATE", label: "Date" },
   { value: "SELECT", label: "Select" },
+  { value: "CHECKBOX", label: "Checkbox (Multiple)" },
   { value: "TEXTAREA", label: "Text Area" },
   { value: "YESNO", label: "Yes / No" },
 ];
@@ -26,6 +27,7 @@ export const AddFinancialQuestionDialog = ({ open, onOpenChange }: AddFinancialQ
   const [question, setQuestion] = useState("");
   const [hintText, setHintText] = useState("");
   const [questionType, setQuestionType] = useState("TEXT");
+  const [options, setOptions] = useState("");
   const addQuestion = useAddFinancialQuestion();
 
   const handleSave = () => {
@@ -33,16 +35,23 @@ export const AddFinancialQuestionDialog = ({ open, onOpenChange }: AddFinancialQ
       return;
     }
 
+    let optionsArray: string[] = [];
+    if ((questionType === "SELECT" || questionType === "CHECKBOX") && options.trim()) {
+      optionsArray = options.split(",").map((opt) => opt.trim()).filter((opt) => opt.length > 0);
+    }
+
     addQuestion.mutate(
       {
         question: question.trim(),
         answer_type: questionType,
+        options: optionsArray,
       },
       {
         onSuccess: () => {
           setQuestion("");
           setHintText("");
           setQuestionType("TEXT");
+          setOptions("");
           onOpenChange(false);
         },
       }
@@ -53,6 +62,7 @@ export const AddFinancialQuestionDialog = ({ open, onOpenChange }: AddFinancialQ
     setQuestion("");
     setHintText("");
     setQuestionType("TEXT");
+    setOptions("");
     onOpenChange(false);
   };
 
@@ -96,6 +106,17 @@ export const AddFinancialQuestionDialog = ({ open, onOpenChange }: AddFinancialQ
               </SelectContent>
             </Select>
           </div>
+          {(questionType === "SELECT" || questionType === "CHECKBOX") && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-black">Options (comma-separated)</Label>
+              <Input
+                value={options}
+                onChange={(e) => setOptions(e.target.value)}
+                placeholder="Option 1, Option 2, Option 3"
+                className="bg-gray-50 border-gray-200 text-black"
+              />
+            </div>
+          )}
         </div>
         <div className="flex justify-center gap-3 pt-4">
           <Button 

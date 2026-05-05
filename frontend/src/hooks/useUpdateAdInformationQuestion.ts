@@ -10,6 +10,7 @@ export const useUpdateAdInformationQuestion = () => {
       id: string; 
       question: string; 
       answer_type: string;
+      options?: string[];
     }) => {
       // Map frontend answer types to backend enum values
       const answerTypeMap: Record<string, string> = {
@@ -24,6 +25,7 @@ export const useUpdateAdInformationQuestion = () => {
         question: data.question,
         answer_type: mappedAnswerType,
         answer_for: "ADVERTISMENT",
+        options: data.options,
       });
 
       if (!response.success) {

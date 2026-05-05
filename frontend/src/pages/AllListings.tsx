@@ -916,7 +916,7 @@ const AllListings = () => {
           <aside 
             className="flex-shrink-0 hidden lg:block"
             style={{
-              width: "280px",
+              width: "250px",
             }}
           >
             <FilterSidebar

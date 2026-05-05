@@ -234,7 +234,7 @@ const Favourites = () => {
 
                 {/* Right Side - Add Favourites Button */}
                 <Button
-                  onClick={() => navigate("/")}
+                  onClick={() => navigate("/all-listings")}
                   className="w-full sm:w-auto sm:flex-shrink-0 h-[44px] sm:h-[48px] md:h-[50px] px-4 sm:px-5 md:px-6 py-2.5 sm:py-3 md:py-3 rounded-full bg-[rgba(174,243,31,1)] font-['Lufga'] font-medium text-[11px] sm:text-xs md:text-sm text-black border-none flex items-center justify-center gap-2 whitespace-nowrap"
                 >
                   + Add Favourites

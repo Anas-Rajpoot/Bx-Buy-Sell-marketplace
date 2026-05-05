@@ -18,13 +18,36 @@ const getTodayDate = () => {
   return `${day}.${month}.${year}`;
 };
 
+const OVERALL_COSTS_ROW = "Overall Costs";
+
+/** Legacy tables / localStorage may omit the simple-mode aggregate row. */
+const insertOverallCostsRow = (labels: string[]): string[] => {
+  if (labels.includes(OVERALL_COSTS_ROW)) return labels;
+  const gi = labels.indexOf("Gross Revenue");
+  if (gi === -1) return ["Gross Revenue", OVERALL_COSTS_ROW, ...labels];
+  return [...labels.slice(0, gi + 1), OVERALL_COSTS_ROW, ...labels.slice(gi + 1)];
+};
+
+const padOverallCostsData = (
+  data: Record<string, Record<string, string>>,
+  cols: Array<{ key: string }>
+): Record<string, Record<string, string>> => {
+  if (data[OVERALL_COSTS_ROW]) return data;
+  const row: Record<string, string> = {};
+  cols.forEach((c) => {
+    row[c.key] = "";
+  });
+  return { ...data, [OVERALL_COSTS_ROW]: row };
+};
+
 export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: FinancialsStepProps) => {
   const FINANCIALS_STORAGE_KEY = "admin_financials_table_v1";
   const [financialType, setFinancialType] = useState<"detailed" | "simple">("detailed");
 
-  // Default row labels (expense categories)
+  // Default row labels (expense categories); Overall Costs sits after Gross for simple P&L
   const defaultRowLabels = [
     "Gross Revenue",
+    OVERALL_COSTS_ROW,
     "Net Revenue",
     "Cost of Goods",
     "Advertising costs",
@@ -53,14 +76,39 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
     return initialData;
   });
 
-  // Load existing data (prefer admin settings from localStorage)
+  // Load data: listing (edit) wins over admin localStorage template so pre-fill is correct
   useEffect(() => {
+    const fd = parentFormData?.financialData;
+    const hasListingFinancialTable =
+      fd &&
+      typeof fd === "object" &&
+      Object.keys(fd).length > 0 &&
+      Array.isArray(parentFormData?.rowLabels) &&
+      parentFormData.rowLabels.length > 0;
+
+    if (hasListingFinancialTable) {
+      const cols = parentFormData.columnLabels || [];
+      setRowLabels(insertOverallCostsRow(parentFormData.rowLabels));
+      setFinancialData(padOverallCostsData(parentFormData.financialData, cols));
+      if (parentFormData.columnLabels?.length) {
+        setColumnLabels(parentFormData.columnLabels);
+      }
+      const ft = parentFormData.financialType;
+      if (ft === "simple" || ft === "detailed") {
+        setFinancialType(ft);
+      }
+      return;
+    }
+
     let loadedFromStorage = false;
     try {
       const saved = localStorage.getItem(FINANCIALS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.rowLabels)) setRowLabels(parsed.rowLabels);
+        if (Array.isArray(parsed.rowLabels)) {
+          const merged = insertOverallCostsRow(parsed.rowLabels);
+          setRowLabels(merged);
+        }
         if (Array.isArray(parsed.columnLabels)) {
           let cols = parsed.columnLabels;
           const hasToday = cols.some((c: any) => c.isToday || c.key === "today");
@@ -70,16 +118,24 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
           setColumnLabels(cols);
         }
         if (parsed.financialData && typeof parsed.financialData === "object") {
-          setFinancialData(parsed.financialData);
+          let cols = Array.isArray(parsed.columnLabels) ? parsed.columnLabels : [];
+          if (cols.length === 0) {
+            const sample = parsed.financialData["Gross Revenue"] || Object.values(parsed.financialData)[0];
+            if (sample && typeof sample === "object") {
+              cols = Object.keys(sample as object).map((key) => ({ key }));
+            }
+          }
+          setFinancialData(padOverallCostsData(parsed.financialData, cols));
         } else if (Array.isArray(parsed.rowLabels) && Array.isArray(parsed.columnLabels)) {
+          const mergedRows = insertOverallCostsRow(parsed.rowLabels);
           const newData: Record<string, Record<string, string>> = {};
-          parsed.rowLabels.forEach((row: string) => {
+          mergedRows.forEach((row: string) => {
             newData[row] = {};
             parsed.columnLabels.forEach((col: any) => {
               newData[row][col.key] = "";
             });
           });
-          setFinancialData(newData);
+          setFinancialData(padOverallCostsData(newData, parsed.columnLabels));
         }
         loadedFromStorage = true;
       }
@@ -88,13 +144,23 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
     }
 
     if (!loadedFromStorage && parentFormData?.financialData && parentFormData?.rowLabels) {
-      setFinancialData(parentFormData.financialData);
-      setRowLabels(parentFormData.rowLabels);
+      const cols = parentFormData.columnLabels || [];
+      setRowLabels(insertOverallCostsRow(parentFormData.rowLabels));
+      setFinancialData(padOverallCostsData(parentFormData.financialData, cols));
       if (parentFormData.columnLabels) {
         setColumnLabels(parentFormData.columnLabels);
       }
+      const ft = parentFormData.financialType;
+      if (ft === "simple" || ft === "detailed") {
+        setFinancialType(ft);
+      }
     }
-  }, [parentFormData]);
+  }, [
+    parentFormData?.financialData,
+    parentFormData?.rowLabels,
+    parentFormData?.columnLabels,
+    parentFormData?.financialType,
+  ]);
 
   // Keep today's column label current
   useEffect(() => {
@@ -116,10 +182,15 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
 
   // Calculate Net Profit for a column
   const calculateNetProfit = (col: string) => {
+    if (financialType === "simple") {
+      const gross = parseFloat(financialData["Gross Revenue"]?.[col] || "0");
+      const costs = parseFloat(financialData[OVERALL_COSTS_ROW]?.[col] || "0");
+      return (gross - costs).toFixed(2);
+    }
     let total = 0;
-    rowLabels.forEach(row => {
+    rowLabels.forEach((row) => {
+      if (row === OVERALL_COSTS_ROW) return;
       const value = parseFloat(financialData[row]?.[col] || "0");
-      // Check if row is a revenue row (contains "Revenue" in name)
       if (row.toLowerCase().includes("revenue")) {
         total += value;
       } else {
@@ -129,13 +200,18 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
     return total.toFixed(2);
   };
 
+  const visibleDataRows =
+    financialType === "simple"
+      ? rowLabels.filter((row) => row === "Gross Revenue" || row === OVERALL_COSTS_ROW)
+      : rowLabels.filter((row) => row !== OVERALL_COSTS_ROW);
+
 
   // Validate and continue
   const handleContinue = () => {
     // Check if at least one cell has data
     let hasData = false;
-    rowLabels.forEach(row => {
-      columnLabels.forEach(col => {
+    visibleDataRows.forEach((row) => {
+      columnLabels.forEach((col) => {
         if (financialData[row]?.[col.key] && parseFloat(financialData[row][col.key]) !== 0) {
           hasData = true;
         }
@@ -375,9 +451,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
 
         {/* Data Rows */}
         <div>
-          {rowLabels
-            .filter((row) => financialType !== "simple" || row === "Gross Revenue" || row === "Overall Costs")
-            .map((row, index) => {
+          {visibleDataRows.map((row) => {
             const isGrossRevenue = row === "Gross Revenue";
             const bgColor = isGrossRevenue ? 'rgba(66, 66, 66, 1)' : '#F3F8E8';
             const textColor = isGrossRevenue ? 'rgba(255, 255, 255, 1)' : 'rgba(0, 0, 0, 1)';

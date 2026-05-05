@@ -58,14 +58,12 @@ const AllListings = lazy(() => import("./pages/AllListings"));
 const ListingDetail = lazy(() => import("./pages/ListingDetail"));
 const HowToBuy = lazy(() => import("./pages/HowToBuy"));
 const HowToSell = lazy(() => import("./pages/HowToSell"));
-const EditListing = lazy(() => import("./pages/EditListing"));
-
 const router = createBrowserRouter(
   [
     { path: "/", element: <Index /> },
     { path: "/all-listings", element: <AllListings /> },
     { path: "/listing/:id", element: <ListingDetail /> },
-    { path: "/listing/:id/edit", element: <EditListing /> },
+    { path: "/listing/:id/edit", element: <Dashboard /> },
     { path: "/how-to-buy", element: <HowToBuy /> },
     { path: "/how-to-sell", element: <HowToSell /> },
     { path: "/buyer-signup", element: <BuyerSignup /> },

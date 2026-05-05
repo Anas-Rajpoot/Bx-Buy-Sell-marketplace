@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useBrandQuestions } from "@/hooks/useBrandQuestions";
 import { toast } from "sonner";
 import FlagIcon from "@/components/FlagIcon";
@@ -33,7 +34,7 @@ export const BrandInformationStep = ({ formData: parentFormData, onNext, onBack 
       const value = formData[question.id];
       
       // Required fields validation
-      if (!value || (typeof value === 'string' && value.trim() === '')) {
+      if (!value || (typeof value === 'string' && value.trim() === '') || (Array.isArray(value) && value.length === 0)) {
         errors.push(`${question.question} is required`);
       }
       
@@ -186,6 +187,36 @@ export const BrandInformationStep = ({ formData: parentFormData, onNext, onBack 
             </SelectContent>
           </Select>
         );
+
+      case "CHECKBOX": {
+        let selectedValues: string[] = Array.isArray(value) ? value : [];
+        if (!selectedValues.length && typeof value === "string" && value.trim().startsWith("[")) {
+          try {
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed)) selectedValues = parsed.map(String);
+          } catch {
+            selectedValues = [];
+          }
+        }
+        return (
+          <div className="space-y-2">
+            {question.option && Array.isArray(question.option) && question.option.map((opt: string, idx: number) => (
+              <label key={idx} className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={selectedValues.includes(opt)}
+                  onCheckedChange={(checked) => {
+                    const next = checked
+                      ? [...selectedValues, opt]
+                      : selectedValues.filter((item: string) => item !== opt);
+                    setFormData({ ...formData, [question.id]: next });
+                  }}
+                />
+                <span>{opt}</span>
+              </label>
+            ))}
+          </div>
+        );
+      }
       
       default:
         return (

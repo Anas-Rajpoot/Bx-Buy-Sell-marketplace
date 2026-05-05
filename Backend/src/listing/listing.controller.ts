@@ -139,7 +139,10 @@ export class ListingController {
     @Query('limit') limit?: string,
   ) {
     const currentUser = (req as any).user;
-    const viewer = await this.listingService.resolveViewerContext(currentUser?.id);
+    const viewer = await this.listingService.resolveViewerContext(
+      currentUser?.id,
+      currentUser?.role,
+    );
     const filters = {
       status: status as 'PUBLISH' | 'DRAFT' | undefined,
       category,
@@ -160,7 +163,10 @@ export class ListingController {
   })
   async findOneSecure(@Req() req: Request, @Param('id') id: string) {
     const currentUser = (req as any).user;
-    const viewer = await this.listingService.resolveViewerContext(currentUser?.id);
+    const viewer = await this.listingService.resolveViewerContext(
+      currentUser?.id,
+      currentUser?.role,
+    );
     return this.listingService.findOne(id, viewer);
   }
 
