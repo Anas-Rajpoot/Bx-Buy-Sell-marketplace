@@ -8,7 +8,6 @@ export type StoredListingStep =
   | "brand-information"
   | "tools"
   | "financials"
-  | "additional-information"
   | "statistics"
   | "products"
   | "management"
@@ -32,7 +31,6 @@ function isStoredListingStep(value: unknown): value is StoredListingStep {
     "brand-information",
     "tools",
     "financials",
-    "additional-information",
     "statistics",
     "products",
     "management",
@@ -57,14 +55,16 @@ export function readDraftListing(): DraftListingPayload | null {
     const o = parsed as Record<string, unknown>;
     if (o.v !== DRAFT_VERSION) return null;
     if (typeof o.savedAt !== "number") return null;
-    if (!isStoredListingStep(o.activeStep)) return null;
+    const activeStep =
+      o.activeStep === "additional-information" ? "statistics" : o.activeStep;
+    if (!isStoredListingStep(activeStep)) return null;
     if (!o.formData || typeof o.formData !== "object" || Array.isArray(o.formData)) {
       return null;
     }
     return {
       v: DRAFT_VERSION,
       savedAt: o.savedAt,
-      activeStep: o.activeStep,
+      activeStep,
       formData: o.formData as Record<string, unknown>,
       pendingPublish: o.pendingPublish === true,
     };

@@ -1,4 +1,17 @@
-import { lazy, Suspense, useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
+import {
+  cacheAdminFinancialsTemplate,
+  fetchAdminFinancialsTemplate,
+  notifyAdminFinancialsTemplateUpdated,
+  parseFinancialAdminApiRecord,
+  displayRowLabel,
+  GROSS_REVENUE_ROW,
+  REVENUE_ROW,
+  type AdminFinancialsTemplate,
+} from "@/lib/financialTableUtils";
+import { apiClient } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
@@ -24,6 +37,7 @@ import { useTools } from "@/hooks/useTools";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useAccountQuestions } from "@/hooks/useAccountQuestions";
 import { usePlans } from "@/hooks/usePlans";
+import { resolveImageUrl } from "@/lib/imageUtils";
 
 const AddCategoryDialog = lazy(() =>
   import("@/components/admin/content/AddCategoryDialog").then((m) => ({ default: m.AddCategoryDialog }))
@@ -125,8 +139,26 @@ const DeletePlanDialog = lazy(() =>
   import("@/components/admin/content/DeletePlanDialog").then((m) => ({ default: m.DeletePlanDialog }))
 );
 
+type FinancialColumn = { key: string; label: string; isToday?: boolean; labelCustomized?: boolean };
+
+/** Keep every row/column cell in sync so edits always read/write the right keys. */
+const syncFinancialGrid = (
+  rows: string[],
+  cols: FinancialColumn[],
+  data: Record<string, Record<string, string>>,
+): Record<string, Record<string, string>> => {
+  const synced: Record<string, Record<string, string>> = {};
+  rows.forEach((row) => {
+    synced[row] = {};
+    cols.forEach((col) => {
+      synced[row][col.key] = data[row]?.[col.key] ?? "";
+    });
+  });
+  return synced;
+};
+
 const AdminContentManagement = () => {
-  const FINANCIALS_STORAGE_KEY = "admin_financials_table_v1";
+  const { user } = useAuth();
   const getTypeLabel = (type: string) => {
     const typeMap: Record<string, string> = {
       PHOTO: "Photo Upload",
@@ -216,7 +248,7 @@ const AdminContentManagement = () => {
   const [editingRowLabel, setEditingRowLabel] = useState<string | null>(null);
   const [editingColLabel, setEditingColLabel] = useState<string | null>(null);
   const [rowLabels, setRowLabels] = useState<string[]>([
-    "Gross Revenue",
+    REVENUE_ROW,
     "Net Revenue",
     "Cost of Goods",
     "Advertising costs",
@@ -224,14 +256,14 @@ const AdminContentManagement = () => {
     "Transaction Costs",
     "Other Expenses"
   ]);
-  const [columnLabels, setColumnLabels] = useState<Array<{ key: string; label: string; isToday?: boolean }>>(() => [
+  const [columnLabels, setColumnLabels] = useState<FinancialColumn[]>(() => [
     { key: "2023", label: "2023" },
     { key: "2024", label: "2024" },
     { key: "today", label: getTodayDate(), isToday: true },
     { key: "Forecast 2025", label: "Forecast 2025" }
   ]);
   const [financialData, setFinancialData] = useState<Record<string, Record<string, string>>>({
-    "Gross Revenue": { "2023": "", "2024": "", "today": "", "Forecast 2025": "" },
+    [REVENUE_ROW]: { "2023": "", "2024": "", "today": "", "Forecast 2025": "" },
     "Net Revenue": { "2023": "", "2024": "", "today": "", "Forecast 2025": "" },
     "Cost of Goods": { "2023": "", "2024": "", "today": "", "Forecast 2025": "" },
     "Advertising costs": { "2023": "", "2024": "", "today": "", "Forecast 2025": "" },
@@ -240,158 +272,218 @@ const AdminContentManagement = () => {
     "Other Expenses": { "2023": "", "2024": "", "today": "", "Forecast 2025": "" },
   });
 
-  // Load saved financials table (local persistence)
+  const financialTableRef = useRef({
+    rowLabels,
+    columnLabels,
+    financialData,
+  });
+
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(FINANCIALS_STORAGE_KEY);
-      if (!saved) return;
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed.rowLabels)) setRowLabels(parsed.rowLabels);
-      if (Array.isArray(parsed.columnLabels)) {
-        let cols = parsed.columnLabels;
-        const hasToday = cols.some((c: any) => c.isToday || c.key === "today");
-        if (!hasToday) {
-          cols = [...cols, { key: "today", label: getTodayDate(), isToday: true }];
-        }
-        setColumnLabels(cols);
-      }
-      if (parsed.financialData && typeof parsed.financialData === "object") {
-        setFinancialData(parsed.financialData);
-      }
-    } catch (error) {
-      console.warn("Failed to load saved financials table:", error);
-    }
+    financialTableRef.current = { rowLabels, columnLabels, financialData };
+  }, [rowLabels, columnLabels, financialData]);
+
+  const applyFinancialTemplate = useCallback((template: AdminFinancialsTemplate) => {
+    setRowLabels(template.rowLabels);
+    setColumnLabels(template.columnLabels);
+    setFinancialData(template.financialData);
   }, []);
 
-  const persistFinancialsTable = () => {
+  // Load saved financials table (API first, then local cache)
+  useEffect(() => {
+    let cancelled = false;
+    const loadFinancialTemplate = async () => {
+      try {
+        const template = await fetchAdminFinancialsTemplate(true);
+        if (cancelled) return;
+        if (template) {
+          applyFinancialTemplate(template);
+          return;
+        }
+
+        const response = await apiClient.getFinancialAdminTemplate();
+        if (
+          !cancelled &&
+          response.success &&
+          response.data &&
+          !parseFinancialAdminApiRecord(response.data)
+        ) {
+          toast.message(
+            "Financial table on server uses an old format. Edit the table and click Save Table once.",
+          );
+        }
+      } catch (error) {
+        console.warn("Failed to load saved financials table:", error);
+      }
+    };
+    void loadFinancialTemplate();
+    return () => {
+      cancelled = true;
+    };
+  }, [applyFinancialTemplate]);
+
+  const persistFinancialsTable = useCallback(async () => {
     try {
-      localStorage.setItem(
-        FINANCIALS_STORAGE_KEY,
-        JSON.stringify({ rowLabels, columnLabels, financialData })
-      );
+      const { rowLabels: rows, columnLabels: cols, financialData: data } =
+        financialTableRef.current;
+      const synced = syncFinancialGrid(rows, cols, data);
+      const template: AdminFinancialsTemplate = {
+        rowLabels: rows,
+        columnLabels: cols,
+        financialData: synced,
+      };
+
+      if (!user?.id) {
+        toast.error("You must be logged in as admin to save the financial table");
+        return false;
+      }
+
+      const response = await apiClient.updateFinancialAdmin(user.id, {
+        columns: cols.map((col) => col.label),
+        rows: template,
+      });
+      if (!response.success) {
+        toast.error(response.error || "Failed to save financial table to server");
+        return false;
+      }
+
+      cacheAdminFinancialsTemplate(template);
+      setFinancialData(synced);
+      notifyAdminFinancialsTemplateUpdated();
+      return true;
     } catch (error) {
       console.warn("Failed to save financials table:", error);
+      return false;
     }
-  };
+  }, [user?.id]);
 
-  const handleToggleEdit = () => {
+  const handleToggleEdit = async () => {
     if (isEditMode) {
-      persistFinancialsTable();
+      const saved = await persistFinancialsTable();
+      if (saved) {
+        toast.success("Financial table saved");
+      }
+      setEditingRowLabel(null);
+      setEditingColLabel(null);
     }
     setIsEditMode(!isEditMode);
   };
 
-  // Update today's date column label whenever component renders
-  useEffect(() => {
-    setColumnLabels(prev => prev.map(col => 
-      col.isToday ? { ...col, label: getTodayDate() } : col
-    ));
-  }, []); // Update on mount
-
-  // Update today's date every day
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setColumnLabels(prev => prev.map(col => 
-        col.isToday ? { ...col, label: getTodayDate() } : col
-      ));
-    }, 60000); // Check every minute
-    return () => clearInterval(interval);
-  }, []);
-
   // Handle row label edit
   const handleRowLabelEdit = (oldLabel: string, newLabel: string) => {
-    if (newLabel.trim() && newLabel !== oldLabel) {
-      setRowLabels(prev => prev.map(label => label === oldLabel ? newLabel.trim() : label));
-      // Update financial data keys
-      const oldData = financialData[oldLabel];
-      if (oldData) {
-        setFinancialData(prev => {
-          const newData = { ...prev };
-          delete newData[oldLabel];
-          newData[newLabel.trim()] = oldData;
-          return newData;
-        });
-      }
+    const trimmed = newLabel.trim();
+    if (!trimmed || trimmed === oldLabel) {
+      setEditingRowLabel(null);
+      return;
     }
+    if (rowLabels.some((label) => label === trimmed && label !== oldLabel)) {
+      toast.error("A row with this name already exists");
+      setEditingRowLabel(null);
+      return;
+    }
+
+    setRowLabels((prev) => prev.map((label) => (label === oldLabel ? trimmed : label)));
+    setFinancialData((prev) => {
+      const newData = { ...prev };
+      if (newData[oldLabel]) {
+        newData[trimmed] = newData[oldLabel];
+        delete newData[oldLabel];
+      }
+      return newData;
+    });
     setEditingRowLabel(null);
   };
 
   // Handle row delete
   const handleRowDelete = (rowLabel: string) => {
-    if (rowLabels.length > 1) {
-      setRowLabels(prev => prev.filter(label => label !== rowLabel));
-      setFinancialData(prev => {
-        const newData = { ...prev };
-        delete newData[rowLabel];
-        return newData;
-      });
+    if (rowLabels.length <= 1) return;
+    const nextRows = rowLabels.filter((label) => label !== rowLabel);
+    setRowLabels(nextRows);
+    setFinancialData((prev) => {
+      const newData = { ...prev };
+      delete newData[rowLabel];
+      return syncFinancialGrid(nextRows, columnLabels, newData);
+    });
+    if (editingRowLabel === rowLabel) {
+      setEditingRowLabel(null);
     }
   };
 
-  // Handle column label edit
-  const handleColLabelEdit = (oldKey: string, newLabel: string) => {
-    if (newLabel.trim() && !columnLabels.find(col => col.key === oldKey)?.isToday) {
-      const newKey = newLabel.trim();
-      setColumnLabels(prev => prev.map(col => 
-        col.key === oldKey ? { ...col, key: newKey, label: newLabel.trim() } : col
-      ));
-      // Update financial data keys
-      setFinancialData(prev => {
-        const newData: Record<string, Record<string, string>> = {};
-        Object.keys(prev).forEach(rowKey => {
-          newData[rowKey] = { ...prev[rowKey] };
-          if (newData[rowKey][oldKey] !== undefined) {
-            newData[rowKey][newKey] = newData[rowKey][oldKey];
-            delete newData[rowKey][oldKey];
-          }
-        });
-        return newData;
-      });
+  // Handle column label edit (label only — keep stable column key for data)
+  const handleColLabelEdit = (colKey: string, newLabel: string) => {
+    const trimmed = newLabel.trim();
+    const targetCol = columnLabels.find((col) => col.key === colKey);
+    if (!trimmed || !targetCol) {
+      setEditingColLabel(null);
+      return;
     }
+    if (
+      columnLabels.some(
+        (col) => col.key !== colKey && col.label.toLowerCase() === trimmed.toLowerCase(),
+      )
+    ) {
+      toast.error("A column with this name already exists");
+      setEditingColLabel(null);
+      return;
+    }
+
+    setColumnLabels((prev) =>
+      prev.map((col) =>
+        col.key === colKey ? { ...col, label: trimmed, labelCustomized: true } : col,
+      ),
+    );
     setEditingColLabel(null);
   };
 
   // Handle column delete
   const handleColDelete = (colKey: string) => {
-    if (columnLabels.length > 1 && !columnLabels.find(col => col.key === colKey)?.isToday) {
-      setColumnLabels(prev => prev.filter(col => col.key !== colKey));
-      setFinancialData(prev => {
-        const newData: Record<string, Record<string, string>> = {};
-        Object.keys(prev).forEach(rowKey => {
-          newData[rowKey] = { ...prev[rowKey] };
-          delete newData[rowKey][colKey];
-        });
-        return newData;
+    if (columnLabels.length <= 1 || columnLabels.find((col) => col.key === colKey)?.isToday) {
+      return;
+    }
+    const nextCols = columnLabels.filter((col) => col.key !== colKey);
+    setColumnLabels(nextCols);
+    setFinancialData((prev) => {
+      const newData: Record<string, Record<string, string>> = {};
+      Object.keys(prev).forEach((rowKey) => {
+        newData[rowKey] = { ...prev[rowKey] };
+        delete newData[rowKey][colKey];
       });
+      return syncFinancialGrid(rowLabels, nextCols, newData);
+    });
+    if (editingColLabel === colKey) {
+      setEditingColLabel(null);
     }
   };
 
   // Handle add new row
   const handleAddRow = () => {
-    const newRowLabel = `New Row ${rowLabels.length + 1}`;
-    setRowLabels(prev => [...prev, newRowLabel]);
-    const newRowData: Record<string, string> = {};
-    columnLabels.forEach(col => {
-      newRowData[col.key] = "";
-    });
-    setFinancialData(prev => ({
-      ...prev,
-      [newRowLabel]: newRowData
-    }));
+    if (!isEditMode) return;
+
+    let index = rowLabels.length + 1;
+    let newRowLabel = `New Row ${index}`;
+    while (rowLabels.includes(newRowLabel)) {
+      index += 1;
+      newRowLabel = `New Row ${index}`;
+    }
+
+    const nextRows = [...rowLabels, newRowLabel];
+    setRowLabels(nextRows);
+    setFinancialData((prev) =>
+      syncFinancialGrid(nextRows, columnLabels, {
+        ...prev,
+        [newRowLabel]: Object.fromEntries(columnLabels.map((col) => [col.key, ""])),
+      }),
+    );
   };
 
   // Handle add new column
   const handleAddColumn = () => {
-    const newColKey = `Column ${columnLabels.length + 1}`;
+    if (!isEditMode) return;
+
+    const newColKey = `col-${Date.now()}`;
     const newColLabel = `Column ${columnLabels.length + 1}`;
-    setColumnLabels(prev => [...prev, { key: newColKey, label: newColLabel }]);
-    setFinancialData(prev => {
-      const newData: Record<string, Record<string, string>> = {};
-      Object.keys(prev).forEach(rowKey => {
-        newData[rowKey] = { ...prev[rowKey], [newColKey]: "" };
-      });
-      return newData;
-    });
+    const nextCols = [...columnLabels, { key: newColKey, label: newColLabel }];
+    setColumnLabels(nextCols);
+    setFinancialData((prev) => syncFinancialGrid(rowLabels, nextCols, prev));
   };
   
   const { data: categories, isLoading, error: categoriesError } = useCategories({ nocache: true });
@@ -564,7 +656,7 @@ const AdminContentManagement = () => {
                                     }}
                                   >
                                     <img 
-                                      src={category.image_path} 
+                                      src={resolveImageUrl(category.image_path)} 
                                       alt={category.name}
                                       className="w-9 h-9 sm:w-10 sm:h-10 object-contain"
                                     />
@@ -771,7 +863,7 @@ const AdminContentManagement = () => {
                                 className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center transition-transform group-hover:scale-105"
                               >
                                 <img 
-                                  src={tool.image_path} 
+                                  src={resolveImageUrl(tool.image_path)} 
                                   alt={tool.name}
                                   className="w-full h-full object-contain"
                                 />
@@ -820,17 +912,16 @@ const AdminContentManagement = () => {
                   </Button>
                 </div>
                 {(() => {
-                  console.log('📍 Rendering Financials section', { rowLabels, columnLabels, isEditMode });
                   const rows = rowLabels;
                   const columns = columnLabels;
 
               const handleCellChange = (row: string, col: string, value: string) => {
-                setFinancialData(prev => ({
+                setFinancialData((prev) => ({
                   ...prev,
                   [row]: {
-                    ...prev[row],
-                    [col]: value
-                  }
+                    ...(prev[row] ?? {}),
+                    [col]: value,
+                  },
                 }));
               };
 
@@ -848,13 +939,13 @@ const AdminContentManagement = () => {
                 return total.toFixed(2);
               };
 
-              const columnWidth = isMobile ? 180 : isTablet ? 220 : 280;
+              const columnWidth = isMobile ? 130 : isTablet ? 150 : 180;
 
               return (
                 <>
                   {/* Profit & Loss Table Container */}
                   <div 
-                    className="relative overflow-x-auto w-full"
+                    className="relative overflow-x-auto w-full max-w-full"
                   >
                     {/* Black Header Section */}
                     <div 
@@ -871,7 +962,7 @@ const AdminContentManagement = () => {
                         className="font-lufga text-white text-center px-2"
                         style={{
                           fontWeight: 600,
-                          fontSize: isMobile ? '18px' : isTablet ? '28px' : '49.7px',
+                          fontSize: isMobile ? '18px' : isTablet ? '22px' : '28px',
                           lineHeight: '100%',
                           letterSpacing: '0%',
                         }}
@@ -901,12 +992,12 @@ const AdminContentManagement = () => {
                           className="font-lufga text-black"
                           style={{
                             fontWeight: 700,
-                            fontSize: isMobile ? '12px' : isTablet ? '18px' : '33.14px',
+                            fontSize: isMobile ? '12px' : isTablet ? '14px' : '16px',
                             lineHeight: '100%',
                             letterSpacing: '0%',
                           }}
                         >
-                          Zeitraum
+                          Timeframe
                         </span>
                       </div>
                       {columns.map((col) => (
@@ -934,7 +1025,7 @@ const AdminContentManagement = () => {
                               className="w-full text-center font-lufga text-black bg-transparent border-2 border-black/30 px-1"
                               style={{
                                 fontWeight: 700,
-                                fontSize: isMobile ? '12px' : isTablet ? '18px' : '33.14px',
+                                fontSize: isMobile ? '12px' : isTablet ? '14px' : '16px',
                               }}
                             />
                           ) : (
@@ -943,17 +1034,17 @@ const AdminContentManagement = () => {
                                 className="font-lufga text-black cursor-pointer text-center px-1"
                                 style={{
                                   fontWeight: 700,
-                                  fontSize: isMobile ? '12px' : isTablet ? '18px' : '33.14px',
+                                  fontSize: isMobile ? '12px' : isTablet ? '14px' : '16px',
                                   lineHeight: '100%',
                                   letterSpacing: '0%',
                                 }}
-                                onDoubleClick={() => isEditMode && !col.isToday && setEditingColLabel(col.key)}
+                                onDoubleClick={() => isEditMode && setEditingColLabel(col.key)}
                               >
                                 {col.label}
                               </span>
-                              {isEditMode && !col.isToday && (
-                                <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
+                              {isEditMode && (
+                                <div className="absolute top-1 right-1 flex gap-1">
+                                  <Button
                                     size="sm"
                                     variant="ghost"
                                     onClick={() => setEditingColLabel(col.key)}
@@ -961,15 +1052,17 @@ const AdminContentManagement = () => {
                                   >
                                     <Pencil className="h-3 w-3" />
                                   </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleColDelete(col.key)}
-                                    className="h-6 w-6 p-0 text-red-600 hover:bg-red-600/20"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
+                                  {!col.isToday && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleColDelete(col.key)}
+                                      className="h-6 w-6 p-0 text-red-600 hover:bg-red-600/20"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
                               )}
                             </>
                           )}
@@ -997,7 +1090,7 @@ const AdminContentManagement = () => {
                     {/* Data Rows */}
                     <div>
                           {rows.map((row, rowIndex) => {
-                        const isGrossRevenue = row === "Gross Revenue";
+                        const isGrossRevenue = row === REVENUE_ROW || row === GROSS_REVENUE_ROW;
                         const bgColor = isGrossRevenue ? '#424242' : '#F3F8E8';
                         const textColor = isGrossRevenue ? 'text-white' : 'text-black';
                             
@@ -1034,7 +1127,7 @@ const AdminContentManagement = () => {
                                   className={`w-full font-lufga bg-transparent border-2 ${isGrossRevenue ? 'border-white/30 text-white' : 'border-black/30 text-black'} px-1 text-xs sm:text-base`}
                                   style={{
                                     fontWeight: 500,
-                                    fontSize: isMobile ? '11px' : isTablet ? '14px' : '24.85px',
+                                    fontSize: isMobile ? '11px' : isTablet ? '12px' : '14px',
                                   }}
                                 />
                               ) : (
@@ -1043,16 +1136,16 @@ const AdminContentManagement = () => {
                                     className="font-lufga cursor-pointer break-words"
                                     style={{
                                       fontWeight: 500,
-                                      fontSize: isMobile ? '11px' : isTablet ? '14px' : '24.85px',
+                                      fontSize: isMobile ? '11px' : isTablet ? '12px' : '14px',
                                       lineHeight: '120%',
                                       letterSpacing: '0%',
                                     }}
                                     onDoubleClick={() => isEditMode && setEditingRowLabel(row)}
                                   >
-                                    {row}
+                                    {displayRowLabel(row)}
                                   </span>
                                   {isEditMode && (
-                                    <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="absolute top-1 right-1 flex gap-1">
                                       <Button
                                         size="sm"
                                         variant="ghost"
@@ -1088,11 +1181,11 @@ const AdminContentManagement = () => {
                                     {isEditMode ? (
                                       <Input
                                         type="number"
-                                        value={financialData[row]?.[col.key] || ""}
+                                        value={financialData[row]?.[col.key] ?? ""}
                                         onChange={(e) => handleCellChange(row, col.key, e.target.value)}
                                         className={`w-11/12 text-center border-2 px-1 text-xs sm:text-base ${isGrossRevenue ? 'border-white/30 bg-transparent text-white' : 'border-black/30 bg-transparent text-black'}`}
                                         style={{
-                                          fontSize: isMobile ? '11px' : isTablet ? '14px' : '24.85px',
+                                          fontSize: isMobile ? '11px' : isTablet ? '12px' : '14px',
                                           fontFamily: 'Lufga',
                                           fontWeight: 500,
                                         }}
@@ -1102,12 +1195,12 @@ const AdminContentManagement = () => {
                                     className="font-lufga px-1"
                                     style={{
                                       fontWeight: 500,
-                                      fontSize: isMobile ? '11px' : isTablet ? '14px' : '24.85px',
+                                      fontSize: isMobile ? '11px' : isTablet ? '12px' : '14px',
                                       lineHeight: '100%',
                                       letterSpacing: '0%',
                                     }}
                                   >
-                                    {financialData[row]?.[col.key] || "-"}
+                                    {(financialData[row]?.[col.key] ?? "") !== "" ? financialData[row]?.[col.key] : "-"}
                                   </span>
                                 )}
                               </div>
@@ -1116,60 +1209,61 @@ const AdminContentManagement = () => {
                             );
                           })}
                       
-                      {/* Add+ Row */}
-                      <div 
-                        className="flex"
-                        style={{
-                          width: `${columnWidth * (columns.length + (isEditMode ? 1 : 0) + 1)}px`,
-                          height: isMobile ? '40px' : isTablet ? '55px' : '91.12px',
-                          backgroundColor: '#F3F8E8',
-                        }}
-                      >
+                      {/* Add+ Row (edit mode only) */}
+                      {isEditMode && (
                         <div 
-                          className="flex items-center px-2 sm:px-4"
+                          className="flex"
                           style={{
-                            width: `${columnWidth}px`,
-                            height: '100%',
-                            border: isMobile ? '1.5px solid rgba(255, 255, 255, 1)' : '2.66px solid rgba(255, 255, 255, 1)',
+                            width: `${columnWidth * (columns.length + 1 + 1)}px`,
+                            height: isMobile ? '40px' : isTablet ? '55px' : '91.12px',
+                            backgroundColor: '#F3F8E8',
                           }}
                         >
-                          <button 
-                            onClick={handleAddRow}
-                            className="font-lufga text-[#C6FE1F] hover:text-[#84cc16] font-medium"
-                            style={{
-                              fontSize: isMobile ? '11px' : isTablet ? '14px' : '24.85px',
-                              lineHeight: '100%',
-                              letterSpacing: '0%',
-                            }}
-                          >
-                            Add+
-                          </button>
-                        </div>
-                        {columns.map((col) => (
                           <div 
-                            key={col.key}
-                            className="flex items-center justify-center text-black"
+                            className="flex items-center px-2 sm:px-4"
                             style={{
                               width: `${columnWidth}px`,
                               height: '100%',
-                              backgroundColor: '#F3F8E8',
                               border: isMobile ? '1.5px solid rgba(255, 255, 255, 1)' : '2.66px solid rgba(255, 255, 255, 1)',
                             }}
                           >
-                            <span 
-                              className="font-lufga"
+                            <button 
+                              type="button"
+                              onClick={handleAddRow}
+                              className="font-lufga text-[#424242] hover:text-[#84cc16] font-medium"
                               style={{
-                                fontWeight: 500,
-                                fontSize: isMobile ? '11px' : isTablet ? '14px' : '24.85px',
+                                fontSize: isMobile ? '11px' : isTablet ? '12px' : '14px',
                                 lineHeight: '100%',
                                 letterSpacing: '0%',
                               }}
                             >
-                              -
-                            </span>
+                              Add
+                            </button>
                           </div>
-                        ))}
-                        {isEditMode && (
+                          {columns.map((col) => (
+                            <div 
+                              key={col.key}
+                              className="flex items-center justify-center text-black"
+                              style={{
+                                width: `${columnWidth}px`,
+                                height: '100%',
+                                backgroundColor: '#F3F8E8',
+                                border: isMobile ? '1.5px solid rgba(255, 255, 255, 1)' : '2.66px solid rgba(255, 255, 255, 1)',
+                              }}
+                            >
+                              <span 
+                                className="font-lufga"
+                                style={{
+                                  fontWeight: 500,
+                                  fontSize: isMobile ? '11px' : isTablet ? '12px' : '14px',
+                                  lineHeight: '100%',
+                                  letterSpacing: '0%',
+                                }}
+                              >
+                                -
+                              </span>
+                            </div>
+                          ))}
                           <div 
                             className="flex items-center justify-center text-black"
                             style={{
@@ -1181,8 +1275,8 @@ const AdminContentManagement = () => {
                           >
                             <span className="text-muted-foreground text-xs">-</span>
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
                       {/* Net Profit Row */}
                       <div 
@@ -1205,7 +1299,7 @@ const AdminContentManagement = () => {
                             className="font-lufga text-black break-words"
                             style={{
                               fontWeight: 700,
-                              fontSize: isMobile ? '11px' : isTablet ? '14px' : '24.85px',
+                                      fontSize: isMobile ? '11px' : isTablet ? '12px' : '14px',
                               lineHeight: '120%',
                               letterSpacing: '0%',
                             }}
@@ -1230,7 +1324,7 @@ const AdminContentManagement = () => {
                                 className="font-lufga text-black px-1"
                                 style={{
                                   fontWeight: 700,
-                                  fontSize: isMobile ? '11px' : isTablet ? '14px' : '24.85px',
+                                      fontSize: isMobile ? '11px' : isTablet ? '12px' : '14px',
                                   lineHeight: '100%',
                                   letterSpacing: '0%',
                                 }}

@@ -3,9 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useAddTool } from "@/hooks/useAddTool";
-import { apiClient } from "@/lib/api";
 import { toast } from "sonner";
 
 interface AddToolDialogProps {
@@ -17,7 +15,6 @@ export const AddToolDialog = ({ open, onOpenChange }: AddToolDialogProps) => {
   const [name, setName] = useState("");
   const [logo, setLogo] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
   const { mutate: addTool, isPending } = useAddTool();
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -25,14 +22,6 @@ export const AddToolDialog = ({ open, onOpenChange }: AddToolDialogProps) => {
     if (file) {
       setImageFile(file);
     }
-  };
-
-  const uploadToBackend = async (file: File): Promise<string> => {
-    const response = await apiClient.uploadFile(file, 'photo');
-    if (!response.success || !response.data) {
-      throw new Error(response.error || 'Upload failed');
-    }
-    return response.data.url || response.data.path || '';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,30 +32,17 @@ export const AddToolDialog = ({ open, onOpenChange }: AddToolDialogProps) => {
       return;
     }
 
-    let finalLogoUrl = logo.trim();
-
-    // Upload image if provided
-    if (imageFile) {
-      setUploading(true);
-      try {
-        finalLogoUrl = await uploadToBackend(imageFile);
-        toast.success("Image uploaded successfully");
-      } catch (error) {
-        console.error('Upload error:', error);
-        toast.error("Failed to upload image");
-        setUploading(false);
-        return;
-      }
-      setUploading(false);
-    }
-
-    if (!finalLogoUrl) {
+    if (!imageFile && !logo.trim()) {
       toast.error("Please provide a logo URL or upload an image");
       return;
     }
 
     addTool(
-      { name: name.trim(), image_path: finalLogoUrl },
+      { 
+        name: name.trim(),
+        image_path: imageFile ? undefined : logo.trim(),
+        imageFile: imageFile || undefined,
+      },
       {
         onSuccess: () => {
           setName("");
@@ -135,10 +111,10 @@ export const AddToolDialog = ({ open, onOpenChange }: AddToolDialogProps) => {
             </Button>
             <Button
               type="submit"
-              disabled={isPending || uploading || !name.trim()}
+              disabled={isPending || !name.trim()}
               className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90"
             >
-              {uploading ? "Uploading..." : isPending ? "Adding..." : "Add Tool"}
+              {isPending ? "Adding..." : "Add Tool"}
             </Button>
           </div>
         </form>

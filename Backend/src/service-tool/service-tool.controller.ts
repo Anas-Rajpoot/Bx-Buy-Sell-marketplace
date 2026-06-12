@@ -63,7 +63,8 @@ export class ServiceToolController {
   @Post()
   async create(@UploadedFile() file: Express.Multer.File, @Body() data) {
     if (file) {
-      data.image_path = file.path.replaceAll('\\', '/');
+      const relativePath = file.path.replaceAll('\\', '/').replace(/^\.\//, '');
+      data.image_path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
     }
     const payload = await this.serviceToolService.create(data);
     await this.cacheManager.del(`${this.constructor.name}`);
@@ -80,7 +81,8 @@ export class ServiceToolController {
     @Body() data,
   ) {
     if (file) {
-      data.image_path = file.path.replaceAll('\\', '/');
+      const relativePath = file.path.replaceAll('\\', '/').replace(/^\.\//, '');
+      data.image_path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
     }
     const payload = await this.serviceToolService.update(id, data);
     await this.cacheManager.del(`${this.constructor.name}`);

@@ -3,6 +3,7 @@ import { ShoppingBag, Code, Handshake, LayoutGrid } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useCategories } from "@/hooks/useCategories";
+import { resolveImageUrl } from "@/lib/imageUtils";
 
 interface CategoryStepProps {
   formData?: any;
@@ -117,7 +118,7 @@ export const CategoryStep = ({ formData, onNext }: CategoryStepProps) => {
                   }}
                 >
                   <img 
-                    src={category.image_path} 
+                    src={resolveImageUrl(category.image_path)} 
                     alt={category.name}
                     className="w-12 h-12 sm:w-16 sm:h-16 object-contain rounded-full"
                   />

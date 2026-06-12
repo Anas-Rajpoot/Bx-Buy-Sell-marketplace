@@ -9,6 +9,12 @@ import { useBrandQuestions } from "@/hooks/useBrandQuestions";
 import { toast } from "sonner";
 import FlagIcon from "@/components/FlagIcon";
 import { isValidListingDateAnswer } from "@/lib/dateUtils";
+import {
+  DOMAIN_VALIDATION_MESSAGE,
+  isDomainQuestion,
+  isValidDomain,
+  normalizeDomain,
+} from "@/lib/domainUtils";
 
 interface BrandInformationStepProps {
   formData?: any;
@@ -51,9 +57,18 @@ export const BrandInformationStep = ({ formData: parentFormData, onNext, onBack 
         errors.push(`${question.question} must be a valid date`);
       }
       
-      if (question.answer_type === 'URL' && value) {
+      if (isDomainQuestion(question.question) && value) {
+        const domainValue = typeof value === "string" ? value : String(value);
+        if (!isValidDomain(domainValue)) {
+          errors.push(DOMAIN_VALIDATION_MESSAGE);
+        }
+      } else if (question.answer_type === "URL" && value) {
+        const urlValue = typeof value === "string" ? value : String(value);
+        const withProtocol = /^https?:\/\//i.test(urlValue.trim())
+          ? urlValue.trim()
+          : `https://${urlValue.trim()}`;
         try {
-          new URL(value);
+          new URL(withProtocol);
         } catch {
           errors.push(`${question.question} must be a valid URL`);
         }
@@ -79,14 +94,24 @@ export const BrandInformationStep = ({ formData: parentFormData, onNext, onBack 
       return;
     }
     
-    onNext(formData);
+    const normalizedFormData = { ...formData };
+    questions.forEach((question: any) => {
+      if (!isDomainQuestion(question.question)) return;
+
+      const value = normalizedFormData[question.id];
+      if (typeof value === "string" && value.trim() && isValidDomain(value)) {
+        normalizedFormData[question.id] = normalizeDomain(value);
+      }
+    });
+
+    onNext(normalizedFormData);
   };
 
   const renderField = (question: any) => {
     const value = formData[question.id] || "";
     
     switch (question.answer_type) {
-      case "TEXT":
+      case "TEXT": {
         // Check if this is a location field (Business Location or similar)
         const isLocationField = question.question.toLowerCase().includes('location') || 
                                 question.question.toLowerCase().includes('address') ||
@@ -97,7 +122,11 @@ export const BrandInformationStep = ({ formData: parentFormData, onNext, onBack 
             <Input
               value={value}
               onChange={(e) => setFormData({ ...formData, [question.id]: e.target.value })}
-              placeholder="Enter your answer"
+              placeholder={
+                isDomainQuestion(question.question)
+                  ? "www.example.com"
+                  : "Enter your answer"
+              }
               className="bg-muted/50"
               style={isLocationField && value ? { paddingRight: '40px' } : {}}
             />
@@ -108,6 +137,7 @@ export const BrandInformationStep = ({ formData: parentFormData, onNext, onBack 
             )}
           </div>
         );
+      }
       
       case "NUMBER":
         return (
@@ -150,7 +180,11 @@ export const BrandInformationStep = ({ formData: parentFormData, onNext, onBack 
             type="text"
             value={value}
             onChange={(e) => setFormData({ ...formData, [question.id]: e.target.value })}
-            placeholder="Enter link here"
+            placeholder={
+              isDomainQuestion(question.question)
+                ? "www.example.com"
+                : "Enter link here"
+            }
             className="bg-muted/50 border-none focus:ring-0 focus:border-transparent hover:border-transparent focus-visible:ring-0 focus-visible:outline-none"
             style={{
               outline: "none",
@@ -241,9 +275,10 @@ export const BrandInformationStep = ({ formData: parentFormData, onNext, onBack 
 
   return (
     <div className="max-w-4xl w-full">
-      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 md:mb-8">Brand Information</h1>
 
       <div className="bg-card rounded-xl p-4 sm:p-6 md:p-8 border border-border space-y-4 sm:space-y-6">
+      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 md:mb-8">Brand Information</h1>
+
         {questions.length === 0 ? (
           <div className="text-center text-sm sm:text-base text-muted-foreground py-6 sm:py-8">
             No brand information questions available. Please contact the administrator.

@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { apiClient } from "@/lib/api";
 import { toast } from "sonner";
+import { normalizeDomainAnswer } from "@/lib/domainUtils";
 import { usePlans } from "@/hooks/usePlans";
 import { Check, Crown } from "lucide-react";
 import { useBrandQuestions } from "@/hooks/useBrandQuestions";
@@ -131,9 +132,15 @@ export const PackagesStep = ({
         return null;
       }
       
+      const rawAnswer =
+        question.answer_type === "CHECKBOX" && Array.isArray(answerValue)
+          ? answerValue
+          : answerStr;
+      const normalizedAnswer = normalizeDomainAnswer(rawAnswer, questionText);
+
       return {
         question: questionText,
-        answer: question.answer_type === 'CHECKBOX' && Array.isArray(answerValue) ? answerValue : answerStr,
+        answer: normalizedAnswer,
         answer_type: answerType,
         answer_for: answerFor,
         option: question.option || [],

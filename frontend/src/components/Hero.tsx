@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import heroCard1 from "@/assets/hero-card-1.png";
 import heroCard2 from "@/assets/hero-card-2.png";
 import heroCard3 from "@/assets/hero-card-3.png";
-
+import { ArrowUpSvg } from "@/assets/svg";
 interface HeroProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -109,7 +109,7 @@ const Hero = ({ searchQuery, setSearchQuery }: HeroProps) => {
                 className="bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground border border-primary-foreground/20 rounded-full px-3 py-1.5 sm:px-5 sm:py-2 text-xs sm:text-sm font-medium transition-all"
               >
                 {topic}
-                <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
+                <ArrowUpSvg className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
               </Button>
             ))}
           </div>

@@ -273,7 +273,7 @@ export const AccountsStep = ({ formData: parentFormData, onNext, onBack }: Accou
   return (
     <div className="max-w-4xl">
       <h1 className="text-3xl font-bold mb-8">Social Media Accounts</h1>
-
+{/* 
       <div className="bg-card rounded-xl p-8 border border-border">
         {accounts.length === 0 ? (
           <div className="text-center text-muted-foreground py-12">
@@ -315,7 +315,7 @@ export const AccountsStep = ({ formData: parentFormData, onNext, onBack }: Accou
             ))}
           </div>
         )}
-      </div>
+      </div> */}
 
       {/* Account Questions Section */}
       {questions.length > 0 && (

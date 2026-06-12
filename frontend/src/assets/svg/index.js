@@ -23,6 +23,7 @@ import EditSvg from "./edit.svg?react";
 import BlockSvg from "./block.svg?react";
 import DeleteSvg from "./delete.svg?react";
 import MessagesSvg from "./gridicons_chat.svg?react";
+import ArrowUpSvg from "./arrowup.svg?react";
 
 export {
   AccountsSvg,
@@ -50,4 +51,5 @@ export {
   BlockSvg,
   DeleteSvg,
   MessagesSvg,
+  ArrowUpSvg,
 };

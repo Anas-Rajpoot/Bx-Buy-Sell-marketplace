@@ -86,6 +86,7 @@ class ApiClient {
       endpoint.startsWith('/question-admin') ||
       endpoint.startsWith('/service-tool') ||
       endpoint.startsWith('/admin-social-account') ||
+      endpoint.startsWith('/financial-admin/template') ||
       endpoint.startsWith('/subscription/plans') ||
       endpoint.startsWith('/subscription/rules-preview');
     
@@ -102,10 +103,13 @@ class ApiClient {
     const queryParams = queryString ? `?${queryString}` : '';
     const url = `${API_BASE_URL}${path}${queryParams}`;
     
+    const isFormData = options.body instanceof FormData;
     const headers: HeadersInit = {
-      'Content-Type': 'application/json',
       ...options.headers,
     };
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
+    }
     if (finalBearerToken) {
       headers['Authorization'] = `Bearer ${finalBearerToken}`;
     }
@@ -512,21 +516,57 @@ class ApiClient {
 
   async createTool(toolData: { 
     name: string; 
-    image_path: string;
+    image_path?: string;
+    imageFile?: File;
   }) {
+    if (toolData.imageFile) {
+      const formData = new FormData();
+      formData.append('image', toolData.imageFile);
+      formData.append('name', toolData.name);
+      if (toolData.image_path) {
+        formData.append('image_path', toolData.image_path);
+      }
+      return this.request('/service-tool', {
+        method: 'POST',
+        body: formData,
+      });
+    }
+
     return this.request('/service-tool', {
       method: 'POST',
-      body: JSON.stringify(toolData),
+      body: JSON.stringify({
+        name: toolData.name,
+        image_path: toolData.image_path,
+      }),
     });
   }
 
   async updateTool(id: string, toolData: { 
     name?: string; 
     image_path?: string;
+    imageFile?: File;
   }) {
+    if (toolData.imageFile) {
+      const formData = new FormData();
+      formData.append('image', toolData.imageFile);
+      if (toolData.name) {
+        formData.append('name', toolData.name);
+      }
+      if (toolData.image_path) {
+        formData.append('image_path', toolData.image_path);
+      }
+      return this.request(`/service-tool/${id}`, {
+        method: 'PUT',
+        body: formData,
+      });
+    }
+
     return this.request(`/service-tool/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(toolData),
+      method: 'PUT',
+      body: JSON.stringify({
+        name: toolData.name,
+        image_path: toolData.image_path,
+      }),
     });
   }
 
@@ -697,6 +737,33 @@ class ApiClient {
   async deletePlan(id: string) {
     return this.request(`/plan/${id}`, {
       method: 'DELETE',
+    });
+  }
+
+  // Financial admin template (global P&L table for listing wizard)
+  async getFinancialAdminTemplate() {
+    return this.request('/financial-admin/template');
+  }
+
+  async updateFinancialAdmin(
+    userId: string,
+    payload: {
+      columns?: string[];
+      rows?: {
+        rowLabels: string[];
+        columnLabels: Array<{
+          key: string;
+          label: string;
+          isToday?: boolean;
+          labelCustomized?: boolean;
+        }>;
+        financialData: Record<string, Record<string, string>>;
+      };
+    },
+  ) {
+    return this.request(`/financial-admin/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
     });
   }
 

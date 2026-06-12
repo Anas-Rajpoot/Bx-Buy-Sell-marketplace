@@ -1,11 +1,11 @@
-import { LayoutGrid, Building2, Wrench, CreditCard, Info, Users, Megaphone, HandHeart, Package, TrendingUp, ShoppingBag, Target, ChevronDown, ChevronRight, Menu } from "lucide-react";
+import { LayoutGrid, Building2, Wrench, CreditCard, Users, Megaphone, HandHeart, Package, TrendingUp, ShoppingBag, Target, Menu } from "lucide-react";
 import type { DashboardStep } from "@/pages/Dashboard";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import logo from "@/assets/_App Icon 1 (2).png";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import {CategorySvg} from "../../"
+
 interface DashboardSidebarProps {
   activeStep: DashboardStep;
   onStepChange: (step: DashboardStep) => void;
@@ -17,26 +17,16 @@ const menuItems = [
   { id: "brand-information" as DashboardStep, label: "Brand Information", icon: Building2 },
   { id: "tools" as DashboardStep, label: "Tools you use", icon: Wrench },
   { id: "financials" as DashboardStep, label: "Financials", icon: CreditCard },
-  { id: "additional-information" as DashboardStep, label: "Additional Information", icon: Info, hasSubItems: true },
+  { id: "statistics" as DashboardStep, label: "Statistics", icon: TrendingUp },
+  { id: "products" as DashboardStep, label: "Products", icon: ShoppingBag },
+  { id: "management" as DashboardStep, label: "Management", icon: Target },
   { id: "accounts" as DashboardStep, label: "Accounts", icon: Users },
   { id: "ad-informations" as DashboardStep, label: "Ad Informations", icon: Megaphone },
   { id: "handover" as DashboardStep, label: "Handover", icon: HandHeart },
   { id: "packages" as DashboardStep, label: "Packages", icon: Package },
 ];
 
-const additionalInfoSubItems = [
-  { id: "statistics" as DashboardStep, label: "Statistics", icon: TrendingUp },
-  { id: "products" as DashboardStep, label: "Products", icon: ShoppingBag },
-  { id: "management" as DashboardStep, label: "Management", icon: Target },
-];
-
 const SidebarContent = ({ activeStep, onStepChange, onLinkClick }: { activeStep: DashboardStep; onStepChange: (step: DashboardStep) => void; onLinkClick?: () => void }) => {
-  const [isAdditionalInfoExpanded, setIsAdditionalInfoExpanded] = useState(
-    activeStep === "additional-information" || activeStep === "statistics" || activeStep === "products" || activeStep === "management"
-  );
-
-  const isAdditionalInfoActive = activeStep === "additional-information" || activeStep === "statistics" || activeStep === "products" || activeStep === "management";
-
   const handleStepChange = (step: DashboardStep) => {
     onStepChange(step);
     onLinkClick?.();
@@ -67,126 +57,8 @@ const SidebarContent = ({ activeStep, onStepChange, onLinkClick }: { activeStep:
       >
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = item.id === "additional-information" ? isAdditionalInfoActive : activeStep === item.id;
-          const hasSubItems = item.hasSubItems;
-          
-          if (item.id === "additional-information") {
-            return (
-              <div key={item.id}>
-                <button
-                  onClick={() => {
-                    setIsAdditionalInfoExpanded(!isAdditionalInfoExpanded);
-                    if (!isAdditionalInfoExpanded) {
-                      handleStepChange("additional-information");
-                    }
-                  }}
-                  className={`w-full flex items-center justify-between transition-all ${
-                    isActive ? "" : "hover:bg-white/5 rounded-lg px-3 sm:px-4 py-2.5 sm:py-3"
-                  }`}
-                  style={
-                    isActive
-                      ? {
-                          width: "100%",
-                          minHeight: "48px",
-                          borderRadius: "12px",
-                          paddingTop: "12px",
-                          paddingRight: "16px",
-                          paddingBottom: "12px",
-                          paddingLeft: "16px",
-                          gap: "8px",
-                          backgroundColor: "rgba(174, 243, 31, 1)",
-                        }
-                      : { gap: "8px" }
-                  }
-                >
-                  <div className="flex items-center" style={{ gap: "6px" }}>
-                    <Icon
-                      className="flex-shrink-0"
-                      style={{
-                        width: "20px",
-                        height: "20px",
-                        color: isActive ? "rgba(0, 0, 0, 1)" : "rgba(255, 255, 255, 1)",
-                        opacity: 1,
-                      }}
-                    />
-                    <span
-                      className="font-medium"
-                      style={{
-                        fontFamily: "Lufga",
-                        fontWeight: 500,
-                        fontSize: "14px",
-                        lineHeight: "150%",
-                        letterSpacing: "0%",
-                        color: isActive ? "rgba(0, 0, 0, 1)" : "rgba(255, 255, 255, 1)",
-                      }}
-                    >
-                      {item.label}
-                    </span>
-                  </div>
-                  {hasSubItems && (
-                    isAdditionalInfoExpanded ? (
-                  <ChevronDown
-                        className="flex-shrink-0 w-4 h-4 lg:w-7 lg:h-7"
-                        style={{
-                          color: isActive ? "rgba(0, 0, 0, 1)" : "rgba(255, 255, 255, 1)",
-                          opacity: 1,
-                        }}
-                      />
-                    ) : (
-                  <ChevronRight
-                        className="flex-shrink-0 w-4 h-4 lg:w-7 lg:h-7"
-                        style={{
-                          color: isActive ? "rgba(0, 0, 0, 1)" : "rgba(255, 255, 255, 1)",
-                          opacity: 1,
-                        }}
-                      />
-                    )
-                  )}
-                </button>
-                
-                {isAdditionalInfoExpanded && (
-                  <div className="ml-2 sm:ml-4 mt-1 space-y-1">
-                    {additionalInfoSubItems.map((subItem) => {
-                      const SubIcon = subItem.icon;
-                      const isSubActive = activeStep === subItem.id;
-                      
-                      return (
-                        <button
-                          key={subItem.id}
-                          onClick={() => handleStepChange(subItem.id)}
-                          className={`w-full flex items-center px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-all ${
-                            isSubActive ? "bg-white/10" : "hover:bg-white/5"
-                          }`}
-                          style={{ gap: "6px" }}
-                        >
-                          <SubIcon
-                            className="flex-shrink-0 w-4 h-4 lg:w-7 lg:h-7"
-                            style={{
-                              color: "rgba(255, 255, 255, 1)",
-                              opacity: 1,
-                            }}
-                          />
-                          <span
-                            style={{
-                              fontFamily: "Lufga",
-                              fontWeight: 500,
-                              fontSize: "14px",
-                              lineHeight: "150%",
-                              letterSpacing: "0%",
-                              color: "rgba(255, 255, 255, 1)",
-                            }}
-                          >
-                            {subItem.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          }
-          
+          const isActive = activeStep === item.id;
+
           return (
             <button
               key={item.id}

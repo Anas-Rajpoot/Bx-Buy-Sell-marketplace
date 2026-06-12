@@ -1,8 +1,15 @@
 import { z } from "zod";
+import { DOMAIN_VALIDATION_MESSAGE, isValidDomain } from "./domainUtils";
+
+const optionalDomainField = z
+  .string()
+  .refine((value) => !value || isValidDomain(value), DOMAIN_VALIDATION_MESSAGE)
+  .optional()
+  .or(z.literal(""));
 
 export const brandInformationSchema = z.object({
   brandName: z.string().min(2, "Brand name must be at least 2 characters").max(100, "Brand name must be less than 100 characters"),
-  website: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
+  website: optionalDomainField,
   foundedYear: z.string().regex(/^\d{4}$/, "Please enter a valid year (YYYY)"),
   location: z.string().min(2, "Location is required").max(100, "Location must be less than 100 characters"),
 });

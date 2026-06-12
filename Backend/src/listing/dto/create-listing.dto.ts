@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { createZodDto } from '@anatine/zod-nestjs';
 import { AnswerFor } from '@prisma/client';
+import {
+  DOMAIN_VALIDATION_MESSAGE,
+  getDomainAnswerForValidation,
+  isDomainQuestion,
+  isValidDomain,
+} from 'common/util/domain.util';
 
 // Brand
 export const Brand = z.object({
@@ -60,17 +66,32 @@ const normalizeAnswerType = (value: unknown) =>
   value === 'UMBER' ? 'NUMBER' : value;
 
 // Question
-export const Question = z.object({
-  id: z.string().min(2).optional(),
-  question: z.string().min(2).optional(),
-  answer_for: z.enum(['BRAND', 'PRODUCT', 'MANAGEMENT', 'HANDOVER', 'STATISTIC', 'ADVERTISMENT', 'SOCIAL']),
-  answer_type: z.preprocess(
-    normalizeAnswerType,
-    z.enum(['TEXT', 'SELECT', 'CHECKBOX', 'BOOLEAN', 'NUMBER', 'FILE', 'PHOTO', 'DATE', 'URL']),
-  ).optional(),
-  answer: z.union([z.string().min(2), z.array(z.string().min(1)).min(1)]).optional(),
-  option: z.array(z.string().min(2)).optional(),
-});
+export const Question = z
+  .object({
+    id: z.string().min(2).optional(),
+    question: z.string().min(2).optional(),
+    answer_for: z.enum(['BRAND', 'PRODUCT', 'MANAGEMENT', 'HANDOVER', 'STATISTIC', 'ADVERTISMENT', 'SOCIAL']),
+    answer_type: z.preprocess(
+      normalizeAnswerType,
+      z.enum(['TEXT', 'SELECT', 'CHECKBOX', 'BOOLEAN', 'NUMBER', 'FILE', 'PHOTO', 'DATE', 'URL']),
+    ).optional(),
+    answer: z.union([z.string().min(2), z.array(z.string().min(1)).min(1)]).optional(),
+    option: z.array(z.string().min(2)).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!isDomainQuestion(data.question)) return;
+
+    const domainAnswer = getDomainAnswerForValidation(data.answer);
+    if (!domainAnswer) return;
+
+    if (!isValidDomain(domainAnswer)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: DOMAIN_VALIDATION_MESSAGE,
+        path: ['answer'],
+      });
+    }
+  });
 
 
 

@@ -4,7 +4,8 @@ import { toast } from "sonner";
 
 interface UpdateToolData {
   name: string;
-  image_path: string;
+  image_path?: string;
+  imageFile?: File;
 }
 
 export const useUpdateTool = () => {

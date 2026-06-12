@@ -26,13 +26,13 @@ import {
 } from "@/lib/draftListingStorage";
 import { LISTING_PUBLISH_PENDING_SESSION_KEY } from "@/lib/listingGuestSession";
 import { toast } from "sonner";
+import { getAdminFinancialsTemplateVersion } from "@/lib/financialTableUtils";
 
 export type DashboardStep = 
   | "category" 
   | "brand-information" 
   | "tools" 
   | "financials" 
-  | "additional-information"
   | "statistics"
   | "products"
   | "management"
@@ -431,7 +431,7 @@ const Dashboard = ({ mode: modeProp, listingId: listingIdProp }: ListingFormProp
             if (tableData) {
               transformedData.financialType = tableData.financialType || "detailed";
               transformedData.rowLabels = tableData.rowLabels || [
-                "Gross Revenue",
+                "Revenue",
                 "Net Revenue",
                 "Cost of Goods",
                 "Advertising costs",
@@ -446,6 +446,7 @@ const Dashboard = ({ mode: modeProp, listingId: listingIdProp }: ListingFormProp
                 { key: "Forecast 2025", label: "Forecast 2025" },
               ];
               transformedData.financialData = tableData.financialData || {};
+              transformedData.financialsFromListing = true;
             }
           } catch {
             /* fall through to legacy */
@@ -595,15 +596,45 @@ const Dashboard = ({ mode: modeProp, listingId: listingIdProp }: ListingFormProp
       case "tools":
         return <ToolsStep formData={formData} onNext={(data) => { updateFormData(data); setActiveStep("financials"); }} onBack={() => setActiveStep("brand-information")} />;
       case "financials":
-        return <FinancialsStep formData={formData} onNext={(data) => { updateFormData(data); setActiveStep("additional-information"); }} onBack={() => setActiveStep("tools")} />;
-      case "additional-information":
-        return <AdditionalInformationStep formData={formData} onNext={(data) => { updateFormData(data); setActiveStep("accounts"); }} onBack={() => setActiveStep("financials")} defaultTab="statistics" />;
+        return (
+          <FinancialsStep
+            key={`financials-${getAdminFinancialsTemplateVersion()}`}
+            isEditListing={isEditMode}
+            formData={formData}
+            onNext={(data) => {
+              updateFormData(data);
+              setActiveStep("statistics");
+            }}
+            onBack={() => setActiveStep("tools")}
+          />
+        );
       case "statistics":
-        return <AdditionalInformationStep formData={formData} onNext={(data) => { updateFormData(data); setActiveStep("accounts"); }} onBack={() => setActiveStep("financials")} defaultTab="statistics" />;
+        return (
+          <AdditionalInformationStep
+            formData={formData}
+            onNext={(data) => { updateFormData(data); setActiveStep("products"); }}
+            onBack={() => setActiveStep("financials")}
+            defaultTab="statistics"
+          />
+        );
       case "products":
-        return <AdditionalInformationStep formData={formData} onNext={(data) => { updateFormData(data); setActiveStep("accounts"); }} onBack={() => setActiveStep("financials")} defaultTab="products" />;
+        return (
+          <AdditionalInformationStep
+            formData={formData}
+            onNext={(data) => { updateFormData(data); setActiveStep("management"); }}
+            onBack={() => setActiveStep("statistics")}
+            defaultTab="products"
+          />
+        );
       case "management":
-        return <AdditionalInformationStep formData={formData} onNext={(data) => { updateFormData(data); setActiveStep("accounts"); }} onBack={() => setActiveStep("financials")} defaultTab="management" />;
+        return (
+          <AdditionalInformationStep
+            formData={formData}
+            onNext={(data) => { updateFormData(data); setActiveStep("accounts"); }}
+            onBack={() => setActiveStep("products")}
+            defaultTab="management"
+          />
+        );
       case "accounts":
         return <AccountsStep formData={formData} onNext={(data) => { updateFormData(data); setActiveStep("ad-informations"); }} onBack={() => setActiveStep("management")} />;
       case "ad-informations":

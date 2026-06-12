@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { TrendingUp, Package, Target, ImageIcon, X, Loader2 } from "lucide-react";
+import { ImageIcon, X, Loader2 } from "lucide-react";
 import { useStatisticQuestions } from "@/hooks/useStatisticQuestions";
 import { useProductQuestions } from "@/hooks/useProductQuestions";
 import { useManagementQuestions } from "@/hooks/useManagementQuestions";
@@ -55,7 +55,11 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
 
   const isInventoryDependentQuestion = (questionText: string) => {
     const text = (questionText || "").toLowerCase();
-    return text.includes("how much") || text.includes("included in the price");
+    return (
+      text.includes("inventory value") ||
+      text.includes("how much") ||
+      text.includes("included in the price")
+    );
   };
 
   const getInventoryAnswer = (questions: any[]) => {
@@ -106,7 +110,12 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
 
   const getNumberAffix = (questionText: string) => {
     const text = (questionText || "").toLowerCase();
-    if (text.includes("average order value") || text.includes("order value") || text.includes("price")) {
+    if (
+      text.includes("inventory value") ||
+      text.includes("average order value") ||
+      text.includes("order value") ||
+      text.includes("price")
+    ) {
       return { prefix: "$", suffix: undefined };
     }
     if (
@@ -143,6 +152,11 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
     
     // Check if all questions have answers
     questionsToValidate.forEach((question: any) => {
+      const inventoryAnswer = getInventoryAnswer(questionsToValidate);
+      if (isInventoryDependentQuestion(question.question) && !isInventoryYes(inventoryAnswer)) {
+        return;
+      }
+
       const value = formData[question.id];
 
       if (isSplitQuestion(question.question)) {
@@ -282,55 +296,18 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
             gap: "16px",
           }}
         >
-          <div className="flex items-center justify-between">
-            <span
-              style={{
-                fontFamily: "Lufga",
-                fontWeight: 500,
-                fontSize: "20px",
-                lineHeight: "140%",
-                letterSpacing: "0%",
-                color: "rgba(0, 0, 0, 1)",
-              }}
-            >
-              {question.question}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                const next = [...rows, { percent: "", name: "" }];
-                setFormData({ ...formData, [question.id]: next });
-              }}
-              style={{
-                height: "26px",
-                borderRadius: "4px",
-                paddingTop: "3px",
-                paddingRight: "12px",
-                paddingBottom: "3px",
-                paddingLeft: "12px",
-                gap: "4px",
-                background: "rgba(241, 241, 241, 1)",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: "Lufga",
-                  fontWeight: 500,
-                  fontSize: "14px",
-                  lineHeight: "140%",
-                  letterSpacing: "0%",
-                  color: "rgba(0, 0, 0, 1)",
-                }}
-              >
-                Add
-              </span>
-            </button>
-          </div>
+          <span
+            style={{
+              fontFamily: "Lufga",
+              fontWeight: 500,
+              fontSize: "20px",
+              lineHeight: "140%",
+              letterSpacing: "0%",
+              color: "rgba(0, 0, 0, 1)",
+            }}
+          >
+            {question.question}
+          </span>
           <div className="space-y-3">
             {rows.map((row: any, index: number) => (
               <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -347,33 +324,50 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
                     alignItems: "center",
                   }}
                 >
-                  <Input
-                    type="number"
-                    value={row?.percent || ""}
-                    onChange={(e) => {
-                      const next = [...rows];
-                      next[index] = { ...next[index], percent: e.target.value };
-                      const nextTotal = next.reduce((sum: number, r: any) => sum + (Number(r?.percent) || 0), 0);
-                      if (nextTotal > 100) {
-                        toast.error("Total must be 100% or less");
-                        return;
-                      }
-                      setFormData({ ...formData, [question.id]: next });
-                    }}
-                    placeholder="0%"
-                    className="border-none bg-transparent h-full p-0 focus:ring-0 focus:border-transparent hover:border-transparent focus-visible:ring-0 focus-visible:outline-none placeholder:text-black/50"
-                    style={{
-                      fontFamily: "Lufga",
-                      fontWeight: 400,
-                      fontSize: "18px",
-                      lineHeight: "140%",
-                      letterSpacing: "0%",
-                      color: "rgba(0, 0, 0, 1)",
-                      outline: "none",
-                      boxShadow: "none",
-                      appearance: "textfield",
-                    }}
-                  />
+                  <div className="relative w-full">
+                    <Input
+                      type="number"
+                      value={row?.percent || ""}
+                      onChange={(e) => {
+                        const next = [...rows];
+                        next[index] = { ...next[index], percent: e.target.value };
+                        const nextTotal = next.reduce((sum: number, r: any) => sum + (Number(r?.percent) || 0), 0);
+                        if (nextTotal > 100) {
+                          toast.error("Total must be 100% or less");
+                          return;
+                        }
+                        setFormData({ ...formData, [question.id]: next });
+                      }}
+                      placeholder="0"
+                      className="border-none bg-transparent h-full w-full p-0 pr-6 focus:ring-0 focus:border-transparent hover:border-transparent focus-visible:ring-0 focus-visible:outline-none placeholder:text-black/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      style={{
+                        fontFamily: "Lufga",
+                        fontWeight: 400,
+                        fontSize: "18px",
+                        lineHeight: "140%",
+                        letterSpacing: "0%",
+                        color: "rgba(0, 0, 0, 1)",
+                        outline: "none",
+                        boxShadow: "none",
+                      }}
+                    />
+                    <span
+                      style={{
+                        position: "absolute",
+                        right: 0,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        fontFamily: "Lufga",
+                        fontWeight: 400,
+                        fontSize: "18px",
+                        lineHeight: "140%",
+                        color: "rgba(0, 0, 0, 0.5)",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      %
+                    </span>
+                  </div>
                 </div>
                 <div
                   style={{
@@ -411,6 +405,44 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
                 </div>
               </div>
             ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                const next = [...rows, { percent: "", name: "" }];
+                setFormData({ ...formData, [question.id]: next });
+              }}
+              style={{
+                height: "26px",
+                width: "fit-content",
+                borderRadius: "4px",
+                paddingTop: "3px",
+                paddingRight: "12px",
+                paddingBottom: "3px",
+                paddingLeft: "12px",
+                gap: "4px",
+                background: "rgba(241, 241, 241, 1)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "Lufga",
+                  fontWeight: 500,
+                  fontSize: "14px",
+                  lineHeight: "140%",
+                  letterSpacing: "0%",
+                  color: "rgba(0, 0, 0, 1)",
+                }}
+              >
+                Add
+              </span>
+            </button>
           </div>
         </div>
       );
@@ -711,7 +743,9 @@ export const AdditionalInformationStep = ({ formData: parentFormData, onNext, on
 
   return (
     <div className="max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">Additional Information</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">
+        {activeTab === "statistics" ? "Statistics" : activeTab === "products" ? "Products" : "Management"}
+      </h1>
 
       {activeTab === "statistics" && (
         <div className="space-y-6 bg-card rounded-2xl p-6 sm:p-8 border border-border shadow-lg">

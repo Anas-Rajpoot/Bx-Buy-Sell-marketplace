@@ -1,10 +1,26 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import {
+  displayRowLabel,
+  GROSS_REVENUE_ROW,
+  OVERALL_COSTS_ROW,
+  REVENUE_ROW,
+  FINANCIALS_TEMPLATE_UPDATED_EVENT,
+  fetchAdminFinancialsTemplate,
+  loadAdminFinancialsTemplate,
+  mergeFinancialCellValues,
+  normalizeFinancialData,
+  normalizeRowLabels,
+  syncFinancialGrid,
+  type AdminFinancialsTemplate,
+  type FinancialColumn,
+} from "@/lib/financialTableUtils";
 
 interface FinancialsStepProps {
   formData?: any;
+  isEditListing?: boolean;
   onNext: (data: any) => void;
   onBack: () => void;
 }
@@ -18,19 +34,31 @@ const getTodayDate = () => {
   return `${day}.${month}.${year}`;
 };
 
-const OVERALL_COSTS_ROW = "Overall Costs";
-
 /** Legacy tables / localStorage may omit the simple-mode aggregate row. */
 const insertOverallCostsRow = (labels: string[]): string[] => {
   if (labels.includes(OVERALL_COSTS_ROW)) return labels;
-  const gi = labels.indexOf("Gross Revenue");
-  if (gi === -1) return ["Gross Revenue", OVERALL_COSTS_ROW, ...labels];
-  return [...labels.slice(0, gi + 1), OVERALL_COSTS_ROW, ...labels.slice(gi + 1)];
+  const revenueIndex = labels.indexOf(REVENUE_ROW);
+  const grossRevenueIndex = labels.indexOf(GROSS_REVENUE_ROW);
+  const idx = revenueIndex !== -1 ? revenueIndex : grossRevenueIndex;
+  if (idx === -1) return [REVENUE_ROW, OVERALL_COSTS_ROW, ...labels];
+
+  // If we have legacy "Gross Revenue", treat it as "Revenue" for display/state.
+  const normalized = labels.map((l) => (l === GROSS_REVENUE_ROW ? REVENUE_ROW : l));
+  const normalizedRevenueIndex = normalized.indexOf(REVENUE_ROW);
+  if (normalizedRevenueIndex === -1) {
+    return [REVENUE_ROW, OVERALL_COSTS_ROW, ...normalized];
+  }
+
+  return [
+    ...normalized.slice(0, normalizedRevenueIndex + 1),
+    OVERALL_COSTS_ROW,
+    ...normalized.slice(normalizedRevenueIndex + 1),
+  ];
 };
 
 const padOverallCostsData = (
   data: Record<string, Record<string, string>>,
-  cols: Array<{ key: string }>
+  cols: Array<{ key: string }>,
 ): Record<string, Record<string, string>> => {
   if (data[OVERALL_COSTS_ROW]) return data;
   const row: Record<string, string> = {};
@@ -40,134 +68,202 @@ const padOverallCostsData = (
   return { ...data, [OVERALL_COSTS_ROW]: row };
 };
 
-export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: FinancialsStepProps) => {
-  const FINANCIALS_STORAGE_KEY = "admin_financials_table_v1";
+const defaultColumnLabels = (): FinancialColumn[] => [
+  { key: "2023", label: "2023" },
+  { key: "2024", label: "2024" },
+  { key: "today", label: getTodayDate(), isToday: true },
+  { key: "Forecast 2025", label: "Forecast 2025" },
+];
+
+const defaultRowLabels = [
+  REVENUE_ROW,
+  OVERALL_COSTS_ROW,
+  "Net Revenue",
+  "Cost of Goods",
+  "Advertising costs",
+  "Freelancer/Employees",
+  "Transaction Costs",
+  "Other Expenses",
+];
+
+const resolveRowsForMode = (
+  rows: string[],
+  mode: "simple" | "detailed",
+  fromAdmin: boolean,
+): string[] => {
+  const normalized = normalizeRowLabels(rows);
+  if (mode === "simple") {
+    return insertOverallCostsRow(normalized);
+  }
+  if (fromAdmin) {
+    return normalized;
+  }
+  return insertOverallCostsRow(normalized);
+};
+
+const buildDefaultTableState = () => {
+  const cols = defaultColumnLabels();
+  const rows = defaultRowLabels;
+  return {
+    rowLabels: rows,
+    columnLabels: cols,
+    financialData: syncFinancialGrid(rows, cols, {}),
+    fromAdmin: false,
+  };
+};
+
+const buildInitialTableState = (isEditListing: boolean) => {
+  if (!isEditListing) {
+    return buildDefaultTableState();
+  }
+
+  const adminTemplate = loadAdminFinancialsTemplate();
+  if (adminTemplate) {
+    const rows = normalizeRowLabels(adminTemplate.rowLabels);
+    return {
+      rowLabels: rows,
+      columnLabels: adminTemplate.columnLabels,
+      financialData: adminTemplate.financialData,
+      fromAdmin: true,
+    };
+  }
+
+  return buildDefaultTableState();
+};
+
+export const FinancialsStep = ({
+  formData: parentFormData,
+  isEditListing = false,
+  onNext,
+  onBack,
+}: FinancialsStepProps) => {
+  const initialTable = buildInitialTableState(isEditListing);
   const [financialType, setFinancialType] = useState<"detailed" | "simple">("detailed");
+  const [columnLabels, setColumnLabels] = useState<FinancialColumn[]>(initialTable.columnLabels);
+  const [rowLabels, setRowLabels] = useState<string[]>(initialTable.rowLabels);
+  const [financialData, setFinancialData] = useState<Record<string, Record<string, string>>>(
+    initialTable.financialData,
+  );
+  const [templateLoading, setTemplateLoading] = useState(!isEditListing);
+  const financialDataRef = useRef(financialData);
+  financialDataRef.current = financialData;
 
-  // Default row labels (expense categories); Overall Costs sits after Gross for simple P&L
-  const defaultRowLabels = [
-    "Gross Revenue",
-    OVERALL_COSTS_ROW,
-    "Net Revenue",
-    "Cost of Goods",
-    "Advertising costs",
-    "Freelancer/Employees",
-    "Transaction Costs",
-    "Other Expenses"
-  ];
+  const applyTable = (
+    rows: string[],
+    cols: FinancialColumn[],
+    data: Record<string, Record<string, string>>,
+    type: "simple" | "detailed" = financialType,
+    fromAdmin = false,
+  ) => {
+    const resolvedRows = resolveRowsForMode(rows, type, fromAdmin);
+    setRowLabels(resolvedRows);
+    setColumnLabels(cols);
+    setFinancialData(
+      padOverallCostsData(syncFinancialGrid(resolvedRows, cols, data), cols),
+    );
+    setFinancialType(type);
+  };
 
-  // Default column labels (time periods)
-  const [columnLabels, setColumnLabels] = useState<Array<{ key: string; label: string; isToday?: boolean }>>([
-    { key: "2023", label: "2023" },
-    { key: "2024", label: "2024" },
-    { key: "today", label: getTodayDate(), isToday: true },
-    { key: "Forecast 2025", label: "Forecast 2025" }
-  ]);
+  const applyAdminTemplate = (
+    adminTemplate: AdminFinancialsTemplate,
+    draftFinancialData?: Record<string, Record<string, string>>,
+  ) => {
+    const baseRows = normalizeRowLabels(adminTemplate.rowLabels);
+    const mergedData = mergeFinancialCellValues(
+      adminTemplate.financialData,
+      draftFinancialData ?? parentFormData?.financialData,
+      baseRows,
+      adminTemplate.columnLabels,
+    );
+    applyTable(
+      baseRows,
+      adminTemplate.columnLabels,
+      mergedData,
+      parentFormData?.financialType === "simple" ? "simple" : "detailed",
+      true,
+    );
+  };
 
-  const [rowLabels, setRowLabels] = useState<string[]>(defaultRowLabels);
-  const [financialData, setFinancialData] = useState<Record<string, Record<string, string>>>(() => {
-    const initialData: Record<string, Record<string, string>> = {};
-    defaultRowLabels.forEach(row => {
-      initialData[row] = {};
-      columnLabels.forEach(col => {
-        initialData[row][col.key] = "";
-      });
-    });
-    return initialData;
-  });
-
-  // Load data: listing (edit) wins over admin localStorage template so pre-fill is correct
-  useEffect(() => {
-    const fd = parentFormData?.financialData;
-    const hasListingFinancialTable =
-      fd &&
-      typeof fd === "object" &&
-      Object.keys(fd).length > 0 &&
+  const syncTableFromSources = (
+    draftFinancialData?: Record<string, Record<string, string>>,
+    adminTemplate?: AdminFinancialsTemplate | null,
+  ) => {
+    if (
+      isEditListing &&
+      parentFormData?.financialsFromListing &&
+      parentFormData?.financialData &&
       Array.isArray(parentFormData?.rowLabels) &&
-      parentFormData.rowLabels.length > 0;
-
-    if (hasListingFinancialTable) {
-      const cols = parentFormData.columnLabels || [];
-      setRowLabels(insertOverallCostsRow(parentFormData.rowLabels));
-      setFinancialData(padOverallCostsData(parentFormData.financialData, cols));
-      if (parentFormData.columnLabels?.length) {
-        setColumnLabels(parentFormData.columnLabels);
-      }
-      const ft = parentFormData.financialType;
-      if (ft === "simple" || ft === "detailed") {
-        setFinancialType(ft);
-      }
+      parentFormData.rowLabels.length > 0
+    ) {
+      applyTable(
+        parentFormData.rowLabels,
+        parentFormData.columnLabels || [],
+        normalizeFinancialData(parentFormData.financialData),
+        parentFormData.financialType === "simple" ? "simple" : "detailed",
+        false,
+      );
       return;
     }
 
-    let loadedFromStorage = false;
-    try {
-      const saved = localStorage.getItem(FINANCIALS_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.rowLabels)) {
-          const merged = insertOverallCostsRow(parsed.rowLabels);
-          setRowLabels(merged);
-        }
-        if (Array.isArray(parsed.columnLabels)) {
-          let cols = parsed.columnLabels;
-          const hasToday = cols.some((c: any) => c.isToday || c.key === "today");
-          if (!hasToday) {
-            cols = [...cols, { key: "today", label: getTodayDate(), isToday: true }];
-          }
-          setColumnLabels(cols);
-        }
-        if (parsed.financialData && typeof parsed.financialData === "object") {
-          let cols = Array.isArray(parsed.columnLabels) ? parsed.columnLabels : [];
-          if (cols.length === 0) {
-            const sample = parsed.financialData["Gross Revenue"] || Object.values(parsed.financialData)[0];
-            if (sample && typeof sample === "object") {
-              cols = Object.keys(sample as object).map((key) => ({ key }));
-            }
-          }
-          setFinancialData(padOverallCostsData(parsed.financialData, cols));
-        } else if (Array.isArray(parsed.rowLabels) && Array.isArray(parsed.columnLabels)) {
-          const mergedRows = insertOverallCostsRow(parsed.rowLabels);
-          const newData: Record<string, Record<string, string>> = {};
-          mergedRows.forEach((row: string) => {
-            newData[row] = {};
-            parsed.columnLabels.forEach((col: any) => {
-              newData[row][col.key] = "";
-            });
-          });
-          setFinancialData(padOverallCostsData(newData, parsed.columnLabels));
-        }
-        loadedFromStorage = true;
-      }
-    } catch (error) {
-      console.warn("Failed to load admin financials table:", error);
+    const template = adminTemplate ?? loadAdminFinancialsTemplate();
+    if (template) {
+      applyAdminTemplate(template, draftFinancialData);
+      return;
     }
 
-    if (!loadedFromStorage && parentFormData?.financialData && parentFormData?.rowLabels) {
-      const cols = parentFormData.columnLabels || [];
-      setRowLabels(insertOverallCostsRow(parentFormData.rowLabels));
-      setFinancialData(padOverallCostsData(parentFormData.financialData, cols));
-      if (parentFormData.columnLabels) {
-        setColumnLabels(parentFormData.columnLabels);
-      }
-      const ft = parentFormData.financialType;
-      if (ft === "simple" || ft === "detailed") {
-        setFinancialType(ft);
-      }
-    }
-  }, [
-    parentFormData?.financialData,
-    parentFormData?.rowLabels,
-    parentFormData?.columnLabels,
-    parentFormData?.financialType,
-  ]);
+    // New listings must follow admin template from server — never stale draft columns/rows.
+    if (!isEditListing) return;
 
-  // Keep today's column label current
-  useEffect(() => {
-    setColumnLabels(prev => prev.map(col =>
-      col.key === "today" || col.isToday ? { ...col, label: getTodayDate(), isToday: true } : col
-    ));
+    if (parentFormData?.financialData && parentFormData?.rowLabels) {
+      applyTable(
+        parentFormData.rowLabels,
+        parentFormData.columnLabels || defaultColumnLabels(),
+        normalizeFinancialData(parentFormData.financialData),
+        parentFormData.financialType === "simple" ? "simple" : "detailed",
+        false,
+      );
+    }
+  };
+
+  useLayoutEffect(() => {
+    if (!isEditListing) return;
+    syncTableFromSources();
+    setTemplateLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (isEditListing) return;
+    let cancelled = false;
+    void fetchAdminFinancialsTemplate(true, { serverOnly: true }).then((template) => {
+      if (cancelled) return;
+      if (template) {
+        applyAdminTemplate(template, parentFormData?.financialData);
+      }
+      setTemplateLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditListing]);
+
+  useEffect(() => {
+    const onTemplateUpdated = () => {
+      if (!isEditListing) {
+        setTemplateLoading(true);
+        void fetchAdminFinancialsTemplate(true, { serverOnly: true }).then((template) => {
+          if (template) {
+            applyAdminTemplate(template, financialDataRef.current);
+          }
+          setTemplateLoading(false);
+        });
+      }
+    };
+    window.addEventListener(FINANCIALS_TEMPLATE_UPDATED_EVENT, onTemplateUpdated);
+    return () => window.removeEventListener(FINANCIALS_TEMPLATE_UPDATED_EVENT, onTemplateUpdated);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditListing]);
 
   // Handle cell value change
   const handleCellChange = (row: string, col: string, value: string) => {
@@ -183,7 +279,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
   // Calculate Net Profit for a column
   const calculateNetProfit = (col: string) => {
     if (financialType === "simple") {
-      const gross = parseFloat(financialData["Gross Revenue"]?.[col] || "0");
+      const gross = parseFloat(financialData[REVENUE_ROW]?.[col] || financialData[GROSS_REVENUE_ROW]?.[col] || "0");
       const costs = parseFloat(financialData[OVERALL_COSTS_ROW]?.[col] || "0");
       return (gross - costs).toFixed(2);
     }
@@ -202,7 +298,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
 
   const visibleDataRows =
     financialType === "simple"
-      ? rowLabels.filter((row) => row === "Gross Revenue" || row === OVERALL_COSTS_ROW)
+      ? rowLabels.filter((row) => row === REVENUE_ROW || row === OVERALL_COSTS_ROW)
       : rowLabels.filter((row) => row !== OVERALL_COSTS_ROW);
 
 
@@ -223,23 +319,43 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
       return;
     }
 
+    let outRows = rowLabels;
+    let outCols = columnLabels;
+    let outData = financialData;
+
+    if (!isEditListing) {
+      const adminTemplate = loadAdminFinancialsTemplate();
+      if (adminTemplate) {
+        outRows = resolveRowsForMode(adminTemplate.rowLabels, financialType, true);
+        outCols = adminTemplate.columnLabels;
+        outData = mergeFinancialCellValues(
+          adminTemplate.financialData,
+          financialData,
+          normalizeRowLabels(adminTemplate.rowLabels),
+          outCols,
+        );
+      }
+    }
+
     onNext({
       financialType,
-      rowLabels,
-      columnLabels,
-      financialData,
+      rowLabels: outRows,
+      columnLabels: outCols,
+      financialData: outData,
+      financialsFromListing: isEditListing ? parentFormData?.financialsFromListing : false,
     });
   };
 
-  const columnWidth = 280;
+  // Slightly narrower columns so the table fits more comfortably
+  const columnWidth = 200;
 
   return (
     <div
       style={{
-        width: '1494px',
+        width: '1050px',
         maxWidth: '100%',
-        height: '1259px',
-        borderRadius: '32px',
+       
+        borderRadius: '24px',
         border: '1px solid rgba(0, 0, 0, 0.1)',
         background: 'rgba(255, 255, 255, 1)',
         padding: '24px',
@@ -253,7 +369,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
           fontFamily: 'Lufga',
           fontWeight: 500,
           fontStyle: 'normal',
-          fontSize: '32px',
+          fontSize: '26px',
           lineHeight: '140%',
           letterSpacing: '0%',
           color: 'rgba(0, 0, 0, 1)',
@@ -269,7 +385,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
           fontFamily: 'Lufga',
           fontWeight: 500,
           fontStyle: 'normal',
-          fontSize: '20px',
+          fontSize: '16px',
           lineHeight: '140%',
           letterSpacing: '0%',
           color: 'rgba(0, 0, 0, 0.5)',
@@ -280,46 +396,19 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
       </p>
 
       {/* Toggle Buttons */}
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
         <button
-          onClick={() => setFinancialType("detailed")}
-          style={{
-            width: '188.5px',
-            height: '56px',
-            borderRadius: '62px',
-            paddingTop: '13px',
-            paddingRight: '16px',
-            paddingBottom: '13px',
-            paddingLeft: '16px',
-            background: financialType === "detailed" ? 'rgba(198, 254, 31, 1)' : 'rgba(238, 238, 238, 1)',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
+          onClick={() => {
+            setFinancialType("simple");
+            setRowLabels((prev) => insertOverallCostsRow(prev));
+            setFinancialData((prev) =>
+              padOverallCostsData(prev, columnLabels),
+            );
           }}
-        >
-          <span
-            style={{
-              fontFamily: 'Lufga',
-              fontWeight: 600,
-              fontStyle: 'normal',
-              fontSize: '16px',
-              lineHeight: '160%',
-              letterSpacing: '0%',
-              textAlign: 'center',
-              color: 'rgba(0, 0, 0, 1)',
-            }}
-          >
-            Detailed
-          </span>
-        </button>
-        <button
-          onClick={() => setFinancialType("simple")}
           style={{
-            width: '188.5px',
-            height: '56px',
-            borderRadius: '62px',
+            width: '160px',
+            height: '44px',
+            borderRadius: '40px',
             paddingTop: '13px',
             paddingRight: '16px',
             paddingBottom: '13px',
@@ -337,7 +426,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
               fontFamily: 'Lufga',
               fontWeight: 600,
               fontStyle: 'normal',
-              fontSize: '16px',
+              fontSize: '14px',
               lineHeight: '160%',
               letterSpacing: '0%',
               textAlign: 'center',
@@ -347,16 +436,72 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
             Simple
           </span>
         </button>
+        <button
+          onClick={() => {
+            const adminTemplate = !isEditListing ? loadAdminFinancialsTemplate() : null;
+            const baseRows = adminTemplate
+              ? normalizeRowLabels(adminTemplate.rowLabels)
+              : rowLabels.filter((row) => row !== OVERALL_COSTS_ROW);
+            setFinancialType("detailed");
+            setRowLabels(baseRows);
+            setFinancialData((prev) => syncFinancialGrid(baseRows, columnLabels, prev));
+          }}
+          style={{
+            width: '160px',
+            height: '44px',
+            borderRadius: '40px',
+            paddingTop: '13px',
+            paddingRight: '16px',
+            paddingBottom: '13px',
+            paddingLeft: '16px',
+            background: financialType === "detailed" ? 'rgba(198, 254, 31, 1)' : 'rgba(238, 238, 238, 1)',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <span
+            style={{
+              fontFamily: 'Lufga',
+              fontWeight: 600,
+              fontStyle: 'normal',
+              fontSize: '14px',
+              lineHeight: '160%',
+              letterSpacing: '0%',
+              textAlign: 'center',
+              color: 'rgba(0, 0, 0, 1)',
+            }}
+          >
+            Detailed
+          </span>
+        </button>
       </div>
+
+      {templateLoading && (
+        <p
+          style={{
+            fontFamily: 'Lufga',
+            fontSize: '14px',
+            color: 'rgba(0, 0, 0, 0.5)',
+            marginBottom: '12px',
+          }}
+        >
+          Loading financial table from admin settings…
+        </p>
+      )}
 
       {/* Profit & Loss Table Container */}
       <div
         style={{
-          width: '1400px',
+          width: '100%',
           maxWidth: '100%',
-          height: '990.12px',
-          border: '4.14px solid rgba(255, 255, 255, 1)',
-          borderRadius: '16.57px',
+          height: '650px',
+          opacity: templateLoading ? 0.5 : 1,
+          pointerEvents: templateLoading ? 'none' : 'auto',
+          border: '3px solid rgba(255, 255, 255, 1)',
+          borderRadius: '14px',
           overflow: 'hidden',
           position: 'relative',
         }}
@@ -368,7 +513,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
             alignItems: 'center',
             justifyContent: 'center',
             width: `${columnWidth * (columnLabels.length + 1)}px`,
-            height: '108.62px',
+            height: '80px',
             backgroundColor: '#000000',
             marginBottom: 0,
           }}
@@ -379,7 +524,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
               fontFamily: 'Lufga',
               fontWeight: 600,
               fontStyle: 'normal',
-              fontSize: '49.7px',
+              fontSize: '32px',
               lineHeight: '100%',
               letterSpacing: '0%',
               color: 'rgba(255, 255, 255, 1)',
@@ -394,7 +539,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
           className="flex"
           style={{
             width: `${columnWidth * (columnLabels.length + 1)}px`,
-            height: '76.03px',
+            height: '60px',
             backgroundColor: '#C6FE1F',
           }}
         >
@@ -412,13 +557,13 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
                 fontFamily: 'Lufga',
                 fontWeight: 700,
                 fontStyle: 'normal',
-                fontSize: '33.14px',
+                fontSize: '20px',
                 lineHeight: '100%',
                 letterSpacing: '0%',
                 color: 'rgba(0, 0, 0, 1)',
               }}
             >
-              Zeitraum
+              Timeframe
             </span>
           </div>
           {columnLabels.map((col) => (
@@ -437,7 +582,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
                   fontFamily: 'Lufga',
                   fontWeight: 700,
                   fontStyle: 'normal',
-                  fontSize: '33.14px',
+                  fontSize: '20px',
                   lineHeight: '100%',
                   letterSpacing: '0%',
                   color: 'rgba(0, 0, 0, 1)',
@@ -452,7 +597,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
         {/* Data Rows */}
         <div>
           {visibleDataRows.map((row) => {
-            const isGrossRevenue = row === "Gross Revenue";
+            const isGrossRevenue = row === REVENUE_ROW || row === GROSS_REVENUE_ROW;
             const bgColor = isGrossRevenue ? 'rgba(66, 66, 66, 1)' : '#F3F8E8';
             const textColor = isGrossRevenue ? 'rgba(255, 255, 255, 1)' : 'rgba(0, 0, 0, 1)';
                 
@@ -462,7 +607,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
                 className="flex"
                 style={{
                   width: `${columnWidth * (columnLabels.length + 1)}px`,
-                  height: '91.12px',
+                  height: '64px',
                   backgroundColor: bgColor,
                 }}
               >
@@ -480,13 +625,13 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
                       fontFamily: 'Lufga',
                       fontWeight: 500,
                       fontStyle: 'normal',
-                      fontSize: '24.85px',
+                      fontSize: '16px',
                       lineHeight: '100%',
                       letterSpacing: '0%',
                       color: textColor,
                     }}
                   >
-                    {row}
+                    {displayRowLabel(row)}
                   </span>
                 </div>
                 {columnLabels.map((col) => (
@@ -509,7 +654,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
                         fontFamily: 'Lufga',
                         fontWeight: 500,
                         fontStyle: 'normal',
-                        fontSize: '24.85px',
+                        fontSize: '16px',
                         lineHeight: '100%',
                         letterSpacing: '0%',
                         color: textColor,
@@ -528,7 +673,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
             className="flex"
             style={{
               width: `${columnWidth * (columnLabels.length + 1)}px`,
-              height: '91.12px',
+              height: '64px',
               backgroundColor: '#C6FE1F',
             }}
           >
@@ -546,7 +691,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
                   fontFamily: 'Lufga',
                   fontWeight: 700,
                   fontStyle: 'normal',
-                  fontSize: '24.85px',
+                  fontSize: '16px',
                   lineHeight: '100%',
                   letterSpacing: '0%',
                   color: 'rgba(0, 0, 0, 1)',
@@ -574,7 +719,7 @@ export const FinancialsStep = ({ formData: parentFormData, onNext, onBack }: Fin
                       fontFamily: 'Lufga',
                       fontWeight: 700,
                       fontStyle: 'normal',
-                      fontSize: '24.85px',
+                      fontSize: '16px',
                       lineHeight: '100%',
                       letterSpacing: '0%',
                       color: 'rgba(0, 0, 0, 1)',

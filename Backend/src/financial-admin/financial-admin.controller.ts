@@ -1,6 +1,7 @@
 
 import { Controller, Get, Param,  Body, Patch } from '@nestjs/common';
 import { Roles } from 'common/decorator/roles.decorator';
+import { Public } from 'common/decorator/public.decorator';
 import {  FinancialAdminDTO, FinancialAdminSchema } from './dto/financial-admin.dto';
 import { ZodValidationPipe } from 'common/validator/zod.validator';
 import { FinancialAdminService } from './financial-admin.service';
@@ -13,7 +14,11 @@ import { logSchema } from 'common/validator/logSchema.validator';
 export class FinancialAdminController {
 constructor(private readonly financialAdminService: FinancialAdminService) {}
 
-
+    @Public()
+    @Get('template')
+    findGlobalTemplate() {
+        return this.financialAdminService.findGlobalTemplate();
+    }
 
     @Get(':id')
     @ApiParam({ name: 'id', type: String, description:"UserID" })

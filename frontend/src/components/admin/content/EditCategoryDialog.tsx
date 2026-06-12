@@ -7,6 +7,7 @@ import { Upload } from "lucide-react";
 import { useUpdateCategory } from "@/hooks/useUpdateCategory";
 import { apiClient } from "@/lib/api";
 import { toast } from "sonner";
+import { resolveImageUrl } from "@/lib/imageUtils";
 
 interface Category {
   id: string;
@@ -134,7 +135,7 @@ export const EditCategoryDialog = ({ open, onOpenChange, category }: EditCategor
                 {imagePreview ? (
                   <div className="relative w-full h-full flex items-center justify-center">
                     <img
-                      src={imagePreview}
+                      src={imageFile ? imagePreview : resolveImageUrl(imagePreview)}
                       alt="Preview"
                       className="max-w-[120px] max-h-[120px] object-contain"
                     />

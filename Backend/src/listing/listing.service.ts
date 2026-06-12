@@ -9,6 +9,7 @@ import { UpdateListingT } from './dto/update-listing.dto';
 import { ListingSchemaT } from './dto/create-listing.dto';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { trimListingFeedRecord } from 'common/util/trim-listing-feed.util';
+import { normalizeDomainAnswer } from 'common/util/domain.util';
 
 type ViewerType = 'UNREGISTERED' | 'REGISTERED_FREE' | 'REGISTERED_PRO';
 
@@ -60,11 +61,18 @@ export class ListingService {
   }
 
   private normalizeQuestionArrayForStorage(items: any[] = []): any[] {
-    return items.map((item) => ({
-      ...item,
-      answer: this.normalizeAnswerForStorage(item?.answer),
-      answer_type: this.normalizeAnswerTypeForStorage(item?.answer_type),
-    }));
+    return items.map((item) => {
+      const normalizedAnswer = normalizeDomainAnswer(
+        item?.answer,
+        String(item?.question || ''),
+      );
+
+      return {
+        ...item,
+        answer: this.normalizeAnswerForStorage(normalizedAnswer),
+        answer_type: this.normalizeAnswerTypeForStorage(item?.answer_type),
+      };
+    });
   }
 
   private normalizeAnswerTypeForStorage(answerType: unknown) {

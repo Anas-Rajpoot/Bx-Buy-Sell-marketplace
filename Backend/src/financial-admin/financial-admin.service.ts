@@ -15,6 +15,12 @@ export class FinancialAdminService {
       },
     });
   }
+
+  findGlobalTemplate() {
+    return this.db.adminFinancial.findFirst({
+      orderBy: { updated_at: 'desc' },
+    });
+  }
   update(id: string, data: FinancialAdminSchemaT) {
     const payload = {...data}
     payload['userId'] = id  as any

@@ -3,10 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useUpdateTool } from "@/hooks/useUpdateTool";
 import { Tool } from "@/hooks/useTools";
-import { apiClient } from "@/lib/api";
 import { toast } from "sonner";
 
 interface EditToolDialogProps {
@@ -19,13 +17,13 @@ export const EditToolDialog = ({ open, onOpenChange, tool }: EditToolDialogProps
   const [name, setName] = useState("");
   const [logo, setLogo] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
   const { mutate: updateTool, isPending } = useUpdateTool();
 
   useEffect(() => {
     if (tool) {
       setName(tool.name);
       setLogo(tool.image_path);
+      setImageFile(null);
     }
   }, [tool]);
 
@@ -36,14 +34,6 @@ export const EditToolDialog = ({ open, onOpenChange, tool }: EditToolDialogProps
     }
   };
 
-  const uploadToBackend = async (file: File): Promise<string> => {
-    const response = await apiClient.uploadFile(file, 'photo');
-    if (!response.success || !response.data) {
-      throw new Error(response.error || 'Upload failed');
-    }
-    return response.data.url || response.data.path || '';
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -52,32 +42,19 @@ export const EditToolDialog = ({ open, onOpenChange, tool }: EditToolDialogProps
       return;
     }
 
-    let finalLogoUrl = logo.trim();
-
-    // Upload new image if provided
-    if (imageFile) {
-      setUploading(true);
-      try {
-        finalLogoUrl = await uploadToBackend(imageFile);
-        toast.success("Image uploaded successfully");
-      } catch (error) {
-        console.error('Upload error:', error);
-        toast.error("Failed to upload image");
-        setUploading(false);
-        return;
-      }
-      setUploading(false);
-    }
-
-    if (!finalLogoUrl) {
-      toast.error("Please provide a logo URL");
+    if (!imageFile && !logo.trim()) {
+      toast.error("Please provide a logo URL or upload an image");
       return;
     }
 
     updateTool(
       { 
         id: tool.id, 
-        data: { name: name.trim(), image_path: finalLogoUrl } 
+        data: { 
+          name: name.trim(),
+          image_path: imageFile ? undefined : logo.trim(),
+          imageFile: imageFile || undefined,
+        } 
       },
       {
         onSuccess: () => {
@@ -145,10 +122,10 @@ export const EditToolDialog = ({ open, onOpenChange, tool }: EditToolDialogProps
             </Button>
             <Button
               type="submit"
-              disabled={isPending || uploading || !name.trim()}
+              disabled={isPending || !name.trim()}
               className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90"
             >
-              {uploading ? "Uploading..." : isPending ? "Updating..." : "Update Tool"}
+              {isPending ? "Updating..." : "Update Tool"}
             </Button>
           </div>
         </form>

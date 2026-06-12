@@ -1789,6 +1789,19 @@ console.log("detasdetail", listing)
       // Parse JSON data stored in revenue_amount field
       console.log('🔍 Parsing revenue_amount:', tableFinancial.revenue_amount);
       financialTableData = JSON.parse(tableFinancial.revenue_amount);
+      // Normalize legacy "Gross Revenue" -> "Revenue" so labels & calculations match.
+      if (financialTableData?.rowLabels && Array.isArray(financialTableData.rowLabels)) {
+        financialTableData.rowLabels = financialTableData.rowLabels.map((r: string) =>
+          r === 'Gross Revenue' ? 'Revenue' : r,
+        );
+      }
+      if (financialTableData?.financialData && typeof financialTableData.financialData === 'object') {
+        const fd = financialTableData.financialData;
+        if (fd['Gross Revenue'] && !fd['Revenue']) {
+          fd['Revenue'] = fd['Gross Revenue'];
+          delete fd['Gross Revenue'];
+        }
+      }
       console.log('✅ Parsed financialTableData:', financialTableData);
     } catch (e) {
       console.error('❌ Error parsing financial table data:', e);
@@ -1818,7 +1831,7 @@ console.log("detasdetail", listing)
     const isSimple = tableData.financialType === 'simple';
 
     if (isSimple) {
-      const gross = parseFloat(fd['Gross Revenue']?.[colKey] || '0');
+      const gross = parseFloat(fd['Revenue']?.[colKey] || '0');
       const costs = parseFloat(fd[OVERALL_COSTS_ROW]?.[colKey] || '0');
       return gross - costs;
     }
@@ -1839,7 +1852,7 @@ console.log("detasdetail", listing)
 
   // Default values if no table data
   const defaultRowLabels = [
-    'Gross Revenue',
+    'Revenue',
     'Net Revenue',
     'Cost of Goods',
     'Advertising costs',
@@ -1853,15 +1866,23 @@ console.log("detasdetail", listing)
     { key: 'today', label: new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) },
   ];
 
-  const rowLabels = financialTableData?.rowLabels || defaultRowLabels;
+  const rowLabels = (financialTableData?.rowLabels || defaultRowLabels).map((r: string) =>
+    r === 'Gross Revenue' ? 'Revenue' : r,
+  );
   const columnLabels = financialTableData?.columnLabels || defaultColumnLabels;
-  const financialData = financialTableData?.financialData || {};
+  const financialData = (() => {
+    const fd = financialTableData?.financialData || {};
+    if (fd['Gross Revenue'] && !fd['Revenue']) {
+      return { ...fd, Revenue: fd['Gross Revenue'] };
+    }
+    return fd;
+  })();
   const profitLossDisplayMode =
     financialTableData?.financialType === 'simple' ? 'simple' : 'detailed';
   const profitLossVisibleRows =
     profitLossDisplayMode === 'simple'
       ? rowLabels.filter(
-          (row: string) => row === 'Gross Revenue' || row === OVERALL_COSTS_ROW,
+          (row: string) => row === 'Revenue' || row === OVERALL_COSTS_ROW,
         )
       : rowLabels.filter((row: string) => row !== OVERALL_COSTS_ROW);
   const columnWidth = 200; // Reduced from 280 to fit table within container (first column remains 325px with +45px)
@@ -2913,7 +2934,7 @@ console.log("detasdetail", listing)
                         color: 'rgba(0, 0, 0, 1)',
                       }}
                     >
-                      Zeitraum
+                      Timeframe
                     </span>
                   </div>
                   {columnLabels.map((col) => (
@@ -2950,7 +2971,7 @@ console.log("detasdetail", listing)
 
                 {/* Data Rows (simple vs detailed matches FinancialsStep) */}
                 {profitLossVisibleRows.map((row: string) => {
-                  const isGrossRevenue = row === 'Gross Revenue';
+                  const isGrossRevenue = row === 'Revenue';
                   const bgColor = isGrossRevenue ? 'rgba(66, 66, 66, 1)' : '#F3F8E8';
                   const textColor = isGrossRevenue ? 'rgba(255, 255, 255, 1)' : 'rgba(0, 0, 0, 1)';
 
