@@ -315,7 +315,7 @@ const AllListings = () => {
       
       const response = isAuthenticated
         ? await apiClient.getSecureListings()
-        : await apiClient.getListings({ nocache: 'true' });
+        : await apiClient.getListings(); // Cached public feed (TTL ~10s, purged on create/update/delete)
       console.log('📦 API Response (ALL):', response);
       
       if (response.success) {

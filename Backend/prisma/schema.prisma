@@ -182,6 +182,9 @@ model Favourite {
   updated_at DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([listingId])
 }
 
 model Preference {
@@ -253,6 +256,10 @@ model Listing {
   created_at         DateTime          @default(now())
   updated_at         DateTime          @updatedAt
   deleted_at         DateTime?
+
+  // Feed queries filter by status + userId and order by created_at desc.
+  @@index([status, created_at])
+  @@index([userId])
 }
 
 model ListingConfidentialAccess {
@@ -281,6 +288,8 @@ model ListingCategory {
   updated_at DateTime @updatedAt
   listingId  String
   listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
 }
 
 model BusinessCategory {
@@ -396,6 +405,8 @@ model ListingTool {
   updated_at DateTime @updatedAt
   Listing    Listing? @relation(fields: [listingId], references: [id], onDelete: Cascade)
   listingId  String?
+
+  @@index([listingId])
 }
 
 model Brand {
@@ -419,6 +430,8 @@ model Revenue {
   listing        Listing?    @relation(fields: [listingId], references: [id], onDelete: Cascade)
   created_at     DateTime    @default(now())
   updated_at     DateTime    @updatedAt
+
+  @@index([listingId])
 }
 
 model ListingQuestion {
@@ -444,6 +457,16 @@ model ListingQuestion {
   advertisementId      String?
   social_account       Listing?    @relation("SocialQuestion", fields: [social_accountId], references: [id], onDelete: Cascade)
   social_accountId     String?
+
+  // Each relation on Listing resolves by one of these FKs; index them all so
+  // including questions in the feed is a lookup instead of a collection scan.
+  @@index([brandQuestionId])
+  @@index([productQuestionId])
+  @@index([managementQuestionId])
+  @@index([handoverQuestionId])
+  @@index([statisticsId])
+  @@index([advertisementId])
+  @@index([social_accountId])
 }
 
 model AdminQuestion {

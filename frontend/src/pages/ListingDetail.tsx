@@ -1574,7 +1574,7 @@ console.log("detasdetail", listing)
       try {
         const response = isAuthenticated
           ? await apiClient.getSecureListings()
-          : await apiClient.getListings({ nocache: 'true' });
+          : await apiClient.getListings(); // Cached public feed (TTL ~10s, purged on create/update/delete)
         if (response.success && response.data) {
           const allListings = Array.isArray(response.data) ? response.data : [];
           // Filter out current listing and get published listings (get more for carousel)

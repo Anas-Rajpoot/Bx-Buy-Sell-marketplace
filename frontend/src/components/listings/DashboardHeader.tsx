@@ -66,9 +66,7 @@ export const DashboardHeader = ({ onSearchClick, sidebarOpen, onSidebarOpenChang
     
     setModalLoading(true);
     try {
-      const response = await apiClient.getListings({
-        nocache: 'true',
-      });
+      const response = await apiClient.getListings(); // Cached public feed (TTL ~10s, purged on create/update/delete)
 
       if (response.success && response.data) {
         const allListingsData = Array.isArray(response.data) ? response.data : [];

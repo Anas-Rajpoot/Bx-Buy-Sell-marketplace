@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ListingsSidebar } from "@/components/listings/ListingsSidebar";
 import { ListingCardDashboard } from "@/components/listings/ListingCardDashboard";
 import { DashboardHeader } from "@/components/listings/DashboardHeader";
@@ -26,43 +27,58 @@ interface Listing {
 }
 
 const MyListings = () => {
-  const [listings, setListings] = useState<Listing[]>([]);
   const { user, loading: authLoading } = useAuth();
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const userId = user?.id;
 
-  const loadListings = useCallback(async () => {
-    if (!userId) return;
+  // Redirect unauthenticated users to login.
+  useEffect(() => {
+    if (!authLoading && !userId) {
+      navigate("/login");
+    }
+  }, [authLoading, userId, navigate]);
 
-    try {
+  // Fetch the user's listings through React Query so the result is CACHED.
+  // Navigating away and back shows the listings instantly (refreshed in the
+  // background) instead of a full-screen "Loading..." spinner on every visit.
+  const {
+    data: listings = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery<Listing[]>({
+    queryKey: ["my-listings", userId],
+    enabled: !authLoading && !!userId,
+    queryFn: async () => {
       // Authenticated endpoint: applies correct viewer context so "early access"
       // rules do not hide the current user's own new listings (public GET /listing does).
       const response = await apiClient.getSecureListings({
         userId,
         limit: 500,
-        nocache: "true",
       });
 
-      if (response.success && response.data != null) {
-        const payload = response.data as any;
-        const rawListings = Array.isArray(payload?.data)
-          ? payload.data
-          : Array.isArray(payload)
-            ? payload
-            : [];
+      if (!response.success || response.data == null) {
+        throw new Error((response.error as string) || "Failed to load listings");
+      }
 
-        const userListings = rawListings.filter((listing: any) => {
-          const listingUserId =
-            listing.userId ||
-            listing.user_id ||
-            listing.user?.id;
-          return listingUserId === userId;
-        });
+      const payload = response.data as any;
+      const rawListings = Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload)
+          ? payload
+          : [];
 
-        // Extract title from brand questions (same as admin listings)
-        const mappedListings: Listing[] = userListings.map((listing: any) => {
+      const userListings = rawListings.filter((listing: any) => {
+        const listingUserId =
+          listing.userId ||
+          listing.user_id ||
+          listing.user?.id;
+        return listingUserId === userId;
+      });
+
+      // Extract title from brand questions (same as admin listings)
+      const mappedListings: Listing[] = userListings.map((listing: any) => {
           // Get title from brand data
           let title = 'Untitled Listing';
           if (listing.brand && Array.isArray(listing.brand) && listing.brand.length > 0) {
@@ -186,40 +202,25 @@ const MyListings = () => {
           };
         });
 
-        setListings(mappedListings);
-      } else {
-        toast.error(response.error || "Failed to load listings");
-      }
-    } catch (error: any) {
-      console.error("Error loading listings:", error);
+      return mappedListings;
+    },
+  });
+
+  // Surface fetch failures the same way the old manual loader did.
+  useEffect(() => {
+    if (isError) {
       toast.error("Failed to load listings");
     }
-  }, [userId]);
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!userId) {
-      navigate("/login");
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-    (async () => {
-      await loadListings();
-      if (!cancelled) setLoading(false);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, authLoading, navigate, loadListings]);
+  }, [isError]);
 
   const filteredListings = listings.filter((listing) =>
     listing.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (loading || authLoading) {
+  // Only the (instant, localStorage-based) auth check gates the whole screen.
+  // The listings fetch shows a loader inside the content area instead, so the
+  // sidebar and header render immediately.
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -269,7 +270,14 @@ const MyListings = () => {
 
         {/* Main Content */}
         <main className="flex-1 p-2">
-          {filteredListings.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading...</p>
+              </div>
+            </div>
+          ) : filteredListings.length === 0 ? (
             <div className="text-center py-12 sm:py-16 md:py-20">
               <div className="max-w-md mx-auto px-4">
                 <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">
@@ -298,7 +306,7 @@ const MyListings = () => {
                 <ListingCardDashboard
                   key={listing.id}
                   {...listing}
-                  onUpdate={loadListings}
+                  onUpdate={() => refetch()}
                 />
               ))}
             </div>

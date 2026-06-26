@@ -27,10 +27,30 @@ import { Public } from 'common/decorator/public.decorator';
 export class ListingController {
   private readonly logger = new Logger(ListingController.name);
 
+  // Tracks the parameterized feed cache keys we've written (e.g.
+  // `ListingController:all:all:all:1:all`). cache-manager has no pattern-based
+  // deletion, so we remember the keys and purge them explicitly on
+  // create/update/delete. Without this, a stale feed lingers until the TTL.
+  private readonly feedCacheKeys = new Set<string>();
+
   constructor(
     private readonly listingService: ListingService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
+
+  /**
+   * Purge cached listing data after a mutation. Clears the per-listing entry
+   * (when an id is given) plus every cached feed page so the next read rebuilds
+   * fresh data immediately instead of waiting for the cache TTL to expire.
+   */
+  private async clearListingCaches(id?: string) {
+    if (id) {
+      await this.cacheManager.del(`${this.constructor.name}:${id}`);
+    }
+    const keys = Array.from(this.feedCacheKeys);
+    this.feedCacheKeys.clear();
+    await Promise.all(keys.map((key) => this.cacheManager.del(key)));
+  }
 
   @Public()
   @Get()
@@ -85,6 +105,7 @@ export class ListingController {
     // Only cache if we got results (don't cache empty arrays for too long)
     if (Array.isArray(data) && data.length > 0) {
       await this.cacheManager.set(cacheKey, data, CACHE_TTL);
+      this.feedCacheKeys.add(cacheKey);
     }
 
     return data;
@@ -187,8 +208,8 @@ export class ListingController {
       // CRITICAL: Use the authenticated user's ID from the JWT token
       // This ensures listings are always created under the correct user
       const data = await this.listingService.create(user.id, body);
-      await this.cacheManager.del(`${this.constructor.name}`);
-      
+      await this.clearListingCaches();
+
       return data;
     } catch (error) {
       throw error;
@@ -277,15 +298,11 @@ export class ListingController {
   ) {
     const { id: userId } = (req as any).user;
     const data = await this.listingService.update(id, userId, body);
-    
-    // Invalidate all listing caches - both the specific listing and all findAll queries
-    await this.cacheManager.del(`${this.constructor.name}:${id}`);
-    // Note: Cache manager doesn't support pattern deletion, so we clear the base key
-    // This will force fresh fetches on next request
-    await this.cacheManager.del(`${this.constructor.name}`);
-    
-    const listingData = data as any;
-    
+
+    // Invalidate the specific listing and every cached feed page so updates
+    // show up on the next read.
+    await this.clearListingCaches(id);
+
     return data;
   }
 
@@ -298,7 +315,7 @@ export class ListingController {
   })
   async delete(@Param('id') id: string) {
     const data = await this.listingService.delete(id);
-    await this.cacheManager.del(`${this.constructor.name}`);
+    await this.clearListingCaches(id);
     return data;
   }
 }

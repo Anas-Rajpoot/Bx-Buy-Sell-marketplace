@@ -90,25 +90,31 @@ export class UserService {
   }
 
   async getAllFavourite(id: string) {
-    console.log(id);
     const rows = await this.db.favourite.findMany({
       where: {
         userId: `${id}`,
       },
+      // The favourites grid renders the same card as the feed, so it only needs
+      // these relations. Skipping tools/productQuestion/managementQuestion/
+      // social_account/handover means fewer DB round-trips per favourite. The
+      // user is narrowed to safe public fields (never password_hash/refresh_token).
       include: {
         listing: {
           include: {
+            user: {
+              select: {
+                id: true,
+                created_at: true,
+                first_name: true,
+                last_name: true,
+                email: true,
+              },
+            },
             brand: true,
             advertisement: true,
             category: true,
             financials: true,
-            handover: true,
-            managementQuestion: true,
-            productQuestion: true,
-            social_account: true,
             statistics: true,
-            tools: true,
-            user: true,
           },
         },
       },

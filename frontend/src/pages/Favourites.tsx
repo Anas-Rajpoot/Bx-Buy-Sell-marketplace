@@ -1,5 +1,6 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ListingsSidebar } from "@/components/listings/ListingsSidebar";
 import { DashboardHeader } from "@/components/listings/DashboardHeader";
 import ListingCard from "@/components/ListingCard";
@@ -21,87 +22,58 @@ import { useCategories } from "@/hooks/useCategories";
 const Favourites = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
-  const [favorites, setFavorites] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [priceRange, setPriceRange] = useState("all");
   const [location, setLocation] = useState("all");
   const [age, setAge] = useState("all");
   const [niche, setNiche] = useState("all");
-  const hasLoadedRef = useRef(false);
-  const userIdRef = useRef<string | null>(null);
-  
+
   // Get categories for niche filter
   const { data: categoriesData = [] } = useCategories({ nocache: true });
-  const categories = ["All", ...categoriesData.map((c: any) => c.name).filter((name: string) => 
-    name !== "Managed by EX" && 
+  const categories = ["All", ...categoriesData.map((c: any) => c.name).filter((name: string) =>
+    name !== "Managed by EX" &&
     name !== "🤝 Managed by EX" &&
     name !== "managed by ex" &&
     name?.trim() !== ""
   )];
 
+  // Redirect unauthenticated users to login.
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       navigate("/login");
-      return;
     }
+  }, [authLoading, isAuthenticated, navigate]);
 
-    // Only load favorites once per user, or if user ID changes
-    const currentUserId = user?.id || null;
-    if (isAuthenticated && user && (currentUserId !== userIdRef.current || !hasLoadedRef.current)) {
-      userIdRef.current = currentUserId;
-      hasLoadedRef.current = true;
-      loadFavorites();
-    }
-  }, [isAuthenticated, authLoading, user?.id, navigate]); // Use user?.id instead of user
-
-  const loadFavorites = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    try {
-      // First get the favorites list
-      const favoritesResponse = await apiClient.getFavorites();
-      if (!favoritesResponse.success || !favoritesResponse.data) {
-        console.error('Error loading favorites:', favoritesResponse.error);
-        setFavorites([]);
-        return;
+  // Fetch favourites through React Query so the result is CACHED. Navigating
+  // away and back shows the saved favourites instantly (refreshed in the
+  // background) instead of a full-screen "Loading..." spinner on every visit.
+  // The favourites endpoint already returns each favourite with its full
+  // listing data (brand, advertisement, category, financials, user), so a
+  // single request is enough.
+  const { data: favorites = [], isLoading } = useQuery({
+    queryKey: ["favourites", user?.id],
+    queryFn: async () => {
+      const res = await apiClient.getFavorites();
+      if (!res.success || !res.data) {
+        throw new Error((res.error as string) || "Failed to load favourites");
       }
-      
-      const favoritesData = Array.isArray(favoritesResponse.data) ? favoritesResponse.data : [];
-      
-      // Get all listings to fetch full details for each favorite
-      const listingsResponse = await apiClient.getListings({ nocache: 'true' });
-      if (!listingsResponse.success || !listingsResponse.data) {
-        console.error('Error loading listings:', listingsResponse.error);
-        setFavorites(favoritesData); // Still show favorites even if we can't get full listing data
-        return;
-      }
-      
-      const allListings = Array.isArray(listingsResponse.data) ? listingsResponse.data : [];
-      
-      // Map favorites with full listing data
-      const favoritesWithFullData = favoritesData.map((favorite: any) => {
-        const listingId = favorite.listingId || favorite.listing?.id || favorite.id;
-        // Find the full listing data
-        const fullListing = allListings.find((listing: any) => listing.id === listingId);
-        
-        return {
-          ...favorite,
-          listing: fullListing || favorite.listing || favorite, // Use full listing if found, otherwise use what we have
-        };
-      });
-      
-      setFavorites(favoritesWithFullData);
-    } catch (error) {
-      console.error('Error loading favorites:', error);
-      setFavorites([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      const list = Array.isArray(res.data) ? res.data : [];
+      // Normalise so each card always has a `listing` object to read from.
+      return list.map((favorite: any) => ({
+        ...favorite,
+        listing: favorite.listing || favorite,
+      }));
+    },
+    enabled: isAuthenticated && !!user?.id,
+    // Default staleTime (0): revisits show cached favourites instantly (no
+    // spinner) while a background refetch picks up anything added/removed
+    // elsewhere — stale-while-revalidate.
+  });
 
-  if (authLoading || loading) {
+  // Only the (instant, localStorage-based) auth check gates the whole screen.
+  // The favourites fetch shows a loader inside the content area instead, so the
+  // sidebar and header render immediately.
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -127,7 +99,14 @@ const Favourites = () => {
         {/* Main Content */}
         <main className="px-4 sm:px-6 md:px-8 lg:px-10 py-4 sm:py-6 md:py-8">
           {/* Favorites List */}
-          {favorites.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading...</p>
+              </div>
+            </div>
+          ) : favorites.length === 0 ? (
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="text-center max-w-md px-4">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">

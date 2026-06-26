@@ -319,6 +319,11 @@ export class ListingService {
 
     const listings = await this.db.listing.findMany({
       where,
+      // Feed/card views only read these relations. The detail + edit pages use
+      // findOne (which still includes everything), so we deliberately skip
+      // tools/productQuestion/managementQuestion/social_account/handover here —
+      // each omitted relation is one fewer round-trip to the database per feed
+      // load and a smaller payload.
       include: {
         user: {
           select: {
@@ -331,14 +336,9 @@ export class ListingService {
         },
         brand: true,
         category: true,
-        tools: true,
         financials: true,
         statistics: true,
-        productQuestion: true,
-        managementQuestion: true,
-        social_account: true,
         advertisement: true,
-        handover: true,
       },
       skip: skip > 0 ? skip : undefined,
       take: limit,

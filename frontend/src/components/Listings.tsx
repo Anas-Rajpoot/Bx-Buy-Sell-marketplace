@@ -53,7 +53,7 @@ const Listings = ({ searchQuery }: ListingsProps) => {
       // Then filter to PUBLISH client-side to match admin behavior
       const response = isAuthenticated
         ? await apiClient.getSecureListings()
-        : await apiClient.getListings({ nocache: "true" }); // Bypass cache for public feed
+        : await apiClient.getListings(); // Cached public feed (TTL ~10s, purged on create/update/delete)
       console.log("📦 API Response (ALL):", response);
 
       if (response.success) {
