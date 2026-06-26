@@ -54,8 +54,16 @@ interface ConversationListProps {
   onConversationDeleted?: () => void; // Callback when conversation is deleted
 }
 
+// Cache the last successfully loaded conversations per user at module scope, so
+// they survive unmount/remount. A revisit then renders instantly from cache and
+// refreshes in the background, instead of showing the full "Loading
+// conversations..." spinner every time the Chat page is opened.
+const conversationsCache: Record<string, Conversation[]> = {};
+
 export const ConversationList = ({ selectedConversation, onSelectConversation, userId, refreshTrigger, onConversationDeleted }: ConversationListProps) => {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>(
+    () => conversationsCache[userId] ?? [],
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -358,6 +366,7 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
         return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
       });
 
+      conversationsCache[userId] = conversationsWithDetails;
       setConversations(conversationsWithDetails);
     } catch (error) {
       console.error('Error fetching conversations:', error);

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ListingsSidebar } from "@/components/listings/ListingsSidebar";
 import { DashboardHeader } from "@/components/listings/DashboardHeader";
 import { ConversationList } from "@/components/chat/ConversationList";
@@ -24,13 +25,13 @@ const ChatPaneLoader = () => (
 const Chat = () => {
   const { user, loading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
-  const [loading, setLoading] = useState(true);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [chatRoomData, setChatRoomData] = useState<{ userId: string; sellerId: string; listingId?: string } | null>(null);
-  const [hasConversations, setHasConversations] = useState(false);
   const [urlParamsProcessed, setUrlParamsProcessed] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [listRefreshToken, setListRefreshToken] = useState(0);
   const navigate = useNavigate();
+  const userId = user?.id;
 
   const handleSelectConversation = useCallback(
     (id: string, userId: string, sellerId: string) => {
@@ -45,92 +46,88 @@ const Chat = () => {
     setChatRoomData(null);
   }, []);
 
-  useEffect(() => {
-    const initializeChat = async () => {
-      if (!authLoading) {
-        if (!user) {
-          navigate("/login");
-          return;
-        }
-        
-        // Check if chatId is provided in URL params (from Contact Seller button)
-        const chatId = searchParams.get('chatId');
-        const userId = searchParams.get('userId');
-        const sellerId = searchParams.get('sellerId');
-        // No longer using listingId - merged conversations
-        
-        if (chatId && userId && sellerId && !urlParamsProcessed) {
-          // Auto-select the conversation from URL params (merged conversation)
-          setSelectedConversation(chatId);
-          setChatRoomData({ userId, sellerId });
-          setHasConversations(true);
-          setUrlParamsProcessed(true);
-          
-          setTimeout(() => {
-            navigate('/chat', { replace: true });
-          }, 1000);
-        } else if (!urlParamsProcessed) {
-          // No URL params, check for existing conversations
-          await checkConversations();
-          setUrlParamsProcessed(true);
-        }
-        
-        setLoading(false);
-      }
-    };
-    
-    initializeChat();
-  }, [user, authLoading, navigate, searchParams, urlParamsProcessed]);
-
-
-  
-  const [listRefreshToken, setListRefreshToken] = useState(0);
-
-  const checkConversations = async () => {
-    if (!user?.id) return;
-
-    try {
-      // Get chat rooms where user is buyer/seller in parallel
+  // Fetch the user's chat rooms through React Query so the result is CACHED.
+  // Navigating away and back shows the conversations instantly (refreshed in the
+  // background) instead of a full-screen "Loading..." spinner on every visit.
+  const {
+    data: rooms = [],
+    isLoading: roomsLoading,
+    refetch: refetchRooms,
+  } = useQuery({
+    queryKey: ["chat-rooms", userId],
+    enabled: !authLoading && !!userId,
+    queryFn: async () => {
+      if (!userId) return [];
+      // Rooms where the user is the buyer or the seller, fetched in parallel.
       const [buyerResponse, sellerResponse] = await Promise.all([
-        apiClient.getChatRoomsByUserId(user.id),
-        apiClient.getChatRoomsBySellerId(user.id),
+        apiClient.getChatRoomsByUserId(userId),
+        apiClient.getChatRoomsBySellerId(userId),
       ]);
 
-      const buyerRooms = buyerResponse.success && Array.isArray(buyerResponse.data) 
-        ? buyerResponse.data 
+      const buyerRooms = buyerResponse.success && Array.isArray(buyerResponse.data)
+        ? buyerResponse.data
         : [];
-      const sellerRooms = sellerResponse.success && Array.isArray(sellerResponse.data) 
-        ? sellerResponse.data 
+      const sellerRooms = sellerResponse.success && Array.isArray(sellerResponse.data)
+        ? sellerResponse.data
         : [];
 
-      // Combine and deduplicate
+      // Combine, deduplicate, and sort newest-first.
       const allRooms = [...buyerRooms, ...sellerRooms];
-      const uniqueRooms = allRooms.filter((room, index, self) => 
-        index === self.findIndex(r => r.id === room.id)
+      const uniqueRooms = allRooms.filter((room, index, self) =>
+        index === self.findIndex((r) => r.id === room.id)
       );
-
-      // Sort by updatedAt to get most recent first
-      uniqueRooms.sort((a, b) => 
-        new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()
+      uniqueRooms.sort((a, b) =>
+        new Date(b.updatedAt || b.createdAt || 0).getTime() -
+        new Date(a.updatedAt || a.createdAt || 0).getTime()
       );
+      return uniqueRooms;
+    },
+  });
 
-      setHasConversations(uniqueRooms.length > 0);
-      
-      // If no conversation is selected and we have conversations, auto-select the first (most recent) one
-      if (!selectedConversation && uniqueRooms.length > 0) {
-        const firstRoom = uniqueRooms[0];
-        setSelectedConversation(firstRoom.id);
-        setChatRoomData({ 
-          userId: firstRoom.userId, 
-          sellerId: firstRoom.sellerId
-        });
-      }
-    } catch (error) {
-      setHasConversations(false);
+  // Let child panes (ChatWindow / ChatDetails) refresh the room list on demand.
+  const checkConversations = useCallback(async () => {
+    await refetchRooms();
+  }, [refetchRooms]);
+
+  // Redirect unauthenticated users to login.
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/login");
     }
-  };
+  }, [authLoading, user, navigate]);
 
-  if (loading || authLoading) {
+  // Deep-link from the "Contact Seller" button: auto-select that conversation.
+  useEffect(() => {
+    if (authLoading || !user || urlParamsProcessed) return;
+
+    const chatId = searchParams.get("chatId");
+    const paramUserId = searchParams.get("userId");
+    const sellerId = searchParams.get("sellerId");
+
+    if (chatId && paramUserId && sellerId) {
+      setSelectedConversation(chatId);
+      setChatRoomData({ userId: paramUserId, sellerId });
+      setUrlParamsProcessed(true);
+      const timer = setTimeout(() => navigate("/chat", { replace: true }), 1000);
+      return () => clearTimeout(timer);
+    }
+
+    setUrlParamsProcessed(true);
+  }, [authLoading, user, urlParamsProcessed, searchParams, navigate]);
+
+  // Once rooms load, auto-select the most recent conversation if none is chosen.
+  useEffect(() => {
+    if (!selectedConversation && rooms.length > 0) {
+      const firstRoom = rooms[0];
+      setSelectedConversation(firstRoom.id);
+      setChatRoomData({ userId: firstRoom.userId, sellerId: firstRoom.sellerId });
+    }
+  }, [rooms, selectedConversation]);
+
+  const hasConversations = rooms.length > 0 || !!selectedConversation;
+
+  // Only the (instant, localStorage-based) auth check gates the whole screen.
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -145,7 +142,11 @@ const Chat = () => {
     return null;
   }
 
-  if (!hasConversations && !selectedConversation) {
+  // Show the full-page empty state only once we KNOW (rooms finished loading)
+  // there are none. While rooms are still loading we fall through to the chat
+  // layout, where the conversation list renders its own (cache-seeded) state —
+  // no blocking page-level spinner, so the shell appears immediately.
+  if (!roomsLoading && !hasConversations && !selectedConversation) {
     return (
       <div className="flex min-h-screen bg-background">
         {/* Sidebar handled in DashboardHeader for Chat tab */}

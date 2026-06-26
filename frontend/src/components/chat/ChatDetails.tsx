@@ -17,6 +17,7 @@ interface ChatDetailsProps {
   conversationId: string;
   userId?: string;
   sellerId?: string;
+  onLabelUpdated?: () => void;
 }
 
 export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }: ChatDetailsProps) => {
