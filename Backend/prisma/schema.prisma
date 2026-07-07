@@ -525,6 +525,10 @@ model Chat {
   chatLabels    ChatLabel[]
   SupportTicket SupportTicket[]
   confidentialAccesses ListingConfidentialAccess[]
+
+  // Conversation list filters by buyer (userId) or seller (sellerId).
+  @@index([userId])
+  @@index([sellerId])
 }
 
 model ChatLabel {

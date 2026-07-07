@@ -12,6 +12,14 @@ import { cn } from "@/lib/utils";
 import { createSocketConnection, getWebSocketUrl } from "@/lib/socket";
 import { Socket } from "socket.io-client";
 
+interface ChatParticipant {
+  id: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  profile_pic?: string;
+}
+
 interface ChatRoom {
   id: string;
   userId: string;
@@ -27,6 +35,11 @@ interface ChatRoom {
     read: boolean;
     createdAt: string;
   }>;
+  // Enriched by the API so the list needs no per-room follow-up requests.
+  user?: ChatParticipant;
+  seller?: ChatParticipant;
+  chatLabels?: Array<{ userId: string; label?: 'GOOD' | 'MEDIUM' | 'BAD' | null }>;
+  unreadCount?: number;
 }
 
 interface Conversation {
@@ -212,134 +225,71 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
         ? sellerResponse.data 
         : [];
 
-      // Combine and deduplicate by room ID first
+      // Combine and deduplicate by room id.
       const allRooms = [...buyerRooms, ...sellerRooms];
-      const uniqueRoomsById = allRooms.filter((room, index, self) => 
-        index === self.findIndex(r => r.id === room.id)
+      const uniqueRoomsById = allRooms.filter(
+        (room, index, self) => index === self.findIndex((r) => r.id === room.id),
       );
-      
-      // CRITICAL: Merge all chats with the same seller into ONE conversation
-      // Group by user pair ONLY (ignore listingId) - one conversation per seller
-      const roomsBySeller = new Map<string, ChatRoom>();
-      
-      uniqueRoomsById.forEach(room => {
-        // Create a normalized key based on user pair ONLY (not listingId)
-        // Sort userId and sellerId to handle both directions (user is buyer or seller)
-        // CRITICAL: Use sorted IDs to ensure same pair regardless of which is buyer/seller
-        const sortedIds = [room.userId, room.sellerId].sort();
-        const userPair = sortedIds.join('-');
-        
-        // If we already have a room with this seller, keep the one with the most recent updatedAt
-        const existing = roomsBySeller.get(userPair);
-        if (!existing || new Date(room.updatedAt || room.createdAt || 0) > new Date(existing.updatedAt || existing.createdAt || 0)) {
-          roomsBySeller.set(userPair, room);
-        } else {
-        }
+
+      // Merge all rooms with the same user-pair into ONE conversation (a pair may
+      // have chatted about several listings). Everything the card needs — the
+      // other participant, last message, per-user label and unread count — now
+      // comes enriched from the API, so there are no extra per-room requests.
+      const roomGroups = new Map<string, ChatRoom[]>();
+      uniqueRoomsById.forEach((room) => {
+        const userPair = [room.userId, room.sellerId].sort().join('-');
+        const group = roomGroups.get(userPair);
+        if (group) group.push(room);
+        else roomGroups.set(userPair, [room]);
       });
-      
-      const uniqueRooms = Array.from(roomsBySeller.values());
-      
-      const userIds = Array.from(
-        new Set(
-          uniqueRooms.map((room) => (room.userId === userId ? room.sellerId : room.userId)),
-        ),
-      );
-      const userDetails = await Promise.all(
-        userIds.map(async (id) => {
-          const res = await apiClient.getUserById(id);
-          return res.success ? res.data : null;
-        }),
-      );
-      const userMap = new Map(
-        userDetails.filter(Boolean).map((u: any) => [u.id, u]),
-      );
 
-      const conversationsWithDetails = await Promise.all(
-        uniqueRooms.map(async (room) => {
+      const conversationsWithDetails = Array.from(roomGroups.values()).map(
+        (groupRooms) => {
+          // Representative = the most recently updated room in the pair.
+          const room = groupRooms.reduce((a, b) =>
+            new Date(b.updatedAt || b.createdAt || 0).getTime() >
+            new Date(a.updatedAt || a.createdAt || 0).getTime()
+              ? b
+              : a,
+          );
+
           const otherUserId = room.userId === userId ? room.sellerId : room.userId;
-          const otherUser = userMap.get(otherUserId) || null;
+          const otherUser = room.userId === userId ? room.seller : room.user;
+          const fullName =
+            `${otherUser?.first_name || ''} ${otherUser?.last_name || ''}`.trim() ||
+            otherUser?.email ||
+            'Unknown User';
 
-          const firstName = otherUser?.first_name || '';
-          const lastName = otherUser?.last_name || '';
-          const fullName = `${firstName} ${lastName}`.trim() || otherUser?.email || 'Unknown User';
-
-          // Get ALL messages from ALL chat rooms with this seller (merged)
-          const chatResponse = await apiClient.getChatRoom(room.userId, room.sellerId);
-
-          let lastMessage = '';
-          let lastMessageAt = room.updatedAt;
-          let unreadCount = 0;
-
-          // Extract messages - handle both wrapped and direct responses
-          const chatData = chatResponse.data?.data || chatResponse.data;
-          const messages = chatResponse.success && chatData?.messages
-            ? (Array.isArray(chatData.messages) ? chatData.messages : [])
-            : [];
-            
-          // Extract label from chat data - filter by current userId since labels are per user
-          // Label could be: chatData.label, chatData.chatLabel (array), or room.label
-          let label: 'GOOD' | 'MEDIUM' | 'BAD' | null = null;
-          
-          // First check if there's a direct label property
-          if (chatData?.label) {
-            label = chatData.label;
-          } 
-          // Check chatLabel array - filter by current userId to get this user's label
-          else if (chatData?.chatLabel && Array.isArray(chatData.chatLabel) && chatData.chatLabel.length > 0) {
-            // Find the label for the current user
-            const userLabel = chatData.chatLabel.find((l: any) => l.userId === userId);
-            if (userLabel && userLabel.label) {
-              label = userLabel.label;
-            } else if (chatData.chatLabel.length > 0 && chatData.chatLabel[0].label) {
-              // Fallback to first label if no user-specific label found
-              label = chatData.chatLabel[0].label;
+          // Most recent message across the merged rooms (each carries its latest).
+          let lastMsg: { content?: string; createdAt: string } | null = null;
+          groupRooms.forEach((r) => {
+            const m = r.messages?.[0];
+            if (
+              m &&
+              (!lastMsg ||
+                new Date(m.createdAt).getTime() > new Date(lastMsg.createdAt).getTime())
+            ) {
+              lastMsg = m;
             }
-          }
-          // Check chatLabels array (alternate casing from backend)
-          else if (chatData?.chatLabels && Array.isArray(chatData.chatLabels) && chatData.chatLabels.length > 0) {
-            const userLabel = chatData.chatLabels.find((l: any) => l.userId === userId);
-            if (userLabel && userLabel.label) {
-              label = userLabel.label;
-            } else if (chatData.chatLabels.length > 0 && chatData.chatLabels[0].label) {
-              label = chatData.chatLabels[0].label;
-            }
-          } 
-          // Check room label as fallback
-          else if ((room as any).label) {
-            label = (room as any).label;
-          }
-          
-          // Normalize label to ensure it's one of the valid values
-          if (label && (label === 'GOOD' || label === 'MEDIUM' || label === 'BAD')) {
-            // Label is valid
-          } else {
-            label = null;
-          }
-          
-          if (messages.length > 0) {
-            // Sort by creation date (most recent first)
-            const sortedMessages = [...messages].sort((a, b) => 
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            );
-            
-            // Get last message (most recent)
-            const lastMsg = sortedMessages[0];
-            lastMessage = lastMsg?.content || '';
-            lastMessageAt = lastMsg?.createdAt || room.updatedAt;
-            
-            const isSelected = selectedConversation === room.id || selectedConversation === chatData?.id;
-            
-            if (isSelected) {
-              unreadCount = 0;
-            } else {
-              unreadCount = messages.filter(msg => 
-                msg.senderId !== userId && 
-                (msg.read === false || msg.read === null || msg.read === undefined)
-              ).length;
-            }
-          } else {
-            unreadCount = 0; // No messages = no unread
-          }
+          });
+          const latest = lastMsg as { content?: string; createdAt: string } | null;
+          const lastMessage = latest?.content || '';
+          const lastMessageAt = latest?.createdAt || room.updatedAt;
+
+          // Unread summed across the merged rooms (0 while the chat is open).
+          const isSelected = groupRooms.some((r) => r.id === selectedConversation);
+          const unreadCount = isSelected
+            ? 0
+            : groupRooms.reduce((sum, r) => sum + (r.unreadCount || 0), 0);
+
+          // This user's label for the conversation (labels are per user).
+          const labels = room.chatLabels || [];
+          const labelEntry = labels.find((l) => l.userId === userId) || labels[0];
+          const rawLabel = labelEntry?.label ?? null;
+          const label: 'GOOD' | 'MEDIUM' | 'BAD' | null =
+            rawLabel === 'GOOD' || rawLabel === 'MEDIUM' || rawLabel === 'BAD'
+              ? rawLabel
+              : null;
 
           return {
             id: room.id, // Use the most recent chat room's ID as the conversation ID
@@ -352,12 +302,11 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
             lastMessage,
             lastMessageAt,
             unreadCount,
-            label: label && (label === 'GOOD' || label === 'MEDIUM' || label === 'BAD') ? label : null,
+            label,
             isArchived: room.status === 'ARCHIVED',
             isPinned: pinnedChatIds.includes(room.id),
           };
-        })
-      );
+        });
 
       // Sort pinned chats first, then by last message time
       conversationsWithDetails.sort((a, b) => {

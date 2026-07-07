@@ -202,20 +202,80 @@ export class ChatService {
     return chatRoom;
   }
 
-  async getChatRoomsBySellerId(sellerId: string) {
-    return await this.db.chat.findMany({
-      where: {
-        sellerId: sellerId,
+  // Everything the conversation list needs in one shot, so the frontend no
+  // longer makes a getUserById + getChatRoom request per room (the old N+1 that
+  // made opening Chat slow). We include both participants, the per-user labels
+  // and just the most recent message; unread counts are attached separately.
+  private readonly conversationRoomInclude = {
+    user: {
+      select: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        email: true,
+        profile_pic: true,
       },
+    },
+    seller: {
+      select: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        email: true,
+        profile_pic: true,
+      },
+    },
+    chatLabels: true,
+    messages: {
+      orderBy: { createdAt: 'desc' as const },
+      take: 1,
+    },
+  };
+
+  async getChatRoomsBySellerId(sellerId: string) {
+    const chats = await this.db.chat.findMany({
+      where: { sellerId },
+      include: this.conversationRoomInclude,
+      orderBy: { updatedAt: 'desc' },
     });
+    return this.attachUnreadCounts(chats, sellerId);
   }
 
   async getChatRoomsByUserId(userId: string) {
-    return await this.db.chat.findMany({
-      where: {
-        userId: userId,
-      },
+    const chats = await this.db.chat.findMany({
+      where: { userId },
+      include: this.conversationRoomInclude,
+      orderBy: { updatedAt: 'desc' },
     });
+    return this.attachUnreadCounts(chats, userId);
+  }
+
+  /**
+   * Attach an `unreadCount` (messages from the other party this viewer has not
+   * read) to each chat using a single query instead of one request per room.
+   */
+  private async attachUnreadCounts<T extends { id: string }>(
+    chats: T[],
+    viewerId: string,
+  ): Promise<Array<T & { unreadCount: number }>> {
+    if (chats.length === 0) return [];
+    const chatIds = chats.map((c) => c.id);
+    const unreadMessages = await this.db.message.findMany({
+      where: {
+        chatId: { in: chatIds },
+        read: false,
+        senderId: { not: viewerId },
+      },
+      select: { chatId: true },
+    });
+    const unreadByChat = new Map<string, number>();
+    for (const message of unreadMessages) {
+      unreadByChat.set(message.chatId, (unreadByChat.get(message.chatId) ?? 0) + 1);
+    }
+    return chats.map((chat) => ({
+      ...chat,
+      unreadCount: unreadByChat.get(chat.id) ?? 0,
+    }));
   }
 
   async createMessage(data: {
