@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { chatRoomsQueryKey, fetchChatRooms } from "@/lib/chatRooms";
+import { seedChatRoomIfAbsent } from "@/lib/chatRoomCache";
 
 const ChatWindow = lazy(() =>
   import("@/components/chat/ChatWindow").then((m) => ({ default: m.ChatWindow }))
@@ -131,6 +132,18 @@ const Chat = () => {
 
     setUrlParamsProcessed(true);
   }, [authLoading, user, urlParamsProcessed, searchParams, navigate]);
+
+  // Seed the ChatWindow cache from the rooms we already have (each carries the
+  // participants + last message). So the FIRST time a conversation is opened it
+  // paints its header + last message instantly and skips straight to loading
+  // full history in the background — no cold spinner.
+  useEffect(() => {
+    rooms.forEach((room: any) => {
+      if (room?.id && room.userId && room.sellerId) {
+        seedChatRoomIfAbsent(room.userId, room.sellerId, room);
+      }
+    });
+  }, [rooms]);
 
   // No auto-select. The page loads with just the (light) conversation list, and
   // the heavy ChatWindow chunk + messages load ONLY when the user picks a chat

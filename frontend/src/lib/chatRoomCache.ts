@@ -19,6 +19,18 @@ export function setCachedChatRoom(userId: string, sellerId: string, data: any): 
   if (data?.id) cache.set(keyOf(userId, sellerId), data);
 }
 
+/**
+ * Seed a partial entry (e.g. the enriched room from the conversation list, which
+ * already carries the participants + last message) ONLY if nothing fuller is
+ * cached yet. Lets a first-time open paint the header + last message instantly
+ * while the full history loads in the background — without overwriting a cache
+ * that already holds the complete message list.
+ */
+export function seedChatRoomIfAbsent(userId: string, sellerId: string, data: any): void {
+  const key = keyOf(userId, sellerId);
+  if (data?.id && !cache.has(key)) cache.set(key, data);
+}
+
 export function clearCachedChatRoom(userId: string, sellerId: string): void {
   cache.delete(keyOf(userId, sellerId));
 }
