@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { VideoCall } from "./VideoCall";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { apiClient } from "@/lib/api";
+import { getCachedChatRoom, setCachedChatRoom } from "@/lib/chatRoomCache";
 import { formatChatTime, formatAdminMessageTime } from "@/lib/timeFormatter";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -231,45 +232,56 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
 
     const initializeChat = async () => {
       console.log('🚀 Initializing chat:', { conversationId, userId, sellerId, listingId });
-      setIsLoadingChatRoom(true);
-      
-      // Reset state when conversation changes
-      if (chatRoomLoadedRef.current) {
+
+      // Fast path: if this conversation was opened before, paint its cached
+      // messages instantly (no spinner) and refresh in the background.
+      const cachedChat = getCachedChatRoom(userId, sellerId);
+      const seeded = !!cachedChat?.id;
+
+      // Clear per-conversation refs either way so nothing leaks between chats.
+      pendingTempMessagesRef.current.clear();
+      processedMessageIdsRef.current.clear();
+      loadedMessageIdsRef.current.clear();
+      userScrolledUpRef.current = false;
+      shouldAutoScrollRef.current = true;
+      listenersRegisteredRef.current = false;
+
+      if (seeded) {
+        // Paint cached data immediately — no blanking, no loading spinner.
+        chatRoomLoadedRef.current = true;
+        setChatRoom(cachedChat);
+        loadMessages(cachedChat.messages || []);
+        await loadOtherUser(cachedChat);
+        setIsLoadingChatRoom(false);
+        if (mounted) connectSocket(cachedChat.id);
+      } else {
+        // No cache: show the loader and blank the panes before loading.
+        setIsLoadingChatRoom(true);
         chatRoomLoadedRef.current = false;
         setChatRoom(null);
-        setMessages([]); // Clear messages to prevent duplicates
+        setMessages([]);
         setOtherUser(null);
         setIsConnected(false);
-        pendingTempMessagesRef.current.clear(); // Clear pending temp messages
-        // Reset scroll state when conversation changes
-        userScrolledUpRef.current = false;
-        shouldAutoScrollRef.current = true;
-        listenersRegisteredRef.current = false; // Reset listener registration flag
-      } else {
-        // Also clear messages on initial load to prevent duplicates
-        setMessages([]);
-        pendingTempMessagesRef.current.clear(); // Clear pending temp messages
-        processedMessageIdsRef.current.clear(); // Clear processed message IDs on initial load
-        // Reset scroll state on initial load
-        userScrolledUpRef.current = false;
-        shouldAutoScrollRef.current = true;
       }
 
       try {
       // CRITICAL: Load chat room FIRST and wait for it to complete
         // Load merged conversation (no listingId - all messages with this seller together)
-        const loadedChatRoom = await loadChatRoomData(userId, sellerId);
-        
+        // When seeded, skip the internal clear+delay so cached messages don't flash.
+        const loadedChatRoom = await loadChatRoomData(userId, sellerId, undefined, { skipClear: seeded });
+
         if (!mounted) return;
-        
+
         if (loadedChatRoom?.id) {
-          // Chat room is loaded, now connect socket immediately
+          // Fresh data in — cache it for next time.
+          setCachedChatRoom(userId, sellerId, loadedChatRoom);
           console.log('✅ Chat room loaded, connecting socket...', { chatRoomId: loadedChatRoom.id });
           setIsLoadingChatRoom(false);
           // CRITICAL: Ensure chatRoom state is set before connecting socket
           // Use the loadedChatRoom directly instead of waiting for state update
           setChatRoom(loadedChatRoom);
-          if (mounted) {
+          // Socket is already connected on the seeded path (same room id).
+          if (mounted && !seeded) {
             connectSocket(loadedChatRoom.id);
           }
         } else if (!loadedChatRoom) {
@@ -321,6 +333,14 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
       listenersRegisteredRef.current = false; // Reset listener registration flag
     };
   }, [conversationId, userId, sellerId, listingId]);
+
+  // Keep the module cache in sync with live messages so re-opening this
+  // conversation later paints the latest state instantly (not a stale snapshot).
+  useEffect(() => {
+    if (chatRoom?.id && userId && sellerId && messagesLoadedFromDBRef.current) {
+      setCachedChatRoom(userId, sellerId, { ...chatRoom, messages });
+    }
+  }, [messages, chatRoom, userId, sellerId]);
 
   // STEP 2: Join room when socket connects AND chatRoom is loaded
   useEffect(() => {
@@ -468,7 +488,7 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
   }, [messages]);
 
   // Load chat room data from API - returns the loaded chat room
-  const loadChatRoomData = async (userId: string, sellerId: string, listingId?: string): Promise<any> => {
+  const loadChatRoomData = async (userId: string, sellerId: string, listingId?: string, opts?: { skipClear?: boolean }): Promise<any> => {
     try {
       // Load merged conversation with this seller (ignore listingId - all messages together)
       console.log('📥 Loading chat room data:', { userId, sellerId });
@@ -529,16 +549,20 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
         
         setChatRoom(chat);
         chatRoomLoadedRef.current = true;
-        
-        // Clear existing messages first to prevent duplicates when reloading
-        setMessages([]);
-        messagesLoadedFromDBRef.current = false;
-        loadedMessageIdsRef.current.clear();
-        pendingTempMessagesRef.current.clear(); // Clear pending temp messages
-        
-        // Small delay to ensure state is cleared before loading new messages
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
+
+        // Clear existing messages first to prevent duplicates when reloading.
+        // Skipped when seeding from cache — loadMessages() replaces the list
+        // anyway, so clearing here would just flash the cached messages away.
+        if (!opts?.skipClear) {
+          setMessages([]);
+          messagesLoadedFromDBRef.current = false;
+          loadedMessageIdsRef.current.clear();
+          pendingTempMessagesRef.current.clear(); // Clear pending temp messages
+
+          // Small delay to ensure state is cleared before loading new messages
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
         // Load messages from database - CRITICAL: Do this even if socket isn't connected yet
         if (chat.messages && Array.isArray(chat.messages)) {
           console.log('📥 Loading', chat.messages.length, 'messages from database for chat:', chat.id);
