@@ -284,22 +284,24 @@ const Chat = () => {
             </div>
           )}
 
-          {/* Third Div - Chat Details */}
-          {selectedConversation && chatRoomData && (
-            <div
-              className="hidden xl:flex flex-col flex-shrink-0 w-full xl:w-[320px] 2xl:w-[383px]"
-              style={{
-                height: '100%',
-                maxHeight: '100%',
-                borderRadius: '20px',
-                border: '1px solid rgba(0, 0, 0, 0.1)',
-                backgroundColor: 'rgba(255, 255, 255, 1)',
-                overflow: 'hidden',
-              }}
-            >
+          {/* Third Div - Chat Details — always part of the layout on xl+ screens
+              so the three-column shell shows with the list. It renders a
+              placeholder until a conversation is picked, then the real details. */}
+          <div
+            className="hidden xl:flex flex-col flex-shrink-0 w-full xl:w-[320px] 2xl:w-[383px]"
+            style={{
+              height: '100%',
+              maxHeight: '100%',
+              borderRadius: '20px',
+              border: '1px solid rgba(0, 0, 0, 0.1)',
+              backgroundColor: 'rgba(255, 255, 255, 1)',
+              overflow: 'hidden',
+            }}
+          >
+            {selectedConversation && chatRoomData ? (
               <Suspense fallback={<ChatPaneLoader />}>
-                <ChatDetails 
-                  conversationId={selectedConversation} 
+                <ChatDetails
+                  conversationId={selectedConversation}
                   userId={chatRoomData.userId}
                   sellerId={chatRoomData.sellerId}
                   onLabelUpdated={() => {
@@ -308,8 +310,17 @@ const Chat = () => {
                   }}
                 />
               </Suspense>
-            </div>
-          )}
+            ) : (
+              <div className="flex-1 flex items-center justify-center p-6">
+                <div className="text-center max-w-[220px]">
+                  <MessageSquare className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    Select a conversation to see its details
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
