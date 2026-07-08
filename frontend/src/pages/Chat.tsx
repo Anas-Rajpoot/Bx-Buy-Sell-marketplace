@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, useCallback } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ListingsSidebar } from "@/components/listings/ListingsSidebar";
@@ -89,8 +89,30 @@ const Chat = () => {
   });
 
   // Let child panes (ChatWindow / ChatDetails) refresh the room list on demand.
+  // ChatWindow calls this dozens of times per read-marking (nested setTimeouts),
+  // so THROTTLE it: at most one chat-rooms refetch every few seconds, no matter
+  // how many times it's invoked. This alone stops the request flood. The open
+  // chat's own messages still update instantly via ChatWindow's socket state;
+  // only the sidebar preview/unread lags by a couple of seconds.
+  const refreshThrottleRef = useRef<{ last: number; timer: ReturnType<typeof setTimeout> | null }>({
+    last: 0,
+    timer: null,
+  });
   const checkConversations = useCallback(async () => {
-    await refetchRooms();
+    const state = refreshThrottleRef.current;
+    const MIN_GAP_MS = 2500;
+    const elapsed = Date.now() - state.last;
+    if (elapsed >= MIN_GAP_MS) {
+      state.last = Date.now();
+      refetchRooms();
+    } else if (!state.timer) {
+      // Collapse the burst into a single trailing refetch.
+      state.timer = setTimeout(() => {
+        state.last = Date.now();
+        state.timer = null;
+        refetchRooms();
+      }, MIN_GAP_MS - elapsed);
+    }
   }, [refetchRooms]);
 
   // Redirect unauthenticated users to login.
