@@ -24,7 +24,9 @@ export const createSocketConnection = (options?: {
   const heartbeatIntervalMs = 25_000;
   
   const socket = io(WS_URL, {
-    transports: options?.transports || ['polling', 'websocket'],
+    // WebSocket-first: skips the HTTP long-polling handshake spam (nginx
+    // proxies the upgrade). Polling remains as an automatic fallback.
+    transports: options?.transports || ['websocket', 'polling'],
     reconnection: options?.reconnection !== undefined ? options.reconnection : true,
     reconnectionDelay: options?.reconnectionDelay || 1000,
     reconnectionDelayMax: 5000,

@@ -111,7 +111,7 @@ export const AdminConversationList = ({
     const wsUrl = getWebSocketUrl();
     
     const socket = createSocketConnection({
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       auth: {
         token: localStorage.getItem('auth_token')

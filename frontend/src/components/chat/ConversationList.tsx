@@ -6,41 +6,16 @@ import archiveIcon from "@/assets/archive.svg";
 import pinIcon from "@/assets/pin.svg";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { apiClient } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { chatRoomsQueryKey, fetchChatRooms, type EnrichedChatRoom } from "@/lib/chatRooms";
 import { formatChatTime } from "@/lib/timeFormatter";
 import { cn } from "@/lib/utils";
 import { createSocketConnection, getWebSocketUrl } from "@/lib/socket";
 import { Socket } from "socket.io-client";
 
-interface ChatParticipant {
-  id: string;
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  profile_pic?: string;
-}
-
-interface ChatRoom {
-  id: string;
-  userId: string;
-  sellerId: string;
-  isOffered: boolean;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-  messages?: Array<{
-    id: string;
-    content: string;
-    senderId: string;
-    read: boolean;
-    createdAt: string;
-  }>;
-  // Enriched by the API so the list needs no per-room follow-up requests.
-  user?: ChatParticipant;
-  seller?: ChatParticipant;
-  chatLabels?: Array<{ userId: string; label?: 'GOOD' | 'MEDIUM' | 'BAD' | null }>;
-  unreadCount?: number;
-}
+// Room shape (participants, last message, labels, unread) comes from the
+// shared chat-rooms module — see lib/chatRooms.ts.
+type ChatRoom = EnrichedChatRoom;
 
 interface Conversation {
   id: string;
@@ -67,21 +42,32 @@ interface ConversationListProps {
   onConversationDeleted?: () => void; // Callback when conversation is deleted
 }
 
-// Cache the last successfully loaded conversations per user at module scope, so
-// they survive unmount/remount. A revisit then renders instantly from cache and
-// refreshes in the background, instead of showing the full "Loading
-// conversations..." spinner every time the Chat page is opened.
-const conversationsCache: Record<string, Conversation[]> = {};
-
 export const ConversationList = ({ selectedConversation, onSelectConversation, userId, refreshTrigger, onConversationDeleted }: ConversationListProps) => {
-  const [conversations, setConversations] = useState<Conversation[]>(
-    () => conversationsCache[userId] ?? [],
-  );
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
-  const [loading, setLoading] = useState(true);
+  // Bumped when pinned chats change (cross-tab storage event) so the ordering
+  // re-derives locally without a network refetch.
+  const [pinnedVersion, setPinnedVersion] = useState(0);
   const socketRef = useRef<Socket | null>(null);
   const refreshTimerRef = useRef<number | null>(null);
+
+  // SHARED React Query with Chat.tsx (same key + fn) — the page issues ONE
+  // pair of chat-rooms requests that feeds both components. The query cache
+  // survives unmount/remount, so revisits render instantly and refresh in the
+  // background. refetchInterval is the 30s fallback poll; socket
+  // message:notify events trigger immediate refreshes via scheduleFetch.
+  const {
+    data: rooms = [],
+    isLoading: loading,
+    refetch,
+  } = useQuery({
+    queryKey: chatRoomsQueryKey(userId),
+    queryFn: () => fetchChatRooms(userId),
+    enabled: !!userId,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: false,
+  });
   const readPinnedChatIds = () => {
     try {
       const rawPinned = localStorage.getItem("pinned_chat_ids");
@@ -93,12 +79,10 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
   };
 
   useEffect(() => {
-    fetchConversations();
-    
     // Set up WebSocket connection for real-time updates
     // NOTE: ConversationList socket does NOT join any rooms - it only listens for updates
     const socket = createSocketConnection({
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
     });
     
@@ -149,15 +133,13 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
       scheduleFetch(400);
     });
     
-    // Socket pushes real-time updates (message:notify), so this periodic
-    // refresh is only a fallback — keep it infrequent to avoid flooding.
-    const interval = setInterval(() => {
-      fetchConversations();
-    }, 30000);
+    // NOTE: the 30s fallback poll now lives on the shared query
+    // (refetchInterval) instead of a manual interval here.
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key === "pinned_chat_ids") {
-        scheduleFetch(0);
+        // Pin order is derived locally from localStorage — no refetch needed.
+        setPinnedVersion((v) => v + 1);
       }
     };
     const handleChatUnarchived = (event: Event) => {
@@ -177,7 +159,6 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
     window.addEventListener("chat:unarchived", handleChatUnarchived);
 
     return () => {
-      clearInterval(interval);
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);
         refreshTimerRef.current = null;
@@ -198,52 +179,35 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
     }
   }, [refreshTrigger, selectedConversation]);
 
+  // Debounced "refresh soon" — used by socket events and child-triggered
+  // refreshes. The network fetch itself is the shared React Query refetch.
   const scheduleFetch = (delay: number) => {
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
     }
     refreshTimerRef.current = window.setTimeout(() => {
-      fetchConversations();
+      refetch();
     }, delay);
   };
 
-  const fetchConversations = async () => {
-    if (!userId) return;
-    
-    if (conversations.length === 0) {
-      setLoading(true);
-    }
+  // Derive the display list from the shared rooms data — pure computation, no
+  // network. Recomputes when rooms refresh, the selection changes (its unread
+  // resets to 0), or pins change.
+  const conversations = useMemo<Conversation[]>(() => {
+    if (!rooms.length) return [];
     const pinnedChatIds = readPinnedChatIds();
-    try {
-      const [buyerResponse, sellerResponse] = await Promise.all([
-        apiClient.getChatRoomsByUserId(userId),
-        apiClient.getChatRoomsBySellerId(userId),
-      ]);
 
-      const buyerRooms: ChatRoom[] = buyerResponse.success && Array.isArray(buyerResponse.data) 
-        ? buyerResponse.data 
-        : [];
-      const sellerRooms: ChatRoom[] = sellerResponse.success && Array.isArray(sellerResponse.data) 
-        ? sellerResponse.data 
-        : [];
-
-      // Combine and deduplicate by room id.
-      const allRooms = [...buyerRooms, ...sellerRooms];
-      const uniqueRoomsById = allRooms.filter(
-        (room, index, self) => index === self.findIndex((r) => r.id === room.id),
-      );
-
-      // Merge all rooms with the same user-pair into ONE conversation (a pair may
-      // have chatted about several listings). Everything the card needs — the
-      // other participant, last message, per-user label and unread count — now
-      // comes enriched from the API, so there are no extra per-room requests.
-      const roomGroups = new Map<string, ChatRoom[]>();
-      uniqueRoomsById.forEach((room) => {
-        const userPair = [room.userId, room.sellerId].sort().join('-');
-        const group = roomGroups.get(userPair);
-        if (group) group.push(room);
-        else roomGroups.set(userPair, [room]);
-      });
+    // Merge all rooms with the same user-pair into ONE conversation (a pair may
+    // have chatted about several listings). Everything the card needs — the
+    // other participant, last message, per-user label and unread count — comes
+    // enriched from the API, so there are no extra per-room requests.
+    const roomGroups = new Map<string, ChatRoom[]>();
+    rooms.forEach((room) => {
+      const userPair = [room.userId, room.sellerId].sort().join('-');
+      const group = roomGroups.get(userPair);
+      if (group) group.push(room);
+      else roomGroups.set(userPair, [room]);
+    });
 
       const conversationsWithDetails = Array.from(roomGroups.values()).map(
         (groupRooms) => {
@@ -310,21 +274,17 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
           };
         });
 
-      // Sort pinned chats first, then by last message time
-      conversationsWithDetails.sort((a, b) => {
-        if (a.isPinned && !b.isPinned) return -1;
-        if (!a.isPinned && b.isPinned) return 1;
-        return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
-      });
+    // Sort pinned chats first, then by last message time
+    conversationsWithDetails.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
+    });
 
-      conversationsCache[userId] = conversationsWithDetails;
-      setConversations(conversationsWithDetails);
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    return conversationsWithDetails;
+    // pinnedVersion re-derives pin order after cross-tab changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rooms, selectedConversation, userId, pinnedVersion]);
 
   const filteredConversations = useMemo(() => {
     const query = searchQuery.toLowerCase();

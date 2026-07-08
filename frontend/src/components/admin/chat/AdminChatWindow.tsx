@@ -103,7 +103,7 @@ export const AdminChatWindow = ({ conversationId }: AdminChatWindowProps) => {
     console.log('🌐 WebSocket URL:', wsUrl);
     
     const newSocket = createSocketConnection({
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       auth: {
         token: localStorage.getItem('auth_token') // Pass auth token

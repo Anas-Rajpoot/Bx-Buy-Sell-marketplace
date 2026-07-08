@@ -353,14 +353,12 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
         setMessages(prev => prev.map(msg => 
           msg.senderId !== currentUserId ? { ...msg, read: true } : msg
         ));
-        // Refresh conversation list to update unread count - multiple refreshes to ensure it updates
+        // Refresh conversation list to update unread count. One immediate call
+        // plus a single trailing one is enough — the parent throttles refetches
+        // anyway, so the old 6-call burst just wasted timers and requests.
         if (refreshConversations) {
-          refreshConversations(); // Immediate refresh
-          setTimeout(() => refreshConversations(), 300);
-          setTimeout(() => refreshConversations(), 800);
+          refreshConversations();
           setTimeout(() => refreshConversations(), 1500);
-          setTimeout(() => refreshConversations(), 2500);
-          setTimeout(() => refreshConversations(), 4000);
         }
       } else {
         console.error('❌ Failed to mark messages as read:', response.error);
@@ -389,24 +387,15 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
     if (chatRoom?.id && currentUserId && !isSearchOpen && messagesLoadedFromDBRef.current) {
       console.log('🔔 Chat window opened, marking messages as read:', chatRoom.id);
       markAllMessagesAsRead(chatRoom.id);
-      
-      // Mark again after delays to ensure it completes and conversation list updates
-      const timer1 = setTimeout(() => {
-        markAllMessagesAsRead(chatRoom.id);
-      }, 500);
-      
-      const timer2 = setTimeout(() => {
+
+      // Single delayed retry as a safety net (covers a message landing right
+      // as the chat opens). The old 4-call ladder quadrupled the requests.
+      const retryTimer = setTimeout(() => {
         markAllMessagesAsRead(chatRoom.id);
       }, 1500);
-      
-      const timer3 = setTimeout(() => {
-        markAllMessagesAsRead(chatRoom.id);
-      }, 3000);
-      
+
       return () => {
-        clearTimeout(timer1);
-        clearTimeout(timer2);
-        clearTimeout(timer3);
+        clearTimeout(retryTimer);
       };
     }
   }, [chatRoom?.id, currentUserId, isSearchOpen, messagesLoadedFromDBRef.current, markAllMessagesAsRead]);
@@ -739,7 +728,7 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
     
     const authToken = localStorage.getItem('auth_token') || undefined;
     const newSocket = createSocketConnection({
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 3,
       reconnectionDelay: 300, // Reduced from 500ms to 300ms

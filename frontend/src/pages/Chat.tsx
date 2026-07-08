@@ -8,7 +8,7 @@ import { MessageSquare, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { apiClient } from "@/lib/api";
+import { chatRoomsQueryKey, fetchChatRooms } from "@/lib/chatRooms";
 
 const ChatWindow = lazy(() =>
   import("@/components/chat/ChatWindow").then((m) => ({ default: m.ChatWindow }))
@@ -49,45 +49,21 @@ const Chat = () => {
   }, []);
 
   // Fetch the user's chat rooms through React Query so the result is CACHED.
-  // Navigating away and back shows the conversations instantly (refreshed in the
-  // background) instead of a full-screen "Loading..." spinner on every visit.
+  // The queryKey/queryFn live in lib/chatRooms and are SHARED with
+  // ConversationList — both components read the same cache entry, so opening
+  // the chat page issues one pair of requests instead of two.
   const {
     data: rooms = [],
     isLoading: roomsLoading,
     refetch: refetchRooms,
   } = useQuery({
-    queryKey: ["chat-rooms", userId],
+    queryKey: chatRoomsQueryKey(userId),
     enabled: !authLoading && !!userId,
-    // ConversationList also keeps the list fresh (socket + interval), so avoid
-    // extra refetches here that would double up the chat-rooms requests.
+    // ConversationList keeps the list fresh (socket + its own interval), so
+    // avoid extra refetches here that would double up the requests.
     refetchOnWindowFocus: false,
     staleTime: 30_000,
-    queryFn: async () => {
-      if (!userId) return [];
-      // Rooms where the user is the buyer or the seller, fetched in parallel.
-      const [buyerResponse, sellerResponse] = await Promise.all([
-        apiClient.getChatRoomsByUserId(userId),
-        apiClient.getChatRoomsBySellerId(userId),
-      ]);
-
-      const buyerRooms = buyerResponse.success && Array.isArray(buyerResponse.data)
-        ? buyerResponse.data
-        : [];
-      const sellerRooms = sellerResponse.success && Array.isArray(sellerResponse.data)
-        ? sellerResponse.data
-        : [];
-
-      // Combine, deduplicate, and sort newest-first.
-      const allRooms = [...buyerRooms, ...sellerRooms];
-      const uniqueRooms = allRooms.filter((room, index, self) =>
-        index === self.findIndex((r) => r.id === room.id)
-      );
-      uniqueRooms.sort((a, b) =>
-        new Date(b.updatedAt || b.createdAt || 0).getTime() -
-        new Date(a.updatedAt || a.createdAt || 0).getTime()
-      );
-      return uniqueRooms;
-    },
+    queryFn: () => fetchChatRooms(userId!),
   });
 
   // Let child panes (ChatWindow / ChatDetails) refresh the room list on demand.
