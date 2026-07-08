@@ -7,6 +7,7 @@ import { ConversationList } from "@/components/chat/ConversationList";
 import { MessageSquare, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { apiClient } from "@/lib/api";
 
 const ChatWindow = lazy(() =>
@@ -24,6 +25,7 @@ const ChatPaneLoader = () => (
 
 const Chat = () => {
   const { user, loading: authLoading } = useAuth();
+  const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [chatRoomData, setChatRoomData] = useState<{ userId: string; sellerId: string; listingId?: string } | null>(null);
@@ -141,14 +143,17 @@ const Chat = () => {
     setUrlParamsProcessed(true);
   }, [authLoading, user, urlParamsProcessed, searchParams, navigate]);
 
-  // Once rooms load, auto-select the most recent conversation if none is chosen.
+  // On DESKTOP, auto-select the most recent conversation so the chat pane is
+  // filled. On MOBILE we deliberately show the conversation list first (a URL
+  // deep-link still opens a chat) — the heavy ChatWindow chunk then loads only
+  // when the user taps a conversation, which keeps the mobile chat page light.
   useEffect(() => {
-    if (!selectedConversation && rooms.length > 0) {
+    if (!isMobile && !selectedConversation && rooms.length > 0) {
       const firstRoom = rooms[0];
       setSelectedConversation(firstRoom.id);
       setChatRoomData({ userId: firstRoom.userId, sellerId: firstRoom.sellerId });
     }
-  }, [rooms, selectedConversation]);
+  }, [isMobile, rooms, selectedConversation]);
 
   const hasConversations = rooms.length > 0 || !!selectedConversation;
 
@@ -205,22 +210,17 @@ const Chat = () => {
   }
 
   return (
-    <div className="flex bg-background" style={{ height: '100vh', maxHeight: '100vh', overflow: 'hidden' }}>
+    <div className="flex bg-background" style={{ height: '100dvh', maxHeight: '100dvh', overflow: 'hidden' }}>
       {/* Sidebar - Always drawer in Chat tab (no fixed sidebar) */}
 
-        <div className="flex-1 flex flex-col w-full overflow-hidden" style={{ height: '100vh', maxHeight: '100vh', overflow: 'hidden' }}>
+        <div className="flex-1 flex flex-col w-full overflow-hidden" style={{ height: '100dvh', maxHeight: '100dvh', overflow: 'hidden' }}>
         {/* Header - Shared across all tabs */}
         <DashboardHeader sidebarOpen={sidebarOpen} onSidebarOpenChange={setSidebarOpen} />
 
-        {/* Main Content Area */}
-        <div 
-          className="flex-1 flex flex-col md:flex-row overflow-hidden gap-2 sm:gap-2.5 md:gap-3 p-3 sm:p-4 md:p-6 lg:p-8 2xl:justify-center 2xl:px-4" 
-          style={{ 
-            height: 'calc(100vh - 64px)',
-            maxHeight: 'calc(100vh - 64px)',
-            overflowY: 'hidden',
-          }}
-        >
+        {/* Main Content Area — fills the space left after the (responsive-height)
+            header via flexbox instead of a hardcoded calc, so it lines up on
+            mobile (56px header), tablet (64px) and desktop (80px). */}
+        <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden gap-2 sm:gap-2.5 md:gap-3 p-3 sm:p-4 md:p-6 lg:p-8 2xl:justify-center 2xl:px-4">
           {/* First Div - Conversation List */}
           <div
             className={`
