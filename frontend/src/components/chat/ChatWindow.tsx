@@ -2447,12 +2447,12 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
   const onlineCount = otherUser?.is_online ? 1 : 0;
 
   return (
-    <div className="flex-1 flex flex-col bg-background">
+    <div className="flex-1 flex flex-col bg-background min-w-0 overflow-x-hidden">
       {/* Chat Header */}
       <div className="border-b p-3 sm:p-3.5 md:p-4 flex items-center justify-between bg-card shadow-sm flex-shrink-0" style={{ paddingRight: '12px' }}>
-        <div className="flex flex-col min-w-0 flex-1 pr-2">
+        <div className="flex flex-col min-w-0 flex-1 pr-2 pl-11 md:pl-0">
           <h2
-            className="truncate text-2xl lg:text-sm xl:text-2xl text-black m-0 mb-[3px]"
+            className="truncate text-lg sm:text-2xl lg:text-sm xl:text-2xl text-black m-0 mb-[3px]"
             style={{
               fontFamily: 'Lufga',
               fontWeight: 600,
@@ -2614,16 +2614,16 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
       </div>
 
       {/* Chat Messages */}
-      <div 
+      <div
         ref={messagesContainerRef}
-        className="flex-1 p-4 overflow-y-auto space-y-4" 
-        style={{ maxHeight: 'calc(100vh - 180px)' }}
+        className="flex-1 min-h-0 min-w-0 p-3 sm:p-4 overflow-y-auto overflow-x-hidden space-y-4"
         onScroll={handleScroll}
       >
         {/* Warning Banner - Always shown at top */}
         <div
           style={{
-            width: '648px',
+            width: '100%',
+            maxWidth: '648px',
             minHeight: '74px',
             paddingTop: '10px',
             paddingRight: '20px',
@@ -2632,9 +2632,10 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
             display: 'flex',
             alignItems: 'center',
             gap: '16px',
-            borderRadius: '58px',
+            borderRadius: '24px',
             background: 'rgba(249, 237, 231, 1)',
             marginBottom: '16px',
+            boxSizing: 'border-box',
           }}
         >
           <img 
