@@ -124,6 +124,16 @@ const Chat = () => {
     }
   }, [authLoading, user, navigate]);
 
+  // On desktop a conversation auto-opens, so warm the heavy chat panes now —
+  // their JS chunks download in parallel with the rooms fetch instead of only
+  // after a conversation is selected, shaving the chunk-download time off the
+  // critical path. Skipped on mobile, where the list shows first.
+  useEffect(() => {
+    if (isMobile) return;
+    void import("@/components/chat/ChatWindow");
+    void import("@/components/chat/ChatDetails");
+  }, [isMobile]);
+
   // Deep-link from the "Contact Seller" button: auto-select that conversation.
   useEffect(() => {
     if (authLoading || !user || urlParamsProcessed) return;
