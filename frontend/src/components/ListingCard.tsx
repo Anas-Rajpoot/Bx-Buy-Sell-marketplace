@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Link, useNavigate } from "react-router-dom";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ExIcon from "@/assets/Ex icon.svg";
 
 interface ListingCardProps {
@@ -56,27 +56,33 @@ const ListingCard = ({
     typeof value === "string" &&
     value.toLowerCase().includes("to unlock");
 
-  // Check if listing is already favorited on mount
-  useEffect(() => {
-    const checkFavoriteStatus = async () => {
-      if (!user || !listingId) return;
-      
-      try {
-        const response = await apiClient.getFavorites();
-        if (response.success && response.data) {
-          const favorites = Array.isArray(response.data) ? response.data : [];
-          const isFavorited = favorites.some((fav: any) => 
-            fav.listingId === listingId || fav.listing?.id === listingId || fav.id === listingId
-          );
-          setIsFavorite(isFavorited);
-        }
-      } catch (error) {
-        console.error('Error checking favorite status:', error);
-      }
-    };
+  // Share ONE favorites fetch across every card via React Query, instead of
+  // each card calling getFavorites() on mount (that was N identical requests
+  // per page — and it re-fired on every re-render inside chat details).
+  const { data: favoritesList } = useQuery({
+    queryKey: ["favorites-list", user?.id],
+    queryFn: async () => {
+      const response = await apiClient.getFavorites();
+      return response.success && Array.isArray(response.data)
+        ? (response.data as any[])
+        : [];
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
 
-    checkFavoriteStatus();
-  }, [user, listingId]);
+  // Reflect the shared list into local state (kept local so the heart can
+  // update optimistically on toggle).
+  useEffect(() => {
+    if (!listingId || !favoritesList) return;
+    const favorited = favoritesList.some(
+      (fav: any) =>
+        fav.listingId === listingId ||
+        fav.listing?.id === listingId ||
+        fav.id === listingId,
+    );
+    setIsFavorite(favorited);
+  }, [favoritesList, listingId]);
 
   const handleFavorite = async () => {
     if (!isAuthenticated || !user) {
@@ -98,8 +104,9 @@ const ListingCard = ({
         if (response.success) {
           setIsFavorite(false);
           toast.success("Removed from favorites");
-          // Invalidate favorites query to refresh the count
+          // Invalidate favorites queries so the count and every card refresh.
           queryClient.invalidateQueries({ queryKey: ["user-favorites"] });
+          queryClient.invalidateQueries({ queryKey: ["favorites-list"] });
         } else {
           throw new Error(response.error || "Failed to remove favorite");
         }
@@ -109,8 +116,9 @@ const ListingCard = ({
         if (response.success) {
           setIsFavorite(true);
           toast.success("Added to favorites");
-          // Invalidate favorites query to refresh the count
+          // Invalidate favorites queries so the count and every card refresh.
           queryClient.invalidateQueries({ queryKey: ["user-favorites"] });
+          queryClient.invalidateQueries({ queryKey: ["favorites-list"] });
         } else {
           throw new Error(response.error || "Failed to add favorite");
         }

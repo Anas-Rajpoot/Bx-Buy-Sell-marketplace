@@ -56,6 +56,10 @@ const Chat = () => {
   } = useQuery({
     queryKey: ["chat-rooms", userId],
     enabled: !authLoading && !!userId,
+    // ConversationList also keeps the list fresh (socket + interval), so avoid
+    // extra refetches here that would double up the chat-rooms requests.
+    refetchOnWindowFocus: false,
+    staleTime: 30_000,
     queryFn: async () => {
       if (!userId) return [];
       // Rooms where the user is the buyer or the seller, fetched in parallel.

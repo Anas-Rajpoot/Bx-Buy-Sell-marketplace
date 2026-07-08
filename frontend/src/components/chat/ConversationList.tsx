@@ -149,9 +149,11 @@ export const ConversationList = ({ selectedConversation, onSelectConversation, u
       scheduleFetch(400);
     });
     
+    // Socket pushes real-time updates (message:notify), so this periodic
+    // refresh is only a fallback — keep it infrequent to avoid flooding.
     const interval = setInterval(() => {
       fetchConversations();
-    }, 15000);
+    }, 30000);
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key === "pinned_chat_ids") {
