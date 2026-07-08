@@ -100,14 +100,17 @@ const Chat = () => {
     }
   }, [authLoading, user, navigate]);
 
-  // On desktop a conversation auto-opens, so warm the heavy chat panes now —
-  // their JS chunks download in parallel with the rooms fetch instead of only
-  // after a conversation is selected, shaving the chunk-download time off the
-  // critical path. Skipped on mobile, where the list shows first.
+  // Warm the heavy chat panes in the BACKGROUND on desktop (does not block the
+  // list from rendering) so the first time the user clicks a conversation the
+  // ChatWindow chunk is already downloaded and opens instantly. Skipped on
+  // mobile to save data — there it loads on tap.
   useEffect(() => {
     if (isMobile) return;
-    void import("@/components/chat/ChatWindow");
-    void import("@/components/chat/ChatDetails");
+    const id = window.setTimeout(() => {
+      void import("@/components/chat/ChatWindow");
+      void import("@/components/chat/ChatDetails");
+    }, 600);
+    return () => window.clearTimeout(id);
   }, [isMobile]);
 
   // Deep-link from the "Contact Seller" button: auto-select that conversation.
@@ -129,17 +132,10 @@ const Chat = () => {
     setUrlParamsProcessed(true);
   }, [authLoading, user, urlParamsProcessed, searchParams, navigate]);
 
-  // On DESKTOP, auto-select the most recent conversation so the chat pane is
-  // filled. On MOBILE we deliberately show the conversation list first (a URL
-  // deep-link still opens a chat) — the heavy ChatWindow chunk then loads only
-  // when the user taps a conversation, which keeps the mobile chat page light.
-  useEffect(() => {
-    if (!isMobile && !selectedConversation && rooms.length > 0) {
-      const firstRoom = rooms[0];
-      setSelectedConversation(firstRoom.id);
-      setChatRoomData({ userId: firstRoom.userId, sellerId: firstRoom.sellerId });
-    }
-  }, [isMobile, rooms, selectedConversation]);
+  // No auto-select. The page loads with just the (light) conversation list, and
+  // the heavy ChatWindow chunk + messages load ONLY when the user picks a chat
+  // — so opening /chat is fast on every device. A "Contact Seller" deep-link
+  // (handled above) still opens its chat immediately.
 
   const hasConversations = rooms.length > 0 || !!selectedConversation;
 
