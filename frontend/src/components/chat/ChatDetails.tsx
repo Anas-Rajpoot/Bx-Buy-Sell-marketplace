@@ -21,6 +21,29 @@ interface ChatDetailsProps {
   onLabelUpdated?: (label: 'GOOD' | 'MEDIUM' | 'BAD') => void;
 }
 
+// A listing's name isn't a plain `title` field — it lives in the brand
+// questions (e.g. "business name"), same as the listing cards read it.
+const getListingTitle = (l: any): string => {
+  if (!l) return "";
+  if (typeof l.title === "string" && l.title.trim()) return l.title;
+  if (typeof l.business_name === "string" && l.business_name.trim()) return l.business_name;
+
+  const brand = Array.isArray(l.brand) ? l.brand : [];
+  const brandName = brand.find((b: any) =>
+    ["business name", "company name", "brand name", "name"].some((t) =>
+      b?.question?.toLowerCase().includes(t),
+    ),
+  );
+  if (brandName?.answer) return String(brandName.answer);
+  if (brand[0]?.answer) return String(brand[0].answer);
+
+  const ad = Array.isArray(l.advertisement) ? l.advertisement : [];
+  const adTitle = ad.find((a: any) => a?.question?.toLowerCase().includes("title"));
+  if (adTitle?.answer) return String(adTitle.answer);
+
+  return "";
+};
+
 export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }: ChatDetailsProps) => {
   const { user } = useAuth();
   const [listing, setListing] = useState<any>(null);
@@ -342,10 +365,7 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
       : listing?.category?.name) ||
     listing?.category ||
     "Other";
-  const listingName =
-    listing?.business_name ||
-    listing?.title ||
-    "Listing";
+  const listingName = getListingTitle(listing) || "Listing";
   const listingDescription =
     listing?.ad_description ||
     listing?.business_description ||
@@ -448,7 +468,7 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
             marginBottom: '8px',
           }}
         >
-          {listing?.title || 'Online Fashion Store'}
+          {getListingTitle(listing) || 'Online Fashion Store'}
         </h4>
 
         {/* Member Count and Online Status - Centered */}
