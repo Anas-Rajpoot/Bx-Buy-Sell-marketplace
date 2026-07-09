@@ -86,6 +86,9 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
   const socketRef = useRef<Socket | null>(null);
   const windowIncomingCallHandlerRef = useRef<(event: Event) => void | null>(null);
   const chatRoomLoadedRef = useRef(false);
+  // The pair currently selected. Async loads compare against this and drop
+  // their result if the user switched conversations meanwhile (prevents mix-up).
+  const currentPairRef = useRef<string>("");
   const sendingMessageRef = useRef(false); // Prevent double sending
   const messagesLoadedFromDBRef = useRef(false); // Track if messages were loaded from DB
   const loadedMessageIdsRef = useRef<Set<string>>(new Set()); // Track IDs of messages loaded from DB
@@ -233,6 +236,10 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
     const initializeChat = async () => {
       console.log('🚀 Initializing chat:', { conversationId, userId, sellerId, listingId });
 
+      // Mark this pair as the active one; late-resolving loads for a previous
+      // conversation will see the mismatch and bail out.
+      currentPairRef.current = [userId, sellerId].sort().join("-");
+
       // Fast path: if this conversation was opened before, paint its cached
       // messages instantly (no spinner) and refresh in the background.
       const cachedChat = getCachedChatRoom(userId, sellerId);
@@ -338,7 +345,15 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
   // conversation later paints the latest state instantly (not a stale snapshot).
   useEffect(() => {
     if (chatRoom?.id && userId && sellerId && messagesLoadedFromDBRef.current) {
-      setCachedChatRoom(userId, sellerId, { ...chatRoom, messages });
+      // Guard against a rapid conversation switch: the props (userId/sellerId)
+      // update before chatRoom/messages do, so only cache when the loaded room
+      // actually belongs to the current conversation — otherwise we'd write the
+      // previous chat's data under the newly-selected chat's key (data mix-up).
+      const propsPair = [userId, sellerId].sort().join("-");
+      const roomPair = [chatRoom.userId, chatRoom.sellerId].sort().join("-");
+      if (propsPair === roomPair) {
+        setCachedChatRoom(userId, sellerId, { ...chatRoom, messages });
+      }
     }
   }, [messages, chatRoom, userId, sellerId]);
 
@@ -540,13 +555,18 @@ export const ChatWindow = ({ conversationId, currentUserId, userId, sellerId, li
           return null;
         }
         
+        // Drop this result if the user has since switched to another chat.
+        if (currentPairRef.current !== [userId, sellerId].sort().join("-")) {
+          return null;
+        }
+
         console.log('✅ Loaded chat room (merged conversation):', {
           id: chat.id,
           userId: chat.userId,
           sellerId: chat.sellerId,
           messagesCount: chat.messages?.length || 0
         });
-        
+
         setChatRoom(chat);
         chatRoomLoadedRef.current = true;
 
