@@ -34,3 +34,16 @@ export function seedChatRoomIfAbsent(userId: string, sellerId: string, data: any
 export function clearCachedChatRoom(userId: string, sellerId: string): void {
   cache.delete(keyOf(userId, sellerId));
 }
+
+// Full listings fetched by id (getListingById), so the chat details panel can
+// paint the listing name/image/price instantly on a revisit instead of waiting
+// for another network round-trip.
+const listingCache = new Map<string, any>();
+
+export function getCachedListing(listingId?: string): any | null {
+  return listingId ? listingCache.get(listingId) ?? null : null;
+}
+
+export function setCachedListing(listingId: string | undefined, data: any): void {
+  if (listingId && data) listingCache.set(listingId, data);
+}

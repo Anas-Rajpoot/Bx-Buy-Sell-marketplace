@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiClient } from "@/lib/api";
-import { getCachedChatRoom } from "@/lib/chatRoomCache";
+import { getCachedChatRoom, getCachedListing, setCachedListing } from "@/lib/chatRoomCache";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -60,6 +60,15 @@ const seedInitialParticipants = (userId?: string, sellerId?: string): any[] => {
   }));
 };
 
+// The listing's full data (for its name/image/price) keyed by the cached room's
+// listingId, so a revisited conversation shows it on the first render.
+const seedInitialListing = (userId?: string, sellerId?: string): any => {
+  if (!userId || !sellerId) return null;
+  const room = getCachedChatRoom(userId, sellerId);
+  const listingId = room?.listing?.id || room?.listingId;
+  return getCachedListing(listingId);
+};
+
 const seedInitialLabel = (userId?: string, sellerId?: string): "GOOD" | "MEDIUM" | "BAD" | null => {
   if (!userId || !sellerId) return null;
   const labels = getCachedChatRoom(userId, sellerId)?.chatLabels || [];
@@ -70,7 +79,7 @@ const seedInitialLabel = (userId?: string, sellerId?: string): "GOOD" | "MEDIUM"
 
 export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }: ChatDetailsProps) => {
   const { user } = useAuth();
-  const [listing, setListing] = useState<any>(null);
+  const [listing, setListing] = useState<any>(() => seedInitialListing(userId, sellerId));
   // Seed header data from the shared cache on the first render (mounts fresh per
   // conversation via key=), so the panel switches together with the chat window.
   const [participants, setParticipants] = useState<any[]>(() => seedInitialParticipants(userId, sellerId));
@@ -93,6 +102,7 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
   const hydrateListing = async (listingId?: string, currentListing?: any) => {
     if (!listingId) return;
     const hasDetails =
+      currentListing?.brand?.length ||
       currentListing?.title ||
       currentListing?.business_name ||
       currentListing?.images?.length ||
@@ -110,6 +120,7 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
       if (listingResponse.success && listingResponse.data) {
         const listingData = (listingResponse.data as any).data || listingResponse.data;
         if (listingData) {
+          setCachedListing(listingId, listingData); // instant on the next visit
           setListing(listingData);
         }
       }
