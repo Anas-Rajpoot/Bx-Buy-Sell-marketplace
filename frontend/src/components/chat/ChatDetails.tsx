@@ -17,7 +17,7 @@ interface ChatDetailsProps {
   conversationId: string;
   userId?: string;
   sellerId?: string;
-  onLabelUpdated?: () => void;
+  onLabelUpdated?: (label: 'GOOD' | 'MEDIUM' | 'BAD') => void;
 }
 
 export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }: ChatDetailsProps) => {
@@ -249,9 +249,10 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
         setChatLabel(label);
         setIsLabelDialogOpen(false);
         toast.success(`Chat labeled as ${label === 'GOOD' ? 'Good' : label === 'MEDIUM' ? 'Medium' : 'Bad'}`);
-        // Trigger refresh of conversation list to show updated label
+        // Tell the parent the new label so the conversation list can update
+        // instantly (optimistic cache update) instead of waiting for a refetch.
         if (onLabelUpdated) {
-          onLabelUpdated();
+          onLabelUpdated(label);
         }
       } else {
         toast.error(response.error || 'Failed to update label');

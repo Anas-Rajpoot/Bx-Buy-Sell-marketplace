@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ListingsSidebar } from "@/components/listings/ListingsSidebar";
 import { DashboardHeader } from "@/components/listings/DashboardHeader";
 import { ConversationList } from "@/components/chat/ConversationList";
@@ -34,6 +34,7 @@ const Chat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [listRefreshToken, setListRefreshToken] = useState(0);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const userId = user?.id;
 
   const handleSelectConversation = useCallback(
@@ -93,6 +94,29 @@ const Chat = () => {
       }, MIN_GAP_MS - elapsed);
     }
   }, [refetchRooms]);
+
+  // When the label changes in the details panel, update the shared rooms cache
+  // immediately so the conversation list's badge flips INSTANTLY (no wait for a
+  // refetch), then still refresh from the server in the background.
+  const handleLabelUpdated = useCallback(
+    (label: "GOOD" | "MEDIUM" | "BAD") => {
+      if (userId && chatRoomData) {
+        const pair = [chatRoomData.userId, chatRoomData.sellerId].sort().join("-");
+        queryClient.setQueryData(chatRoomsQueryKey(userId), (old: any) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((room: any) => {
+            const roomPair = [room.userId, room.sellerId].sort().join("-");
+            if (roomPair !== pair) return room;
+            const others = (room.chatLabels || []).filter((l: any) => l.userId !== userId);
+            return { ...room, chatLabels: [...others, { userId, label }] };
+          });
+        });
+      }
+      setListRefreshToken((prev) => prev + 1);
+      checkConversations();
+    },
+    [userId, chatRoomData, queryClient, checkConversations],
+  );
 
   // Redirect unauthenticated users to login.
   useEffect(() => {
@@ -317,10 +341,7 @@ const Chat = () => {
                   conversationId={selectedConversation}
                   userId={chatRoomData.userId}
                   sellerId={chatRoomData.sellerId}
-                  onLabelUpdated={() => {
-                    setListRefreshToken((prev) => prev + 1);
-                    checkConversations();
-                  }}
+                  onLabelUpdated={handleLabelUpdated}
                 />
               </Suspense>
             ) : (
