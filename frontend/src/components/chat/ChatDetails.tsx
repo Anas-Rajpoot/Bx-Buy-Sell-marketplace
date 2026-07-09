@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiClient } from "@/lib/api";
 import { getCachedChatRoom } from "@/lib/chatRoomCache";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -53,6 +53,9 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
   const [messages, setMessages] = useState<any[]>([]);
   const [mediaCount, setMediaCount] = useState(0);
   const [chatLabel, setChatLabel] = useState<'GOOD' | 'MEDIUM' | 'BAD' | null>(null);
+  // The pair currently selected; a late fetch for a previous conversation drops
+  // its result if the user has since switched (prevents right-panel mix-up).
+  const currentPairRef = useRef<string>("");
   
   // Dialog states
   const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false);
@@ -72,8 +75,12 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
       currentListing?.asking_price;
     if (hasDetails) return;
 
+    // Remember which conversation this hydrate was for, so a late response
+    // doesn't set the previous chat's listing after a switch.
+    const pairAtCall = userId && sellerId ? [userId, sellerId].sort().join("-") : "";
     try {
       const listingResponse = await apiClient.getListingById(listingId);
+      if (pairAtCall && currentPairRef.current !== pairAtCall) return;
       if (listingResponse.success && listingResponse.data) {
         const listingData = (listingResponse.data as any).data || listingResponse.data;
         if (listingData) {
@@ -246,6 +253,14 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
 
   const fetchChatRoomData = async () => {
     if (!userId || !sellerId) return;
+    const pair = [userId, sellerId].sort().join("-");
+    currentPairRef.current = pair;
+    // Clear the previous conversation's data so it can't linger while the new
+    // one loads. If cached, the seed below repaints in the same render (no flash).
+    setListing(null);
+    setParticipants([]);
+    setChatLabel(null);
+    setMediaCount(0);
     // Instant: paint from the shared chat-room cache (same data ChatWindow
     // loads) so the details panel isn't blank while the network request runs.
     const cached = getCachedChatRoom(userId, sellerId);
@@ -253,6 +268,8 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
     // Refresh from the server in the background.
     try {
       const response = await apiClient.getChatRoom(userId, sellerId);
+      // Drop this result if the user has since switched to another chat.
+      if (currentPairRef.current !== pair) return;
       if (response.success && response.data) {
         const chatData = (response.data as any).data || response.data;
         applyChatDetails(chatData);
