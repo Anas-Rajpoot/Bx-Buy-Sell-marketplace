@@ -44,15 +44,41 @@ const getListingTitle = (l: any): string => {
   return "";
 };
 
+// Derive the participants shown in the panel header from a cached chat room, so
+// they can be painted on the very first render (together with the chat window)
+// instead of after the effect/network round-trip.
+const seedInitialParticipants = (userId?: string, sellerId?: string): any[] => {
+  if (!userId || !sellerId) return [];
+  const cached = getCachedChatRoom(userId, sellerId);
+  if (!cached) return [];
+  return [cached.user, cached.seller].filter(Boolean).map((u: any) => ({
+    id: u.id,
+    full_name: `${u.first_name || ""} ${u.last_name || ""}`.trim(),
+    avatar_url: u.profile_pic,
+    email: u.email,
+    is_online: u.is_online || false,
+  }));
+};
+
+const seedInitialLabel = (userId?: string, sellerId?: string): "GOOD" | "MEDIUM" | "BAD" | null => {
+  if (!userId || !sellerId) return null;
+  const labels = getCachedChatRoom(userId, sellerId)?.chatLabels || [];
+  const entry = labels.find((l: any) => l.userId === userId) || labels[0];
+  const label = entry?.label;
+  return label === "GOOD" || label === "MEDIUM" || label === "BAD" ? label : null;
+};
+
 export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }: ChatDetailsProps) => {
   const { user } = useAuth();
   const [listing, setListing] = useState<any>(null);
-  const [participants, setParticipants] = useState<any[]>([]);
+  // Seed header data from the shared cache on the first render (mounts fresh per
+  // conversation via key=), so the panel switches together with the chat window.
+  const [participants, setParticipants] = useState<any[]>(() => seedInitialParticipants(userId, sellerId));
   const [memberCount, setMemberCount] = useState(2);
   const [onlineCount, setOnlineCount] = useState(0);
   const [messages, setMessages] = useState<any[]>([]);
   const [mediaCount, setMediaCount] = useState(0);
-  const [chatLabel, setChatLabel] = useState<'GOOD' | 'MEDIUM' | 'BAD' | null>(null);
+  const [chatLabel, setChatLabel] = useState<'GOOD' | 'MEDIUM' | 'BAD' | null>(() => seedInitialLabel(userId, sellerId));
   // The pair currently selected; a late fetch for a previous conversation drops
   // its result if the user has since switched (prevents right-panel mix-up).
   const currentPairRef = useRef<string>("");
@@ -255,14 +281,9 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
     if (!userId || !sellerId) return;
     const pair = [userId, sellerId].sort().join("-");
     currentPairRef.current = pair;
-    // Clear the previous conversation's data so it can't linger while the new
-    // one loads. If cached, the seed below repaints in the same render (no flash).
-    setListing(null);
-    setParticipants([]);
-    setChatLabel(null);
-    setMediaCount(0);
-    // Instant: paint from the shared chat-room cache (same data ChatWindow
-    // loads) so the details panel isn't blank while the network request runs.
+    // The component mounts fresh per conversation (key=), and header data is
+    // seeded from cache in useState, so no manual reset is needed here — just
+    // repaint from cache (full data incl. media) then refresh from the server.
     const cached = getCachedChatRoom(userId, sellerId);
     if (cached) applyChatDetails(cached);
     // Refresh from the server in the background.
