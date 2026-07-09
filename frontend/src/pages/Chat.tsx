@@ -301,8 +301,9 @@ const Chat = () => {
 
               <div className="flex-1 flex overflow-hidden" style={{ borderRadius: '20px' }}>
                 <Suspense fallback={<ChatPaneLoader />}>
-                  <ChatWindow 
-                    conversationId={selectedConversation} 
+                  <ChatWindow
+                    key={selectedConversation}
+                    conversationId={selectedConversation}
                     currentUserId={user.id}
                     userId={chatRoomData.userId}
                     sellerId={chatRoomData.sellerId}
@@ -349,6 +350,7 @@ const Chat = () => {
             {selectedConversation && chatRoomData ? (
               <Suspense fallback={<ChatPaneLoader />}>
                 <ChatDetails
+                  key={selectedConversation}
                   conversationId={selectedConversation}
                   userId={chatRoomData.userId}
                   sellerId={chatRoomData.sellerId}
