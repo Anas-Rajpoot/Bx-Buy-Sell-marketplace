@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { chatRoomsQueryKey, fetchChatRooms } from "@/lib/chatRooms";
 import { seedChatRoomIfAbsent } from "@/lib/chatRoomCache";
+import { readPersisted, writePersisted } from "@/lib/persistentCache";
 
 const ChatWindow = lazy(() =>
   import("@/components/chat/ChatWindow").then((m) => ({ default: m.ChatWindow }))
@@ -54,6 +55,7 @@ const Chat = () => {
   // The queryKey/queryFn live in lib/chatRooms and are SHARED with
   // ConversationList — both components read the same cache entry, so opening
   // the chat page issues one pair of requests instead of two.
+  const roomsKey = `chat-rooms:${userId}`;
   const {
     data: rooms = [],
     isLoading: roomsLoading,
@@ -65,8 +67,17 @@ const Chat = () => {
     // avoid extra refetches here that would double up the requests.
     refetchOnWindowFocus: false,
     staleTime: 30_000,
+    // Persisted rooms show the conversation list instantly even after a full
+    // page reload; treated as stale so a fresh copy still loads in the background.
+    initialData: () => (userId ? readPersisted<any[]>(roomsKey) : undefined),
+    initialDataUpdatedAt: 0,
     queryFn: () => fetchChatRooms(userId!),
   });
+
+  // Keep the persisted conversation list in sync.
+  useEffect(() => {
+    if (userId && rooms.length) writePersisted(roomsKey, rooms);
+  }, [userId, rooms, roomsKey]);
 
   // Let child panes (ChatWindow / ChatDetails) refresh the room list on demand.
   // ChatWindow calls this dozens of times per read-marking (nested setTimeouts),

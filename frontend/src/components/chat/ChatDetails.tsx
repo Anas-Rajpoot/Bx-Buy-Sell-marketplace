@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/api";
+import { getCachedChatRoom } from "@/lib/chatRoomCache";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -111,13 +112,11 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
     }
   };
 
-  const fetchChatRoomData = async () => {
-    try {
-      if (!userId || !sellerId) return;
-      
-      const response = await apiClient.getChatRoom(userId, sellerId);
-      if (response.success && response.data) {
-        const chatData = (response.data as any).data || response.data;
+  // Apply an already-fetched chat room object to the panel's state. Shared by
+  // the instant cache seed and the fresh network refresh.
+  const applyChatDetails = (chatData: any) => {
+    if (!chatData) return;
+    {
         const messagesData = chatData?.messages || [];
         setMessages(messagesData);
 
@@ -126,7 +125,7 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
           setListing(chatData.listing);
         }
         const listingId = chatData?.listing?.id || chatData?.listingId;
-        await hydrateListing(listingId, chatData?.listing);
+        void hydrateListing(listingId, chatData?.listing);
 
         // Get chat label if available
         const labelEntries = Array.isArray(chatData?.chatLabel)
@@ -219,6 +218,21 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
         }));
         setMediaFiles(mediaFiles);
         setMediaCount(mediaFiles.length);
+      }
+  };
+
+  const fetchChatRoomData = async () => {
+    if (!userId || !sellerId) return;
+    // Instant: paint from the shared chat-room cache (same data ChatWindow
+    // loads) so the details panel isn't blank while the network request runs.
+    const cached = getCachedChatRoom(userId, sellerId);
+    if (cached) applyChatDetails(cached);
+    // Refresh from the server in the background.
+    try {
+      const response = await apiClient.getChatRoom(userId, sellerId);
+      if (response.success && response.data) {
+        const chatData = (response.data as any).data || response.data;
+        applyChatDetails(chatData);
       }
     } catch (error) {
       console.error('Error fetching messages:', error);

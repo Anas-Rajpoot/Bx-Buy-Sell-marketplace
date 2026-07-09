@@ -10,6 +10,7 @@ import { Plus } from "lucide-react";
 import searchIcon from "@/assets/seach icon.svg";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/lib/api";
+import { readPersisted, writePersisted } from "@/lib/persistentCache";
 import { toast } from "sonner";
 
 interface Listing {
@@ -39,6 +40,10 @@ const MyListings = () => {
     }
   }, [authLoading, userId, navigate]);
 
+  // Persist the mapped listings to localStorage so even a full page reload shows
+  // them instantly (initialData) while a fresh copy loads in the background.
+  const persistKey = `my-listings:${userId}`;
+
   // Fetch the user's listings through React Query so the result is CACHED.
   // Navigating away and back shows the listings instantly (refreshed in the
   // background) instead of a full-screen "Loading..." spinner on every visit.
@@ -50,6 +55,8 @@ const MyListings = () => {
   } = useQuery<Listing[]>({
     queryKey: ["my-listings", userId],
     enabled: !authLoading && !!userId,
+    initialData: () => (userId ? readPersisted<Listing[]>(persistKey) : undefined),
+    initialDataUpdatedAt: 0, // treat persisted data as stale → refetch on mount
     queryFn: async () => {
       // Authenticated endpoint: applies correct viewer context so "early access"
       // rules do not hide the current user's own new listings (public GET /listing does).
@@ -212,6 +219,11 @@ const MyListings = () => {
       toast.error("Failed to load listings");
     }
   }, [isError]);
+
+  // Keep the persisted copy in sync with the latest listings.
+  useEffect(() => {
+    if (userId && listings.length) writePersisted(persistKey, listings);
+  }, [userId, listings, persistKey]);
 
   const filteredListings = listings.filter((listing) =>
     listing.title.toLowerCase().includes(searchQuery.toLowerCase())

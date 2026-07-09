@@ -16,6 +16,7 @@ import {
 import { Heart, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/lib/api";
+import { readPersisted, writePersisted } from "@/lib/persistentCache";
 import { formatBusinessAge } from "@/lib/dateUtils";
 import { useCategories } from "@/hooks/useCategories";
 
@@ -50,7 +51,11 @@ const Favourites = () => {
   // The favourites endpoint already returns each favourite with its full
   // listing data (brand, advertisement, category, financials, user), so a
   // single request is enough.
-  const { data: favorites = [], isLoading } = useQuery({
+  // Persist favourites to localStorage so even a full page reload shows them
+  // instantly (initialData) while a fresh copy loads in the background.
+  const favouritesKey = `favourites:${user?.id}`;
+
+  const { data: favorites = [], isLoading } = useQuery<any[]>({
     queryKey: ["favourites", user?.id],
     queryFn: async () => {
       const res = await apiClient.getFavorites();
@@ -65,10 +70,17 @@ const Favourites = () => {
       }));
     },
     enabled: isAuthenticated && !!user?.id,
+    initialData: () => (user?.id ? readPersisted<any[]>(favouritesKey) : undefined),
+    initialDataUpdatedAt: 0, // persisted data is treated as stale → refetch on mount
     // Default staleTime (0): revisits show cached favourites instantly (no
     // spinner) while a background refetch picks up anything added/removed
     // elsewhere — stale-while-revalidate.
   });
+
+  // Keep the persisted copy in sync with the latest favourites.
+  useEffect(() => {
+    if (user?.id && favorites.length) writePersisted(favouritesKey, favorites);
+  }, [user?.id, favorites, favouritesKey]);
 
   // Only the (instant, localStorage-based) auth check gates the whole screen.
   // The favourites fetch shows a loader inside the content area instead, so the
