@@ -111,6 +111,14 @@ export const ChatDetails = ({ conversationId, userId, sellerId, onLabelUpdated }
       currentListing?.asking_price;
     if (hasDetails) return;
 
+    // Already cached (e.g. from the rooms list which now includes the listing)?
+    // Use it and skip the network call entirely.
+    const cachedListing = getCachedListing(listingId);
+    if (cachedListing?.brand?.length) {
+      setListing(cachedListing);
+      return;
+    }
+
     // Remember which conversation this hydrate was for, so a late response
     // doesn't set the previous chat's listing after a switch.
     const pairAtCall = userId && sellerId ? [userId, sellerId].sort().join("-") : "";

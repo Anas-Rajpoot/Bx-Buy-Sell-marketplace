@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { chatRoomsQueryKey, fetchChatRooms } from "@/lib/chatRooms";
-import { seedChatRoomIfAbsent } from "@/lib/chatRoomCache";
+import { seedChatRoomIfAbsent, setCachedListing } from "@/lib/chatRoomCache";
 import { readPersisted, writePersisted } from "@/lib/persistentCache";
 
 const ChatWindow = lazy(() =>
@@ -176,6 +176,9 @@ const Chat = () => {
     rooms.forEach((room: any) => {
       if (room?.id && room.userId && room.sellerId) {
         seedChatRoomIfAbsent(room.userId, room.sellerId, room);
+        // Rooms now carry the listing (brand/ad/category), so warm the listing
+        // cache too — the details panel then shows it on the first open.
+        if (room.listing?.id) setCachedListing(room.listing.id, room.listing);
       }
     });
   }, [rooms]);

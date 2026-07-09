@@ -230,6 +230,16 @@ export class ChatService {
       orderBy: { createdAt: 'desc' as const },
       take: 1,
     },
+    // The chat details panel shows the listing's name/image/price/category, so
+    // include just those relations — lets the panel render instantly the first
+    // time a conversation is opened (no extra getListingById round-trip).
+    listing: {
+      include: {
+        brand: true,
+        advertisement: true,
+        category: true,
+      },
+    },
   };
 
   async getChatRoomsBySellerId(sellerId: string) {
